@@ -1,0 +1,26 @@
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+build/
+dist/
+
+# virtual environments
+venv/
+.venv/
+env/
+
+# OS/editor cruft
+.DS_Store
+.vscode/
+.idea/
+
+# training artifacts, once Student 2/4's code starts producing them
+*.pt
+*.pth
+*.ckpt
+checkpoints/
+runs/
+wandb/
