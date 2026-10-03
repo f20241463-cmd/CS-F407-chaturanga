@@ -160,14 +160,49 @@ def play_random_vs_random(games: int, quiet: bool, max_moves: int, seed=None) ->
     print(f"Shortest game:  {min(lengths)} half-moves")
 
 
+def play_human_vs_network(checkpoint_path=None, seed=None) -> None:
+    from network import ChaturangaNet, choose_network_move, load_checkpoint
+    import torch
+    if seed is not None:
+        random.seed(seed)
+        torch.manual_seed(seed)
+
+    if checkpoint_path:
+        net, _, step, _ = load_checkpoint(checkpoint_path)
+        print(f"Loaded network checkpoint from {checkpoint_path} (step {step})")
+    else:
+        net = ChaturangaNet()
+        print("Using initialized ChaturangaNet architecture.")
+
+    state = GameState()
+    half_moves = 0
+    while not state.is_game_over():
+        print_board(state)
+        if state.side_to_move == Color.WHITE:
+            move = prompt_human_move(state)
+        else:
+            move, val = choose_network_move(state, net, temperature=0.2)
+            print(f"Black (Neural Network) plays: {move_to_algebraic(move)} (NN value estimate: {val:+.2f})")
+        state = state.apply_move(move)
+        half_moves += 1
+    print_board(state)
+    print(result_label(state))
+    print(f"Total half-moves: {half_moves}")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Play or stress-test the Chaturanga environment."
     )
     parser.add_argument(
-        "--mode", choices=["human", "random"], default="human",
+        "--mode", choices=["human", "random", "network"], default="human",
         help="'human': you (White) vs a random agent (Black). "
+             "'network': you (White) vs the Neural Network agent (Black). "
              "'random': random vs random, for stress-testing.",
+    )
+    parser.add_argument(
+        "--checkpoint", type=str, default=None,
+        help="Path to neural network checkpoint (.pt) for --mode network.",
     )
     parser.add_argument(
         "--games", type=int, default=1,
@@ -192,6 +227,8 @@ def main():
 
     if args.mode == "human":
         play_human_vs_random(seed=args.seed)
+    elif args.mode == "network":
+        play_human_vs_network(checkpoint_path=args.checkpoint, seed=args.seed)
     else:
         play_random_vs_random(
             games=args.games, quiet=args.quiet, max_moves=args.max_moves, seed=args.seed
@@ -200,3 +237,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
