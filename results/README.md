@@ -10,7 +10,7 @@ The module passes 44 automated tests: 36 covering the Chaturanga rules engine an
 
 ## Reproducibility
 
-All benchmark runs are fully seeded, including the stub network's internal randomness, not just move selection. Running an identical command twice produces byte-identical results, verified directly by comparing two independent runs of the same sweep configuration (see `sweep_run1.csv` / `sweep_run2.csv` in this folder).
+All benchmark runs are fully seeded, including the stub network's internal randomness, not just move selection. Running an identical command twice produces byte-identical results, verified by comparing two independent runs of the identical command.
 
 ## Results against a random-move baseline
 
