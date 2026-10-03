@@ -1,0 +1,29 @@
+  ...10/200 games, 113s elapsed, ~2139s remaining
+  ...20/200 games, 253s elapsed, ~2279s remaining
+  ...30/200 games, 395s elapsed, ~2236s remaining
+  ...40/200 games, 546s elapsed, ~2184s remaining
+  ...50/200 games, 688s elapsed, ~2064s remaining
+  ...60/200 games, 814s elapsed, ~1899s remaining
+  ...70/200 games, 953s elapsed, ~1770s remaining
+  ...80/200 games, 1116s elapsed, ~1674s remaining
+  ...90/200 games, 1256s elapsed, ~1536s remaining
+  ...100/200 games, 1392s elapsed, ~1392s remaining
+  ...110/200 games, 1516s elapsed, ~1241s remaining
+  ...120/200 games, 1668s elapsed, ~1112s remaining
+  ...130/200 games, 1779s elapsed, ~958s remaining
+  ...140/200 games, 1904s elapsed, ~816s remaining
+  ...150/200 games, 2029s elapsed, ~676s remaining
+  ...160/200 games, 2168s elapsed, ~542s remaining
+  ...170/200 games, 2335s elapsed, ~412s remaining
+  ...180/200 games, 2671s elapsed, ~297s remaining
+  ...190/200 games, 2806s elapsed, ~148s remaining
+  ...200/200 games, 2967s elapsed, ~0s remaining
+
+Games played:      200
+MCTS wins:         14  (7.0%)
+Random wins:       5  (2.5%)
+Draws:             181  (90.5%)
+Unfinished:        0  (0.0%)
+MCTS win rate among decided games: 73.7%
+Avg game length:   471.9 plies
+Elapsed:           2966.9s (14.83s/game)

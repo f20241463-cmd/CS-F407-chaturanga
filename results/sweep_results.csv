@@ -1,0 +1,5 @@
+simulations,games,mcts_wins,random_wins,draws,unfinished,decided,win_rate_among_decided
+5,20,0,1,19,0,1,0.0
+15,20,2,0,18,0,2,1.0
+30,20,2,0,18,0,2,1.0
+50,20,4,0,16,0,4,1.0
