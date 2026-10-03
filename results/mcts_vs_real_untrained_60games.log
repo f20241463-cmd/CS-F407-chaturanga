@@ -1,0 +1,23 @@
+Using: real ChaturangaNet (untrained -- random initial weights, deterministic per run)
+  ...5/60 games, 163s elapsed, ~1794s remaining
+  ...10/60 games, 287s elapsed, ~1435s remaining
+  ...15/60 games, 420s elapsed, ~1260s remaining
+  ...20/60 games, 544s elapsed, ~1087s remaining
+  ...25/60 games, 672s elapsed, ~940s remaining
+  ...30/60 games, 797s elapsed, ~797s remaining
+  ...35/60 games, 933s elapsed, ~667s remaining
+  ...40/60 games, 1257s elapsed, ~629s remaining
+  ...45/60 games, 1388s elapsed, ~463s remaining
+  ...50/60 games, 1531s elapsed, ~306s remaining
+  ...55/60 games, 1643s elapsed, ~149s remaining
+  ...60/60 games, 1809s elapsed, ~0s remaining
+
+Network:           real
+Games played:      60
+MCTS wins:         3  (5.0%)
+Random wins:       5  (8.3%)
+Draws:             52  (86.7%)
+Unfinished:        0  (0.0%)
+MCTS win rate among decided games: 37.5%
+Avg game length:   491.3 plies
+Elapsed:           1808.9s (30.15s/game)
