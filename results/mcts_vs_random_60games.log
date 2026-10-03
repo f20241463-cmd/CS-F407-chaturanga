@@ -1,0 +1,21 @@
+  ...5/60 games, 82s elapsed, ~900s remaining
+  ...10/60 games, 151s elapsed, ~756s remaining
+  ...15/60 games, 218s elapsed, ~654s remaining
+  ...20/60 games, 291s elapsed, ~582s remaining
+  ...25/60 games, 353s elapsed, ~495s remaining
+  ...30/60 games, 411s elapsed, ~411s remaining
+  ...35/60 games, 471s elapsed, ~336s remaining
+  ...40/60 games, 544s elapsed, ~272s remaining
+  ...45/60 games, 604s elapsed, ~201s remaining
+  ...50/60 games, 666s elapsed, ~133s remaining
+  ...55/60 games, 732s elapsed, ~67s remaining
+  ...60/60 games, 796s elapsed, ~0s remaining
+
+Games played:      60
+MCTS wins:         5  (8.3%)
+Random wins:       3  (5.0%)
+Draws:             52  (86.7%)
+Unfinished:        0  (0.0%)
+MCTS win rate among decided games: 62.5%
+Avg game length:   453.9 plies
+Elapsed:           795.6s (13.26s/game)
