@@ -119,6 +119,15 @@ def parse_args(argv=None):
         "predict about 0 everywhere, even a rook up or down.",
     )
     p.add_argument(
+        "--avoid_repetition",
+        action="store_true",
+        help="off by default. In self-play, never choose a move that causes a "
+        "threefold-repetition draw unless every considered move does (the policy "
+        "target leaves those moves out too). Without it most self-play games end "
+        "in repetition draws, so the value head sees almost only 0 targets. "
+        "Uses only the rules, so it fits the no-domain-knowledge requirement.",
+    )
+    p.add_argument(
         "--train_steps", type=int, default=100, help="gradient steps per iteration"
     )
     p.add_argument("--batch_size", type=int, default=64)
@@ -175,6 +184,7 @@ def run_self_play(model, args, rng):
             draw_value=args.draw_value,
             rng=rng,
             material_scale=args.material_scale,
+            avoid_repetition=args.avoid_repetition,
         )
         examples_per_game.append(examples)
         infos.append(info)

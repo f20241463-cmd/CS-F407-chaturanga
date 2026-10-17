@@ -21,7 +21,7 @@ from chaturanga import encoding
 from chaturanga.game import GameState
 from chaturanga.types import Color
 from mcts.search import run_mcts, select_action_from_visits
-from training.self_play import PIECE_VALUES
+from training.self_play import PIECE_VALUES, filter_repeating_moves  # noqa: F401
 
 
 def random_player(state, rng):
@@ -44,25 +44,6 @@ def greedy_capture_player(state, rng):
     if best_moves:
         return best_moves[int(rng.integers(len(best_moves)))]
     return random_player(state, rng)
-
-
-def filter_repeating_moves(state, visit_counts):
-    """
-    Return (visit_counts, avoided): a copy of visit_counts with every
-    visited move that would cause a threefold-repetition draw set to 0.
-    If every visited move would repeat, the counts come back unchanged so
-    a move can still be chosen. avoided is True if anything was removed.
-    """
-    filtered = np.array(visit_counts, dtype=np.float32)
-    for action in np.flatnonzero(filtered):
-        child = state.apply_move(encoding.action_to_move(int(action)))
-        # GameState has no public repetition check; result() == 0 alone
-        # would also match stalemate and the no-progress rule.
-        if child._is_threefold_repetition():
-            filtered[action] = 0.0
-    if filtered.sum() == 0:
-        return np.asarray(visit_counts, dtype=np.float32), False
-    return filtered, bool((filtered != visit_counts).any())
 
 
 def make_mcts_player(

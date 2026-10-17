@@ -38,6 +38,26 @@ PIECE_VALUES = {
 }
 
 
+def filter_repeating_moves(state, visit_counts):
+    """
+    Return (visit_counts, avoided): a copy of visit_counts with every
+    visited move that would cause a threefold-repetition draw set to 0.
+    If every visited move would repeat, the counts come back unchanged so
+    a move can still be chosen. avoided is True if anything was removed.
+    Uses only the rules of the game (repetition detection), no game knowledge.
+    """
+    filtered = np.array(visit_counts, dtype=np.float32)
+    for action in np.flatnonzero(filtered):
+        child = state.apply_move(encoding.action_to_move(int(action)))
+        # GameState has no public repetition check; result() == 0 alone
+        # would also match stalemate and the no-progress rule.
+        if child._is_threefold_repetition():
+            filtered[action] = 0.0
+    if filtered.sum() == 0:
+        return np.asarray(visit_counts, dtype=np.float32), False
+    return filtered, bool((filtered != visit_counts).any())
+
+
 def material_balance(state, color):
     """Material of color minus material of its opponent, using PIECE_VALUES."""
     mine = sum(PIECE_VALUES[p.piece_type] for _, p in state.board.pieces_of(color))
@@ -85,6 +105,7 @@ def play_self_play_game(
     draw_value=0.0,
     rng=None,
     material_scale=None,
+    avoid_repetition=False,
 ):
     """
     Returns (examples, info).
@@ -102,6 +123,14 @@ def play_self_play_game(
     material_values(...), so the value head still learns that being
     ahead in material is good when few games end decisively. Decisive
     games always use the real +1/-1 result.
+
+    avoid_repetition=False (default): unchanged. If True, moves that would
+    cause a threefold-repetition draw are dropped from the visit counts
+    (unless every visited move would repeat) before the move is chosen
+    and before the policy target is made, so the network learns the moves
+    the agent actually plays. Most self-play games otherwise end in
+    repetition draws, which leaves the value head almost nothing but 0
+    targets. This needs only the rules, no game knowledge.
     """
     if num_simulations < 1:
         raise ValueError("num_simulations must be at least 1")
@@ -124,6 +153,8 @@ def play_self_play_game(
             dirichlet_eps=dirichlet_eps,
             rng=rng,
         )
+        if avoid_repetition:
+            visit_counts, _ = filter_repeating_moves(state, visit_counts)
         policy = (visit_counts / visit_counts.sum()).astype(np.float32)
         records.append((encoding.state_to_tensor(state), policy, state.side_to_move))
 
