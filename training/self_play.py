@@ -22,8 +22,42 @@ import numpy as np
 
 from chaturanga import encoding
 from chaturanga.game import GameState
-from chaturanga.types import Color
+from chaturanga.types import Color, PieceType
 from mcts.search import run_mcts, select_action_from_visits
+
+# Rough piece values for material adjudication. Mantri (one step
+# diagonally) and gaja (two-square diagonal jump) are weak short-range
+# pieces in Chaturanga, far below a modern queen or bishop.
+PIECE_VALUES = {
+    PieceType.RAJA: 0.0,
+    PieceType.MANTRI: 1.5,
+    PieceType.RATHA: 5.0,
+    PieceType.GAJA: 1.5,
+    PieceType.ASHVA: 3.0,
+    PieceType.PADATI: 1.0,
+}
+
+
+def material_balance(state, color):
+    """Material of color minus material of its opponent, using PIECE_VALUES."""
+    mine = sum(PIECE_VALUES[p.piece_type] for _, p in state.board.pieces_of(color))
+    theirs = sum(
+        PIECE_VALUES[p.piece_type] for _, p in state.board.pieces_of(color.opponent)
+    )
+    return mine - theirs
+
+
+def material_values(movers, final_state, material_scale):
+    """
+    Value targets for a drawn or unfinished game, from the material left
+    on the board at the end: tanh(balance / material_scale), from each
+    position's mover's perspective. A rook up with scale 5 gives about
+    +0.76 for that side and -0.76 for the other; equal material gives 0.
+    """
+    white_value = float(
+        np.tanh(material_balance(final_state, Color.WHITE) / material_scale)
+    )
+    return [white_value if mover == Color.WHITE else -white_value for mover in movers]
 
 
 def outcome_values(movers, result, final_side_to_move):
@@ -50,6 +84,7 @@ def play_self_play_game(
     max_plies=300,
     draw_value=0.0,
     rng=None,
+    material_scale=None,
 ):
     """
     Returns (examples, info).
@@ -61,6 +96,12 @@ def play_self_play_game(
     proportion to visit counts (temperature 1); after that the most
     visited move is played. The policy target is always the normalized
     visit counts, whichever way the move was chosen.
+
+    material_scale=None (default): drawn and unfinished games give every
+    position draw_value. If set (for example 5.0), they instead get
+    material_values(...), so the value head still learns that being
+    ahead in material is good when few games end decisively. Decisive
+    games always use the real +1/-1 result.
     """
     if num_simulations < 1:
         raise ValueError("num_simulations must be at least 1")
@@ -91,19 +132,18 @@ def play_self_play_game(
         state = state.apply_move(encoding.action_to_move(action))
         plies += 1
 
-    if not state.is_game_over():
-        outcome = "unfinished"
-        values = [float(draw_value)] * len(records)
-    else:
-        result = state.result()
-        if result == 0:
-            outcome = "draw"
-            values = [float(draw_value)] * len(records)
+    movers = [mover for _, _, mover in records]
+    result = state.result() if state.is_game_over() else None
+    if result is None or result == 0:
+        outcome = "unfinished" if result is None else "draw"
+        if material_scale is not None:
+            values = material_values(movers, state, material_scale)
         else:
-            movers = [mover for _, _, mover in records]
-            values = outcome_values(movers, result, state.side_to_move)
-            winner = state.side_to_move if result > 0 else state.side_to_move.opponent
-            outcome = "white" if winner == Color.WHITE else "black"
+            values = [float(draw_value)] * len(records)
+    else:
+        values = outcome_values(movers, result, state.side_to_move)
+        winner = state.side_to_move if result > 0 else state.side_to_move.opponent
+        outcome = "white" if winner == Color.WHITE else "black"
 
     examples = [
         (tensor, policy, value) for (tensor, policy, _), value in zip(records, values)

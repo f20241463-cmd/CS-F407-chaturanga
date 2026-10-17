@@ -109,6 +109,16 @@ def parse_args(argv=None):
         help="value target for every position of a drawn or unfinished game",
     )
     p.add_argument(
+        "--material_scale",
+        type=float,
+        default=None,
+        help="off by default. If set (5.0 is a reasonable start), drawn and "
+        "unfinished games get value targets tanh(material balance / scale) "
+        "from the final position instead of --draw_value. Most self-play games "
+        "are draws, and with all-zero draw targets the value head learned to "
+        "predict about 0 everywhere, even a rook up or down.",
+    )
+    p.add_argument(
         "--train_steps", type=int, default=100, help="gradient steps per iteration"
     )
     p.add_argument("--batch_size", type=int, default=64)
@@ -164,6 +174,7 @@ def run_self_play(model, args, rng):
             max_plies=args.max_plies,
             draw_value=args.draw_value,
             rng=rng,
+            material_scale=args.material_scale,
         )
         examples_per_game.append(examples)
         infos.append(info)
