@@ -77,6 +77,25 @@ def _evaluate_and_expand(
     return value
 
 
+def _add_dirichlet_noise(node, alpha, epsilon, rng):
+    """
+    Mix Dirichlet noise into the priors of node's children, in place:
+
+        P'(a) = (1 - epsilon) * P(a) + epsilon * eta_a,  eta ~ Dir(alpha)
+
+    This is AlphaZero's exploration trick for self-play. Without it, an
+    untrained network's fixed (and arbitrary) priors make the search
+    pick the same few moves every game, so self-play keeps generating
+    near-identical games. Only ever applied at the root, and only
+    during self-play -- evaluation and play_vs_ai leave it off.
+    """
+    actions = list(node.children)
+    noise = rng.dirichlet([alpha] * len(actions))
+    for action, eta in zip(actions, noise):
+        child = node.children[action]
+        child.prior = (1 - epsilon) * child.prior + epsilon * float(eta)
+
+
 def run_mcts(
     root_state,
     network_fn,
@@ -85,6 +104,9 @@ def run_mcts(
     state_to_tensor_fn,
     legal_action_mask_fn,
     action_to_move_fn,
+    dirichlet_alpha=None,
+    dirichlet_epsilon=0.25,
+    rng=None,
 ):
     """
     state_to_tensor_fn, legal_action_mask_fn, action_to_move_fn are
@@ -100,6 +122,13 @@ def run_mcts(
             encoding.state_to_tensor, encoding.legal_action_mask,
             encoding.action_to_move,
         )
+
+    Self-play should also pass dirichlet_alpha (AlphaZero used 0.3 for
+    chess; ~0.3 is a sensible start here too, since Chaturanga has a
+    similar number of legal moves per position) and a seeded
+    np.random.Generator as rng, so the noisy games are reproducible.
+    dirichlet_alpha=None (the default) means no noise, and the search
+    behaves exactly as it did before this option existed.
     """
     root = MCTSNode(root_state)
 
@@ -112,6 +141,11 @@ def run_mcts(
     if not root.children:
         # No legal moves at all from the root -- game is already over.
         return np.zeros(4096, dtype=np.float32), None
+
+    if dirichlet_alpha is not None:
+        _add_dirichlet_noise(
+            root, dirichlet_alpha, dirichlet_epsilon, rng or np.random.default_rng()
+        )
 
     for _ in range(num_simulations):
         node = root

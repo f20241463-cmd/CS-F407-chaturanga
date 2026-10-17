@@ -9,18 +9,12 @@ Usage:
     python play_vs_ai.py --network real                # AI uses Student 2's real (untrained) network
     python play_vs_ai.py --human_color black           # you play Black instead
     python play_vs_ai.py --simulations 50 --verbose     # stronger AI, shows its move reasoning
+    python play_vs_ai.py --checkpoint checkpoints/iter_005.pt  # play a trained network
 
 Moves are entered as four characters, from-square then to-square, no
 space: e.g. "e2e4" moves whatever is on e2 to e4. Type "legal" to see
 all legal moves in that format, "board" to reprint the board, "quit"
 to exit.
-
-Swap in a trained checkpoint later with:
-    from network.checkpoint import load_checkpoint
-    net, _, _, _ = load_checkpoint("path/to/checkpoint.pt")
-    network_fn = make_network_fn(net)
-and pass that in place of make_real_network_fn() below -- nothing else
-in this file needs to change.
 """
 
 import argparse
@@ -36,6 +30,7 @@ from chaturanga.notation import (
 from chaturanga.stub_network import random_stub_network
 
 from mcts.search import run_mcts
+from evaluate_vs_random import make_real_network_fn
 
 
 PIECE_LETTERS = {
@@ -70,14 +65,6 @@ def make_stub_network_fn():
     from functools import partial
 
     return partial(random_stub_network, rng=np.random.default_rng())
-
-
-def make_real_network_fn():
-    from network.model import ChaturangaNet
-    from network.agent import make_network_fn
-
-    net = ChaturangaNet()
-    return make_network_fn(net)
 
 
 def parse_move_input(text, legal_moves):
@@ -141,6 +128,11 @@ def ai_turn(state, network_fn, num_simulations, c_puct, verbose):
 def main():
     parser = argparse.ArgumentParser(description="Play Chaturanga against MCTS")
     parser.add_argument("--network", choices=["stub", "real"], default="stub")
+    parser.add_argument(
+        "--checkpoint",
+        default=None,
+        help="path to a trained checkpoint (.pt); implies --network real",
+    )
     parser.add_argument("--simulations", type=int, default=30)
     parser.add_argument("--c_puct", type=float, default=1.5)
     parser.add_argument("--human_color", choices=["white", "black"], default="white")
@@ -149,13 +141,18 @@ def main():
     )
     args = parser.parse_args()
 
+    if args.checkpoint:
+        args.network = "real"
     network_fn = (
-        make_stub_network_fn() if args.network == "stub" else make_real_network_fn()
+        make_stub_network_fn()
+        if args.network == "stub"
+        else make_real_network_fn(checkpoint=args.checkpoint)
     )
     human_color = Color.WHITE if args.human_color == "white" else Color.BLACK
 
     print(
-        f"Playing against MCTS ({args.network} network, {args.simulations} simulations/move)."
+        f"Playing against MCTS ({args.checkpoint or args.network + ' network'}, "
+        f"{args.simulations} simulations/move)."
     )
     print(f"You are {human_color.name}. Moves: four characters, e.g. e2e4.\n")
 

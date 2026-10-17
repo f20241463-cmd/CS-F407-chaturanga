@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 
 from mcts.node import MCTSNode
-from mcts.search import run_mcts, _softmax_masked
+from mcts.search import run_mcts, _softmax_masked, _add_dirichlet_noise
 
 
 # ---------------------------------------------------------------------
@@ -160,6 +160,57 @@ class TestRunMCTS(unittest.TestCase):
         )
         self.assertIsNone(best_move)
         self.assertEqual(visit_counts.sum(), 0)
+
+
+def _nim_search(n, **kwargs):
+    return run_mcts(
+        root_state=NimState(n),
+        network_fn=neutral_network_fn,
+        num_simulations=kwargs.pop("num_simulations", 200),
+        c_puct=1.4,
+        state_to_tensor_fn=nim_state_to_tensor,
+        legal_action_mask_fn=nim_legal_action_mask,
+        action_to_move_fn=nim_action_to_move,
+        **kwargs,
+    )
+
+
+class TestDirichletNoise(unittest.TestCase):
+    def _expanded_root(self):
+        root = MCTSNode(NimState(5))
+        probs = np.zeros(4096)
+        probs[[1, 2, 3]] = 1 / 3
+        root.expand(probs, [1, 2, 3], nim_action_to_move)
+        return root
+
+    def test_noisy_priors_still_sum_to_one_and_change(self):
+        root = self._expanded_root()
+        _add_dirichlet_noise(root, 0.3, 0.25, np.random.default_rng(0))
+        priors = [c.prior for c in root.children.values()]
+        self.assertAlmostEqual(sum(priors), 1.0, places=6)
+        self.assertFalse(np.allclose(priors, 1 / 3))
+
+    def test_epsilon_zero_leaves_priors_unchanged(self):
+        root = self._expanded_root()
+        _add_dirichlet_noise(root, 0.3, 0.0, np.random.default_rng(0))
+        for child in root.children.values():
+            self.assertAlmostEqual(child.prior, 1 / 3)
+
+    def test_default_is_off_and_deterministic(self):
+        a, _ = _nim_search(7)
+        b, _ = _nim_search(7)
+        np.testing.assert_array_equal(a, b)
+
+    def test_same_seed_gives_same_noisy_search(self):
+        a, _ = _nim_search(7, dirichlet_alpha=0.3, rng=np.random.default_rng(42))
+        b, _ = _nim_search(7, dirichlet_alpha=0.3, rng=np.random.default_rng(42))
+        np.testing.assert_array_equal(a, b)
+
+    def test_noise_does_not_break_finding_the_winning_move(self):
+        _, best = _nim_search(
+            5, num_simulations=500, dirichlet_alpha=0.3, rng=np.random.default_rng(1)
+        )
+        self.assertEqual(best, 1)
 
 
 if __name__ == "__main__":
