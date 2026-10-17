@@ -18,6 +18,10 @@ from unittest import mock
 import numpy as np
 
 from chaturanga import encoding
+from chaturanga.board import Board
+from chaturanga.game import GameState
+from chaturanga.stub_network import zero_stub_network
+from chaturanga.types import Color, Piece, PieceType, square
 from chaturanga.game import GameState
 from chaturanga.stub_network import zero_stub_network
 from chaturanga.types import Color
@@ -25,6 +29,12 @@ from mcts.node import MCTSNode
 from mcts.search import _add_dirichlet_noise, run_mcts, select_action_from_visits
 from training import self_play
 from training.replay_buffer import ReplayBuffer
+from training.self_play import (
+    material_balance,
+    material_values,
+    outcome_values,
+    play_self_play_game,
+)
 from training.self_play import outcome_values, play_self_play_game
 
 try:
@@ -220,6 +230,44 @@ class TestSelfPlay(unittest.TestCase):
             self.assertTrue(np.all(policy[~legal] == 0))
             self.assertTrue(np.any(policy[legal] > 0))
         self.assertIsInstance(roots[0], GameState)
+
+
+class TestMaterialAdjudication(unittest.TestCase):
+    def _white_up_a_rook(self):
+        state = GameState(board=Board(), side_to_move=Color.BLACK)
+        state.board.set_piece(square(0, 4), Piece(PieceType.RAJA, Color.WHITE))
+        state.board.set_piece(square(7, 4), Piece(PieceType.RAJA, Color.BLACK))
+        state.board.set_piece(square(0, 0), Piece(PieceType.RATHA, Color.WHITE))
+        return state
+
+    def test_material_balance(self):
+        self.assertEqual(material_balance(GameState(), Color.WHITE), 0.0)
+        state = self._white_up_a_rook()
+        self.assertEqual(material_balance(state, Color.WHITE), 5.0)
+        self.assertEqual(material_balance(state, Color.BLACK), -5.0)
+
+    def test_material_values_are_from_each_movers_perspective(self):
+        values = material_values(
+            [Color.WHITE, Color.BLACK], self._white_up_a_rook(), material_scale=5.0
+        )
+        self.assertAlmostEqual(values[0], float(np.tanh(1.0)))
+        self.assertAlmostEqual(values[1], -float(np.tanh(1.0)))
+
+    def test_self_play_uses_material_for_unfinished_games_when_enabled(self):
+        with mock.patch.object(self_play, "material_balance", return_value=3.0):
+            examples, info = play_self_play_game(
+                zero_stub_network,
+                num_simulations=4,
+                max_plies=10,
+                rng=np.random.default_rng(0),
+                material_scale=5.0,
+            )
+        self.assertEqual(info["outcome"], "unfinished")
+        expected = float(np.tanh(0.6))
+        values = [value for _, _, value in examples]
+        for i, value in enumerate(values):
+            # Ply 0 is White to move, ply 1 Black, and so on.
+            self.assertAlmostEqual(value, expected if i % 2 == 0 else -expected)
 
 
 @unittest.skipIf(torch is None, "torch not installed")
