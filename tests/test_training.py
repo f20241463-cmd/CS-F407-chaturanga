@@ -22,6 +22,9 @@ from chaturanga.board import Board
 from chaturanga.game import GameState
 from chaturanga.stub_network import zero_stub_network
 from chaturanga.types import Color, Piece, PieceType, square
+from chaturanga.game import GameState
+from chaturanga.stub_network import zero_stub_network
+from chaturanga.types import Color
 from mcts.node import MCTSNode
 from mcts.search import _add_dirichlet_noise, run_mcts, select_action_from_visits
 from training import self_play
@@ -32,6 +35,7 @@ from training.self_play import (
     outcome_values,
     play_self_play_game,
 )
+from training.self_play import outcome_values, play_self_play_game
 
 try:
     from tests.test_mcts import (
