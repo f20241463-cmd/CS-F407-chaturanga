@@ -52,7 +52,7 @@ class TestNetworkLoading(unittest.TestCase):
 
 class TestScoreSummary(unittest.TestCase):
     def test_draws_count_half(self):
-        score, _ = score_summary(new_wins=2, old_wins=0, draws=2)
+        score, _ = score_summary(a_wins=2, b_wins=0, draws=2)
         self.assertAlmostEqual(score, 0.75)
 
     def test_all_draws_is_even_with_no_spread(self):

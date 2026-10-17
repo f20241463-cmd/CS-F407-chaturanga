@@ -1,8 +1,8 @@
 """
 mcts/search.py -- the search() entry point.
 
-run_mcts(root_state, network_fn, num_simulations, c_puct) is the whole
-public API. Everything else in this file is a private helper.
+run_mcts(...) and select_action_from_visits(...) are the public API.
+Everything else in this file is a private helper.
 
 network_fn must match the frozen contract from the execution-plan doc
 (section 2.5 / stub_network.py): given a [13,8,8] float32 tensor, it
@@ -77,23 +77,53 @@ def _evaluate_and_expand(
     return value
 
 
-def _add_dirichlet_noise(node, alpha, epsilon, rng):
+def _add_dirichlet_noise(root, alpha, eps, rng):
     """
-    Mix Dirichlet noise into the priors of node's children, in place:
+    Mix Dirichlet noise into the priors of the root's legal children, in place:
 
-        P'(a) = (1 - epsilon) * P(a) + epsilon * eta_a,  eta ~ Dir(alpha)
+        P'(a) = (1 - eps) * P(a) + eps * eta_a,  eta ~ Dir(alpha)
 
     This is AlphaZero's exploration trick for self-play. Without it, an
     untrained network's fixed (and arbitrary) priors make the search
     pick the same few moves every game, so self-play keeps generating
     near-identical games. Only ever applied at the root, and only
-    during self-play -- evaluation and play_vs_ai leave it off.
+    during self-play; evaluation and play_vs_ai leave it off.
     """
-    actions = list(node.children)
+    actions = list(root.children)
+    if not actions:
+        return
     noise = rng.dirichlet([alpha] * len(actions))
     for action, eta in zip(actions, noise):
-        child = node.children[action]
-        child.prior = (1 - epsilon) * child.prior + epsilon * float(eta)
+        child = root.children[action]
+        child.prior = (1 - eps) * child.prior + eps * float(eta)
+
+
+def select_action_from_visits(visit_counts, temperature=0.0, rng=None):
+    """
+    Pick an action id from a [4096] visit-count vector.
+
+    temperature <= 1e-3: greedy, the most-visited action.
+    otherwise: sample with probability proportional to
+               visits ** (1 / temperature). Actions with zero visits are
+               never chosen.
+    Raises ValueError if no action has any visits.
+    """
+    visits = np.asarray(visit_counts, dtype=np.float64)
+    if visits.sum() <= 0:
+        raise ValueError("select_action_from_visits: no action has any visits")
+
+    if temperature <= 1e-3:
+        return int(np.argmax(visits))
+
+    # Work in log space so large exponents (small temperatures) don't overflow.
+    visited = visits > 0
+    log_w = np.full_like(visits, -np.inf)
+    log_w[visited] = np.log(visits[visited]) / temperature
+    w = np.exp(log_w - log_w[visited].max())
+    probs = w / w.sum()
+
+    rng = rng if rng is not None else np.random.default_rng()
+    return int(rng.choice(len(probs), p=probs))
 
 
 def run_mcts(
@@ -104,8 +134,8 @@ def run_mcts(
     state_to_tensor_fn,
     legal_action_mask_fn,
     action_to_move_fn,
-    dirichlet_alpha=None,
-    dirichlet_epsilon=0.25,
+    dirichlet_alpha=0.3,
+    dirichlet_eps=0.0,
     rng=None,
 ):
     """
@@ -123,12 +153,12 @@ def run_mcts(
             encoding.action_to_move,
         )
 
-    Self-play should also pass dirichlet_alpha (AlphaZero used 0.3 for
-    chess; ~0.3 is a sensible start here too, since Chaturanga has a
-    similar number of legal moves per position) and a seeded
-    np.random.Generator as rng, so the noisy games are reproducible.
-    dirichlet_alpha=None (the default) means no noise, and the search
-    behaves exactly as it did before this option existed.
+    Root Dirichlet noise is off by default (dirichlet_eps=0.0), so
+    evaluation and play behave exactly as before this option existed.
+    Self-play turns it on with dirichlet_eps=0.25 (AlphaZero's value)
+    and dirichlet_alpha=0.3 (AlphaZero's chess value; Chaturanga has a
+    similar number of legal moves per position), plus a seeded
+    np.random.Generator as rng so the noisy games are reproducible.
     """
     root = MCTSNode(root_state)
 
@@ -142,9 +172,12 @@ def run_mcts(
         # No legal moves at all from the root -- game is already over.
         return np.zeros(4096, dtype=np.float32), None
 
-    if dirichlet_alpha is not None:
+    if dirichlet_eps > 0:
         _add_dirichlet_noise(
-            root, dirichlet_alpha, dirichlet_epsilon, rng or np.random.default_rng()
+            root,
+            dirichlet_alpha,
+            dirichlet_eps,
+            rng if rng is not None else np.random.default_rng(),
         )
 
     for _ in range(num_simulations):
