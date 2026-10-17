@@ -9,8 +9,20 @@ gets a first-move edge.
 Without any randomness, two deterministic players would replay the same
 game over and over (only two distinct games, one per color assignment).
 So for the first --temp_plies plies of each game, both sides SAMPLE their
-move in proportion to MCTS visit counts, which gives varied openings;
-after that, both play the most-visited move.
+move from the MCTS visit counts (at --temperature), which gives varied
+games; after that, both play the most-visited move.
+
+With greedy play, games between these networks tend to end early in a
+threefold-repetition draw, so in practice --temp_plies needs to cover
+the whole game (e.g. 1000). --temperature 1.0 then makes play so random
+that small strength differences get lost; a lower value such as 0.3
+still varies the games but mostly plays the best moves.
+
+--avoid_repetition stops both sides from choosing a move that would
+repeat a position for the third time (a threefold-repetition draw),
+unless every move MCTS considered would. Without it, near-greedy play
+between these networks ends almost every game in a quick repetition
+draw, which says nothing about which network is stronger.
 
 Usage:
     python compare_checkpoints.py --a checkpoints/iter_0010.pt --b checkpoints/iter_0001.pt --games 20
@@ -64,10 +76,40 @@ def score_summary(a_wins, b_wins, draws):
     return score, 1.96 * math.sqrt(var / games)
 
 
-def play_game(white_fn, black_fn, simulations, c_puct, temp_plies, max_plies, rng):
-    """Returns ("white" | "black" | "draw" | "unfinished", plies)."""
+def filter_repeating_moves(state, visit_counts):
+    """
+    Return (visit_counts, avoided): a copy of visit_counts with every
+    visited move that would cause a threefold-repetition draw set to 0.
+    If every visited move would repeat, the counts come back unchanged so
+    a move can still be chosen. avoided is True if anything was removed.
+    """
+    filtered = np.array(visit_counts, dtype=np.float32)
+    for action in np.flatnonzero(filtered):
+        child = state.apply_move(encoding.action_to_move(int(action)))
+        # GameState has no public repetition check; result() == 0 alone
+        # would also match stalemate and the no-progress rule.
+        if child._is_threefold_repetition():
+            filtered[action] = 0.0
+    if filtered.sum() == 0:
+        return np.asarray(visit_counts, dtype=np.float32), False
+    return filtered, bool((filtered != visit_counts).any())
+
+
+def play_game(
+    white_fn,
+    black_fn,
+    simulations,
+    c_puct,
+    temp_plies,
+    max_plies,
+    rng,
+    temperature=1.0,
+    avoid_repetition=False,
+):
+    """Returns ("white" | "black" | "draw" | "unfinished", plies, repetitions_avoided)."""
     state = GameState()
     plies = 0
+    avoided = 0
     while not state.is_game_over() and plies < max_plies:
         network_fn = white_fn if state.side_to_move == Color.WHITE else black_fn
         visit_counts, _ = run_mcts(
@@ -79,19 +121,22 @@ def play_game(white_fn, black_fn, simulations, c_puct, temp_plies, max_plies, rn
             legal_action_mask_fn=encoding.legal_action_mask,
             action_to_move_fn=encoding.action_to_move,
         )
-        temperature = 1.0 if plies < temp_plies else 0.0
-        action = select_action_from_visits(visit_counts, temperature, rng)
+        if avoid_repetition:
+            visit_counts, did_avoid = filter_repeating_moves(state, visit_counts)
+            avoided += did_avoid
+        temp = temperature if plies < temp_plies else 0.0
+        action = select_action_from_visits(visit_counts, temp, rng)
         state = state.apply_move(encoding.action_to_move(action))
         plies += 1
 
     if not state.is_game_over():
-        return "unfinished", plies
+        return "unfinished", plies, avoided
 
     result = state.result()
     if result == 0:
-        return "draw", plies
+        return "draw", plies, avoided
     winner = state.side_to_move if result > 0 else state.side_to_move.opponent
-    return winner.name.lower(), plies
+    return winner.name.lower(), plies, avoided
 
 
 def main():
@@ -109,6 +154,19 @@ def main():
         default=8,
         help="sample moves for this many opening plies to vary the games",
     )
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=1.0,
+        help="sampling temperature during the first --temp_plies plies: "
+        "visits ** (1 / temperature). Lower values play closer to the best move.",
+    )
+    parser.add_argument(
+        "--avoid_repetition",
+        action="store_true",
+        help="never pick a move that causes a threefold-repetition draw "
+        "unless every considered move does",
+    )
     parser.add_argument("--max_plies", type=int, default=400)
     parser.add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
@@ -117,15 +175,22 @@ def main():
     fn_a, name_a = load_network_fn(args.a, args.seed)
     fn_b, name_b = load_network_fn(args.b, args.seed)
     print(f"A = {name_a}\nB = {name_b}")
+    print(
+        f"{args.games} games, {args.simulations} sims/move, temperature "
+        f"{args.temperature} for the first {args.temp_plies} plies, "
+        f"max {args.max_plies} plies"
+        + (", avoiding repetition draws" if args.avoid_repetition else "")
+    )
 
     a_wins = b_wins = draws = unfinished = 0
     plies_list = []
+    total_avoided = 0
     start = time.time()
 
     for g in range(args.games):
         a_is_white = g % 2 == 0
         white_fn, black_fn = (fn_a, fn_b) if a_is_white else (fn_b, fn_a)
-        outcome, plies = play_game(
+        outcome, plies, avoided = play_game(
             white_fn,
             black_fn,
             args.simulations,
@@ -133,7 +198,10 @@ def main():
             args.temp_plies,
             args.max_plies,
             rng,
+            temperature=args.temperature,
+            avoid_repetition=args.avoid_repetition,
         )
+        total_avoided += avoided
         plies_list.append(plies)
 
         if outcome == "draw":
@@ -165,6 +233,8 @@ def main():
             f"{score:.3f} +/- {margin:.3f}  (0.5 = equal strength)"
         )
     print(f"Avg length:  {sum(plies_list) / len(plies_list):.1f} plies")
+    if args.avoid_repetition:
+        print(f"Repetition draws avoided: {total_avoided} moves")
     print(f"Elapsed:     {time.time() - start:.1f}s")
 
 
