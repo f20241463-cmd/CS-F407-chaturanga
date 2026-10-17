@@ -18,7 +18,7 @@ from network.agent import make_network_fn
 from network.checkpoint import save_checkpoint
 from network.model import ChaturangaNet
 
-from compare_checkpoints import score_summary
+from compare_checkpoints import filter_repeating_moves, score_summary
 from evaluate_vs_random import make_real_network_fn
 
 
@@ -58,6 +58,38 @@ class TestScoreSummary(unittest.TestCase):
     def test_all_draws_is_even_with_no_spread(self):
         score, margin = score_summary(0, 0, 10)
         self.assertEqual((score, margin), (0.5, 0.0))
+
+
+def _one_move_from_threefold():
+    """Knights shuffle out and back; Black's g8 knight returning to g8
+    (square 45 -> 62) would now repeat the start position a third time."""
+    state = GameState()
+    for move in [(6, 21), (62, 45), (21, 6), (45, 62), (6, 21), (62, 45), (21, 6)]:
+        state = state.apply_move(move)
+    return state
+
+
+class TestRepetitionAvoidance(unittest.TestCase):
+    def test_repeating_move_is_removed_when_alternatives_exist(self):
+        state = _one_move_from_threefold()
+        repeat = encoding.move_to_action((45, 62))
+        other = encoding.move_to_action((45, 28))
+        visits = np.zeros(4096, dtype=np.float32)
+        visits[[repeat, other]] = [10, 3]
+        filtered, avoided = filter_repeating_moves(state, visits)
+        self.assertTrue(avoided)
+        self.assertEqual(filtered[repeat], 0)
+        self.assertEqual(filtered[other], 3)
+        self.assertEqual(visits[repeat], 10)  # input left untouched
+
+    def test_repeating_move_kept_when_it_is_the_only_visited_move(self):
+        state = _one_move_from_threefold()
+        repeat = encoding.move_to_action((45, 62))
+        visits = np.zeros(4096, dtype=np.float32)
+        visits[repeat] = 10
+        filtered, avoided = filter_repeating_moves(state, visits)
+        self.assertFalse(avoided)
+        np.testing.assert_array_equal(filtered, visits)
 
 
 if __name__ == "__main__":
