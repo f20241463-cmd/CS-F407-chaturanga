@@ -4,7 +4,8 @@ evaluate_vs_random.py
 Benchmark: MCTS vs pure random move selection. Supports two network
 sources via --network:
   stub  -- random_stub_network, seeded for full reproducibility
-  real  -- Student 2's actual (currently untrained) ChaturangaNet
+  real  -- Student 2's actual ChaturangaNet: untrained (seeded from
+           --seed), or trained weights loaded with --checkpoint
 
 Each game alternates who plays White, so a 100-game run is really 50
 games with MCTS as White + 50 with MCTS as Black. That cancels out any
@@ -13,6 +14,7 @@ first-move advantage instead of letting it bias the win rate.
 Usage:
     python evaluate_vs_random.py --games 100 --simulations 30 --network stub
     python evaluate_vs_random.py --games 20 --simulations 15 --network real
+    python evaluate_vs_random.py --games 60 --checkpoint checkpoints/iter_005.pt
 """
 
 import argparse
@@ -49,22 +51,32 @@ def make_seeded_network_fn(seed):
     return partial(random_stub_network, rng=stub_rng)
 
 
-def make_real_network_fn(device="cpu"):
+def make_real_network_fn(device="cpu", seed=None, checkpoint=None):
     """
-    Builds an UNTRAINED real ChaturangaNet (random initial weights) and
-    wraps it with Student 2's make_network_fn, matching the same
-    network_fn(tensor) -> (policy, value) contract as the stub. Unlike
-    the stub, this is deterministic by construction -- a freshly
-    initialized network gives a fixed (if meaningless) prediction per
-    position, same output every call, until weights actually change.
-    No seeding needed here for that reason, though torch's own init
-    is itself randomized per process unless torch.manual_seed is set.
+    Wraps a real ChaturangaNet with Student 2's make_network_fn, matching
+    the same network_fn(tensor) -> (policy, value) contract as the stub.
+
+    checkpoint=None builds an UNTRAINED network (random initial weights).
+    Its predictions are fixed for the whole run, but torch randomizes the
+    initial weights per process, so pass seed to pin them -- otherwise
+    two runs of the same command play against two different networks.
+
+    checkpoint="path/to/file.pt" loads trained weights instead (seed is
+    then irrelevant to the network; it still drives the random player).
     """
-    import torch
-    from network.model import ChaturangaNet
     from network.agent import make_network_fn
 
-    net = ChaturangaNet()  # defaults: 4 res blocks, 64 filters
+    if checkpoint is not None:
+        from network.checkpoint import load_checkpoint
+
+        net, _, _, _ = load_checkpoint(checkpoint, device=device)
+    else:
+        import torch
+        from network.model import ChaturangaNet
+
+        if seed is not None:
+            torch.manual_seed(seed)
+        net = ChaturangaNet()  # defaults: 4 res blocks, 64 filters
     return make_network_fn(net, device=device)
 
 
@@ -137,7 +149,12 @@ def main():
         choices=["stub", "real"],
         default="stub",
         help="stub = random_stub_network (seeded, reproducible). "
-        "real = Student 2's actual ChaturangaNet (currently untrained)",
+        "real = Student 2's actual ChaturangaNet (untrained unless --checkpoint)",
+    )
+    parser.add_argument(
+        "--checkpoint",
+        default=None,
+        help="path to a trained checkpoint (.pt); implies --network real",
     )
     parser.add_argument(
         "-v", "--verbose", action="store_true", help="print every game's result"
@@ -152,14 +169,20 @@ def main():
 
     rng = random.Random(args.seed)
 
+    if args.checkpoint:
+        args.network = "real"
+
     if args.network == "stub":
         network_fn = make_seeded_network_fn(args.seed)
         print(f"Using: random_stub_network (seeded with --seed {args.seed})")
+    elif args.checkpoint:
+        network_fn = make_real_network_fn(checkpoint=args.checkpoint)
+        print(f"Using: real ChaturangaNet loaded from {args.checkpoint}")
     else:
-        network_fn = make_real_network_fn()
+        network_fn = make_real_network_fn(seed=args.seed)
         print(
             "Using: real ChaturangaNet (untrained -- random initial weights, "
-            "deterministic per run)"
+            f"seeded with --seed {args.seed})"
         )
 
     mcts_wins = 0
@@ -215,7 +238,7 @@ def main():
     decided = mcts_wins + random_wins
 
     print()
-    print(f"Network:           {args.network}")
+    print(f"Network:           {args.checkpoint or args.network}")
     print(f"Games played:      {total}")
     print(f"MCTS wins:         {mcts_wins}  ({100 * mcts_wins / total:.1f}%)")
     print(f"Random wins:       {random_wins}  ({100 * random_wins / total:.1f}%)")
