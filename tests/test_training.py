@@ -27,6 +27,7 @@ from mcts.search import _add_dirichlet_noise, run_mcts, select_action_from_visit
 from training import self_play
 from training.replay_buffer import ReplayBuffer
 from training.self_play import (
+    filter_repeating_moves,
     material_balance,
     material_values,
     outcome_values,
@@ -264,6 +265,70 @@ class TestMaterialAdjudication(unittest.TestCase):
         for i, value in enumerate(values):
             # Ply 0 is White to move, ply 1 Black, and so on.
             self.assertAlmostEqual(value, expected if i % 2 == 0 else -expected)
+
+
+class TestSelfPlayRepetitionAvoidance(unittest.TestCase):
+    def _one_move_from_threefold(self):
+        # Knights shuffle out and back; Black's knight returning f6 -> g8
+        # (45 -> 62) would repeat the start position a third time.
+        state = GameState()
+        for move in [(6, 21), (62, 45), (21, 6), (45, 62), (6, 21), (62, 45), (21, 6)]:
+            state = state.apply_move(move)
+        return state
+
+    def test_filter_removes_repeating_move(self):
+        state = self._one_move_from_threefold()
+        repeat = encoding.move_to_action((45, 62))
+        other = encoding.move_to_action((45, 28))
+        visits = np.zeros(4096, dtype=np.float32)
+        visits[[repeat, other]] = [10, 3]
+        filtered, avoided = filter_repeating_moves(state, visits)
+        self.assertTrue(avoided)
+        self.assertEqual((filtered[repeat], filtered[other]), (0, 3))
+
+    def test_self_play_avoids_repetition_draws_when_enabled(self):
+        # A network that only wants to shuffle the g-file knights out and
+        # back draws by threefold repetition after 8 plies; with avoidance
+        # the game continues and no policy target includes the repeating move.
+        shuffle = [
+            encoding.move_to_action(m) for m in [(6, 21), (21, 6), (62, 45), (45, 62)]
+        ]
+
+        def knight_shuffler(tensor):
+            logits = np.zeros(4096, dtype=np.float32)
+            logits[shuffle] = 20.0
+            return logits, 0.0
+
+        def game(avoid):
+            roots = []
+
+            def recording_run_mcts(root_state, *args, **kwargs):
+                roots.append(root_state)
+                return run_mcts(root_state, *args, **kwargs)
+
+            with mock.patch.object(
+                self_play, "run_mcts", side_effect=recording_run_mcts
+            ):
+                examples, info = play_self_play_game(
+                    knight_shuffler,
+                    num_simulations=4,
+                    max_plies=20,
+                    temperature_moves=0,
+                    dirichlet_eps=0.0,
+                    rng=np.random.default_rng(0),
+                    avoid_repetition=avoid,
+                )
+            return roots, examples, info
+
+        _, _, info = game(avoid=False)
+        self.assertEqual(info, {"plies": 8, "outcome": "draw"})
+
+        roots, examples, info = game(avoid=True)
+        self.assertEqual(info["outcome"], "unfinished")
+        for state, (_, policy, _) in zip(roots, examples):
+            for action in np.flatnonzero(policy):
+                child = state.apply_move(encoding.action_to_move(int(action)))
+                self.assertFalse(child._is_threefold_repetition())
 
 
 @unittest.skipIf(torch is None, "torch not installed")
