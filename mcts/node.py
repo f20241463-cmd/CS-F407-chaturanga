@@ -1,9 +1,10 @@
 """
 mcts/node.py -- MCTSNode
 
-One node = one GameState. A node knows its parent, its children (keyed
-by action_id, not by move tuple, so it lines up directly with the
-[4096]-wide policy/visit-count contract everyone else uses), and the
+One node = one GameState (computed lazily for children, see .state).
+A node knows its parent, its children (keyed by action_id, not by move
+tuple, so it lines up directly with the [4096]-wide policy/visit-count
+contract everyone else uses), and the
 running statistics PUCT needs: visit_count (N), value_sum (W), and the
 prior probability (P) the network/stub assigned to the move that led
 here.
@@ -21,8 +22,16 @@ import math
 
 
 class MCTSNode:
-    def __init__(self, state, parent=None, prior=0.0, action_taken=None):
-        self.state = state
+    def __init__(
+        self, state=None, parent=None, prior=0.0, action_taken=None, move=None
+    ):
+        # Children are created lazily: they store only the move that leads
+        # to them, and the resulting GameState is computed on first access
+        # of .state (see the property below). Most children are never
+        # visited, and apply_move was ~98% of search time when every child
+        # computed its state up front.
+        self._state = state
+        self._move = move
         self.parent = parent
         self.prior = prior
         self.action_taken = (
@@ -35,6 +44,13 @@ class MCTSNode:
         self.is_expanded = False
 
     @property
+    def state(self):
+        """This node's GameState, computed from the parent on first access and cached."""
+        if self._state is None:
+            self._state = self.parent.state.apply_move(self._move)
+        return self._state
+
+    @property
     def value(self):
         """Mean value from this node's own side-to-move's perspective."""
         if self.visit_count == 0:
@@ -43,9 +59,10 @@ class MCTSNode:
 
     def expand(self, policy_probs, legal_actions, action_to_move_fn):
         """
-        Create one child per legal action, each wrapping the resulting
-        GameState. policy_probs is the full [4096] array (only the
-        entries at legal_actions are ever read). action_to_move_fn is
+        Create one child per legal action. Children do not compute their
+        GameState here; they keep the move and build the state lazily on
+        first access of child.state. policy_probs is the full [4096]
+        array (only the entries at legal_actions are ever read). action_to_move_fn is
         encoding.action_to_move -- passed in rather than imported so
         this file has zero dependency on the chaturanga package and
         can be unit-tested with any toy state that implements
@@ -54,13 +71,11 @@ class MCTSNode:
         for action in legal_actions:
             if action in self.children:
                 continue
-            move = action_to_move_fn(action)
-            child_state = self.state.apply_move(move)
             self.children[action] = MCTSNode(
-                state=child_state,
                 parent=self,
                 prior=float(policy_probs[action]),
                 action_taken=action,
+                move=action_to_move_fn(action),
             )
         self.is_expanded = True
 

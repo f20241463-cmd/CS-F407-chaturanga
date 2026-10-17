@@ -139,9 +139,10 @@ def main():
     parser.add_argument(
         "--max_plies",
         type=int,
-        default=600,
-        help="her random-vs-random baseline averages ~487 plies/game, "
-        "with some over 650 -- keep this comfortably above that",
+        default=None,
+        help="default: 600 for the stub network, 1500 for the real network or a "
+        "checkpoint. Random-vs-random averages ~487 plies/game, with some over "
+        "650, and games against the real network run longer still.",
     )
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument(
@@ -171,6 +172,8 @@ def main():
 
     if args.checkpoint:
         args.network = "real"
+    if args.max_plies is None:
+        args.max_plies = 600 if args.network == "stub" else 1500
 
     if args.network == "stub":
         network_fn = make_seeded_network_fn(args.seed)
@@ -239,6 +242,7 @@ def main():
 
     print()
     print(f"Network:           {args.checkpoint or args.network}")
+    print(f"Max plies:         {args.max_plies}")
     print(f"Games played:      {total}")
     print(f"MCTS wins:         {mcts_wins}  ({100 * mcts_wins / total:.1f}%)")
     print(f"Random wins:       {random_wins}  ({100 * random_wins / total:.1f}%)")
@@ -249,6 +253,12 @@ def main():
     )
     if decided:
         print(f"MCTS win rate among decided games: {100 * mcts_wins / decided:.1f}%")
+    finished = total - unfinished
+    if finished:
+        print(
+            "MCTS score (win=1, draw=0.5, unfinished excluded): "
+            f"{(mcts_wins + 0.5 * draws) / finished:.3f}"
+        )
     print(f"Avg game length:   {avg_plies:.1f} plies")
     print(f"Elapsed:           {elapsed:.1f}s ({elapsed / total:.2f}s/game)")
 

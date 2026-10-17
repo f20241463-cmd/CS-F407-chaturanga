@@ -202,13 +202,21 @@ class TestDirichletNoise(unittest.TestCase):
         np.testing.assert_array_equal(a, b)
 
     def test_same_seed_gives_same_noisy_search(self):
-        a, _ = _nim_search(7, dirichlet_alpha=0.3, rng=np.random.default_rng(42))
-        b, _ = _nim_search(7, dirichlet_alpha=0.3, rng=np.random.default_rng(42))
+        a, _ = _nim_search(
+            7, dirichlet_alpha=0.3, dirichlet_eps=0.25, rng=np.random.default_rng(42)
+        )
+        b, _ = _nim_search(
+            7, dirichlet_alpha=0.3, dirichlet_eps=0.25, rng=np.random.default_rng(42)
+        )
         np.testing.assert_array_equal(a, b)
 
     def test_noise_does_not_break_finding_the_winning_move(self):
         _, best = _nim_search(
-            5, num_simulations=500, dirichlet_alpha=0.3, rng=np.random.default_rng(1)
+            5,
+            num_simulations=500,
+            dirichlet_alpha=0.3,
+            dirichlet_eps=0.25,
+            rng=np.random.default_rng(1),
         )
         self.assertEqual(best, 1)
 
