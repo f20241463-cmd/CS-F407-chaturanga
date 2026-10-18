@@ -9,15 +9,22 @@ Usage:
     python play_vs_ai.py --network real                # AI uses Student 2's real (untrained) network
     python play_vs_ai.py --human_color black           # you play Black instead
     python play_vs_ai.py --simulations 50 --verbose     # stronger AI, shows its move reasoning
-    python play_vs_ai.py --checkpoint checkpoints/iter_005.pt  # play a trained network
+    python play_vs_ai.py --checkpoint checkpoints/final_B/latest.pt --player Avisha
+    python play_vs_ai.py --summary                     # totals so far from the game log
 
 Moves are entered as four characters, from-square then to-square, no
 space: e.g. "e2e4" moves whatever is on e2 to e4. Type "legal" to see
-all legal moves in that format, "board" to reprint the board, "quit"
-to exit.
+all legal moves in that format, "board" to reprint the board, "resign"
+to give up (counts as an agent win), "quit" to stop (counts as
+unfinished).
+
+Every game is appended to results/human_games.csv (change with --log,
+turn off with --no_log), so the Agent vs. Human score can be reported.
 """
 
 import argparse
+
+import numpy as np
 
 from chaturanga.game import GameState
 from chaturanga.types import Color, PieceType, square
@@ -31,7 +38,9 @@ from chaturanga.stub_network import random_stub_network
 
 from mcts.search import run_mcts
 from evaluate_vs_random import make_real_network_fn
-
+from evaluation.game_endings import classify_ending
+from evaluation.human_log import append_game, format_summary, summarize
+from evaluation.players import filter_repeating_moves
 
 PIECE_LETTERS = {
     PieceType.RAJA: "K",
@@ -83,9 +92,11 @@ def parse_move_input(text, legal_moves):
 def human_turn(state):
     legal = state.legal_moves()
     while True:
-        text = input("Your move (e.g. e2e4, or 'legal'/'board'/'quit'): ").strip()
-        if text.lower() == "quit":
-            return None
+        text = input(
+            "Your move (e.g. e2e4, or 'legal'/'board'/'resign'/'quit'): "
+        ).strip()
+        if text.lower() in ("quit", "resign"):
+            return text.lower()
         if text.lower() == "board":
             print_board(state)
             continue
@@ -99,7 +110,7 @@ def human_turn(state):
         return move
 
 
-def ai_turn(state, network_fn, num_simulations, c_puct, verbose):
+def ai_turn(state, network_fn, num_simulations, c_puct, verbose, avoid_repetition):
     visit_counts, move = run_mcts(
         root_state=state,
         network_fn=network_fn,
@@ -109,6 +120,11 @@ def ai_turn(state, network_fn, num_simulations, c_puct, verbose):
         legal_action_mask_fn=encoding.legal_action_mask,
         action_to_move_fn=encoding.action_to_move,
     )
+    if avoid_repetition:
+        # Same rule as the benchmark: skip a move that causes a threefold
+        # repetition draw unless every searched move does.
+        visit_counts, _ = filter_repeating_moves(state, visit_counts)
+        move = encoding.action_to_move(int(np.argmax(visit_counts)))
     if verbose:
         top = sorted(
             (
@@ -133,13 +149,31 @@ def main():
         default=None,
         help="path to a trained checkpoint (.pt); implies --network real",
     )
-    parser.add_argument("--simulations", type=int, default=30)
+    parser.add_argument("--simulations", type=int, default=50)
     parser.add_argument("--c_puct", type=float, default=1.5)
     parser.add_argument("--human_color", choices=["white", "black"], default="white")
     parser.add_argument(
         "--verbose", action="store_true", help="show the AI's top candidate moves"
     )
+    parser.add_argument(
+        "--no_avoid_repetition",
+        action="store_true",
+        help="let the AI repeat positions (by default it avoids threefold repetition, "
+        "as in the benchmark)",
+    )
+    parser.add_argument("--player", default="human", help="your name, for the game log")
+    parser.add_argument("--log", default="results/human_games.csv")
+    parser.add_argument("--no_log", action="store_true", help="do not record this game")
+    parser.add_argument(
+        "--summary",
+        action="store_true",
+        help="print the totals from --log (all checkpoints, or only --checkpoint) and exit",
+    )
     args = parser.parse_args()
+
+    if args.summary:
+        print(f"{args.log}: " + format_summary(summarize(args.log, args.checkpoint)))
+        return
 
     if args.checkpoint:
         args.network = "real"
@@ -157,30 +191,61 @@ def main():
     print(f"You are {human_color.name}. Moves: four characters, e.g. e2e4.\n")
 
     state = GameState()
+    moves = []
     print_board(state)
 
+    stopped = None
     while not state.is_game_over():
         if state.side_to_move == human_color:
             move = human_turn(state)
-            if move is None:
-                print("Game ended early.")
-                return
+            if move in ("quit", "resign"):
+                stopped = move
+                break
         else:
             move = ai_turn(
-                state, network_fn, args.simulations, args.c_puct, args.verbose
+                state,
+                network_fn,
+                args.simulations,
+                args.c_puct,
+                args.verbose,
+                not args.no_avoid_repetition,
             )
 
         state = state.apply_move(move)
+        moves.append(move_to_algebraic(move))
         print_board(state)
 
-    result = state.result()
-    if result == 0 or result is None:
-        print("Game over: draw.")
+    if stopped == "resign":
+        result, ending = "agent_win", "resigned"
+        print("You resigned: the AI wins.")
+    elif stopped == "quit":
+        result, ending = "unfinished", "quit"
+        print("Game stopped early (recorded as unfinished).")
     else:
-        loser = state.side_to_move
-        winner = Color.BLACK if loser == Color.WHITE else Color.WHITE
-        who = "You" if winner == human_color else "The AI"
-        print(f"Game over: {who} ({winner.name}) win{'s' if who == 'The AI' else ''}!")
+        ending = classify_ending(state)
+        if state.result() == 0:
+            result = "draw"
+            print(f"Game over: draw ({ending}).")
+        else:
+            loser = state.side_to_move
+            winner = Color.BLACK if loser == Color.WHITE else Color.WHITE
+            result = "human_win" if winner == human_color else "agent_win"
+            who = "You win" if result == "human_win" else "The AI wins"
+            print(f"Game over: {who} ({winner.name}, {ending})!")
+
+    if not args.no_log:
+        append_game(
+            args.log,
+            player=args.player,
+            checkpoint=args.checkpoint or f"{args.network} network (untrained)",
+            simulations=args.simulations,
+            human_color=args.human_color,
+            result=result,
+            ending=ending,
+            plies=len(moves),
+            moves=" ".join(moves),
+        )
+        print(f"Recorded in {args.log}. " + format_summary(summarize(args.log)))
 
 
 if __name__ == "__main__":

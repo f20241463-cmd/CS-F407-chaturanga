@@ -5,9 +5,11 @@ Checks for the benchmark scripts' network loading: --checkpoint loads
 the saved weights, and an untrained network is pinned by its seed.
 """
 
+import csv
 import os
 import tempfile
 import unittest
+from unittest import mock
 
 import numpy as np
 import torch
@@ -90,6 +92,31 @@ class TestRepetitionAvoidance(unittest.TestCase):
         filtered, avoided = filter_repeating_moves(state, visits)
         self.assertFalse(avoided)
         np.testing.assert_array_equal(filtered, visits)
+
+
+class TestPlayVsAiLog(unittest.TestCase):
+    def _play(self, inputs, log):
+        import play_vs_ai
+
+        argv = ["play_vs_ai.py", "--simulations", "4", "--player", "t", "--log", log]
+        with mock.patch("sys.argv", argv), mock.patch(
+            "builtins.input", side_effect=inputs
+        ), mock.patch("builtins.print"):
+            play_vs_ai.main()
+
+    def test_resign_and_quit_are_recorded(self):
+        from evaluation.human_log import summarize
+
+        with tempfile.TemporaryDirectory() as tmp:
+            log = os.path.join(tmp, "human.csv")
+            self._play(["resign"], log)
+            self._play(["e2e3", "quit"], log)
+            s = summarize(log)
+            self.assertEqual((s["games"], s["agent_win"], s["unfinished"]), (2, 1, 1))
+            with open(log) as f:
+                last = list(csv.DictReader(f))[-1]
+            self.assertEqual((last["ending"], last["plies"]), ("quit", "2"))
+            self.assertTrue(last["moves"].startswith("e2e3 "))
 
 
 if __name__ == "__main__":

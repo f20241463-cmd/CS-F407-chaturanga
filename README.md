@@ -1,98 +1,76 @@
-# chaturanga_env — Environment & Rules module (Student 1)
+# ChaturangZero: a self-play AlphaZero agent for Chaturanga
 
-This package implements the Chaturanga board, movement rules, legal-move
-generation, terminal detection, and the two numeric contracts
-(`GameState -> [13,8,8]` tensor, `Move <-> action_id`) that the rest of
-the team builds on top of.
+CS F407 course project. An agent that learns Chaturanga, the ancient Indian
+ancestor of chess, by playing against itself. Like AlphaZero, it gets no human
+knowledge beyond the rules: a residual network suggests moves and judges
+positions, Monte Carlo Tree Search (MCTS) looks ahead with it, and the network
+is trained on the games it plays.
 
-Status: Week 2 deliverable complete. 36/36 tests passing.
+Everything runs on a CPU. Python 3 with `numpy`, `torch` and `matplotlib`.
+
+## How it fits together
+
+```
+chaturanga/   rules engine: board, legal moves, game end, tensor + action encoding
+network/      dual-head ResNet (policy + value), loss, checkpoints
+mcts/         guided MCTS with PUCT, root Dirichlet noise, lazy child states
+training/     self-play games, replay buffer, training loop
+evaluation/   baseline players, per-iteration benchmark, game endings, human-game log
+results/      training logs, benchmark CSVs, plots, and the results write-up
+tests/        96 automated tests
+```
+
+| Part | What it does | Details |
+|---|---|---|
+| Rules engine | 8x8 board, all piece moves, check, checkmate (loss), stalemate (draw), 100-ply no-progress and threefold-repetition draws. The state is encoded as 13 planes of 8x8; a move is `from * 64 + to` in a 4096-wide action space, with illegal moves masked out. | `chaturanga/README.md` |
+| Network | Residual network, 4 blocks of 64 filters (about 836,000 parameters). Policy head: 4096 move logits. Value head: one number in [-1, 1] for the side to move. Loss: value MSE + policy cross-entropy, with L2 regularization. | `network/` |
+| Search | MCTS guided by the network: PUCT selection, expansion with the network's move priors, leaf values from the value head (no random rollouts), backup with the sign flipped each ply. | `mcts/README.md` |
+| Training | Self-play with MCTS (30 to 50 simulations per move), root noise for exploration, a replay buffer of recent positions, Adam updates, a checkpoint per iteration. | `training/README.md` |
+| Evaluation | Fixed-protocol benchmark of every checkpoint against random, greedy-capture and untrained players; head-to-head matches between checkpoints; play against a human with automatic result logging; plots. | `training/README.md`, `results/README.md` |
 
 ## Quick start
 
 ```bash
-python -m unittest discover -s tests -v     # run the test suite
-python play.py                               # you (White) vs random (Black)
-python play.py --mode random --games 300 --quiet   # stress test
-python integration_preview.py                # env -> tensor -> stub network -> move
+python -m pytest -q                                  # run all tests
+python play.py                                       # you vs a random player
+python play_vs_ai.py --checkpoint checkpoints/final_B/latest.pt --player YOUR_NAME
+python -m training.train --iterations 2 --games_per_iter 2 --checkpoint_dir checkpoints/demo --log checkpoints/demo/log.csv
+python -m evaluation.benchmark --checkpoint_dir checkpoints/demo --opponent random --games 4 --out checkpoints/demo/bench.csv
 ```
 
-## Public API, by file
+The last two lines are a tiny training run (about 1 minute) and its benchmark
+(about 5 minutes). Checkpoints are not stored in git (`checkpoints/` is ignored). The training
+command for the final run, and every evaluation command, is in
+`training/README.md`.
 
-### `chaturanga/game.py` — `GameState`
-The class everyone actually talks to.
+## Results in brief
 
-| Method / attribute | Returns | Notes |
-|---|---|---|
-| `GameState()` | new game, White to move | starting position |
-| `.side_to_move` | `Color.WHITE` / `Color.BLACK` | |
-| `.legal_moves()` | `List[(from_sq, to_sq)]` | fully legal, king safety included |
-| `.apply_move(move)` | new `GameState` | **immutable** — does not mutate `self`, raises `ValueError` on illegal moves |
-| `.is_in_check(color=None)` | `bool` | defaults to side to move |
-| `.is_game_over()` | `bool` | |
-| `.result()` | `+1` / `-1` / `0` / `None` | from the perspective of `.side_to_move`; `None` = not over |
-| `.board` | `Board` | see below |
+Two final runs of 20 iterations x 20 self-play games each (400 games, about
+7 hours per run on one CPU core), 50 simulations per move, the 4 x 64
+network. The policy loss fell from about 5 to 2.2 and then flattened.
 
-### `chaturanga/board.py` — `Board`
-Raw piece placement, no rules attached. `Board.starting_position()`,
-`.piece_at(sq)`, `.pieces_of(color)`, `.find_king_square(color)`.
+The trained agent is **not measurably stronger** than where it started. Under
+a fixed 20-game benchmark, every checkpoint scores within its margin of 0.5
+against the untrained network, a random player and a greedy-capture player,
+and the two final runs drew each other. About 80% of games are drawn, mostly by
+the 100-ply no-progress rule, so the value head sees almost only 0 targets and
+search cannot tell good positions from bad ones. 400 games is very little data
+for this method. `results/README.md` has every number, the plots, the
+measured game endings, two exploratory runs, and this diagnosis in full.
 
-### `chaturanga/encoding.py` — the two frozen numeric contracts
-| Function | Signature | Contract section |
-|---|---|---|
-| `move_to_action(move)` | `(from,to) -> int` | 2.4, `from*64+to` |
-| `action_to_move(action_id)` | `int -> (from,to)` | 2.4, inverse |
-| `state_to_tensor(state)` | `GameState -> float32[13,8,8]` | 2.1 / 2.11 |
-| `legal_action_mask(state)` | `GameState -> bool[4096]` | 2.6 — **use this**, don't reimplement |
-| `NUM_ACTIONS` | `4096` | |
+## Milestones
 
-### `chaturanga/stub_network.py` — fake network, real contract
-`zero_stub_network(tensor)` and `random_stub_network(tensor, rng=None)`,
-both returning `(policy_logits: float32[4096], value: float in [-1,1])`.
-For Student 3/4 to build and test against before Student 2's real
-network exists. Swapping in the real network later should not require
-changing any calling code — only which function gets passed in.
+| Milestone | Status |
+|---|---|
+| 1. Rules engine verified by unit tests | Done: 36 rules tests |
+| 2. MCTS with an untrained network | Done: search tests plus a run on the real untrained network |
+| 3. Self-play pipeline, loss tracked over 50 to 100+ games | Done: 400 games per final run, loss curves in `results/` |
+| 4. Benchmark against earlier iterations and baseline players, learning curves | Done: `results/README.md` |
 
-### `chaturanga/notation.py` — convenience only, not part of the contract
-`square_to_algebraic(sq)`, `algebraic_to_square("e2")`,
-`move_to_algebraic(move)`. Used by `play.py`; safe to ignore otherwise.
+## Team
 
-### `chaturanga/types.py`
-`Color` (`WHITE=0, BLACK=1`), `PieceType` (`RAJA, MANTRI, RATHA, GAJA,
-ASHVA, PADATI` — **this exact order fixes the plane order in
-`state_to_tensor`**), `Piece`, `square(row,col)`.
-
-## What's confirmed vs. what still needs a team yes/no
-
-These four were left open by the Week 0 doc. The code picks a default
-for each so Week 2 work isn't blocked, but Students 2/3 are building
-against these defaults right now — worth a two-minute team confirmation
-before Week 3 integration, since changing any of them later means
-changing `encoding.py` (and possibly retraining).
-
-| Decision | Current default | Where it's implemented |
-|---|---|---|
-| Board orientation | **absolute** (row 0 = White's back rank always, no flipping by side to move) | `encoding.py` |
-| Piece plane order | `Raja, Mantri, Ratha, Gaja, Ashva, Padati`, White (0–5) then Black (6–11) | `types.py` `PieceType` enum order |
-| Starting layout | symmetric, chess-like (`Ratha Ashva Gaja Raja Mantri Gaja Ashva Ratha`) | `board.py` `_BACK_RANK` |
-| Terminal rules | checkmate = loss, stalemate = draw, 100-half-move no-progress cap, threefold repetition = draw | `game.py` `NO_PROGRESS_LIMIT`, `result()` |
-
-## What to hand each teammate
-
-**Student 2 (Network)** — `encoding.py` (`state_to_tensor`, `NUM_ACTIONS`)
-for the exact I/O shape; `stub_network.py` as a reference contract to
-match.
-
-**Student 3 (MCTS)** — `game.py` for the whole game-tree interface;
-`encoding.py` (`move_to_action`/`action_to_move`/`legal_action_mask`);
-`stub_network.py` to start building search today; `integration_preview.py`
-as a worked example of the loop they're embedding search into.
-
-**Student 4 (Self-Play/Training)** — `game.py` and `encoding.py` (same
-as Student 3) for assembling `(state, policy_target, outcome)` training
-triples; `play.py --mode random --games N --quiet` as a ready-made
-stress test for their self-play loop before real MCTS is plugged in.
-
-**Everyone** — the full `tests/` suite as evidence the rules are
-correct enough to build on: 36 tests including piece movement, pins,
-double check, checkmate/stalemate, and the action/tensor encoding
-contracts.
+| Role | Area |
+|---|---|
+| Student 1: Environment and logic | `chaturanga/`, `play.py` |
+| Student 2: Deep learning and pipeline | `network/`, training loop, replay buffer |
+| Student 3: Search and evaluation | `mcts/`, `evaluation/`, benchmarks, plots, `play_vs_ai.py` |
