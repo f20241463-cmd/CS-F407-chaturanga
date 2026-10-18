@@ -119,7 +119,8 @@ avoidance, always choosing its most visited move. Enter moves as `e2e4`; type
 stop (unfinished). Every game is appended to `results/human_games.csv` with the
 result, the rule that ended it and the full move list (`--no_log` to skip).
 `--summary` prints the agent's score against humans, scored like the benchmark
-(win 1, draw 0.5, unfinished left out). Alternate colors between games.
+(win 1, draw 0.5, unfinished left out), with a 95% Wilson range because the
+number of human games is small. Alternate colors between games.
 
 ## Plotting
 

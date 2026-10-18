@@ -17,7 +17,7 @@ mcts/         guided MCTS with PUCT, root Dirichlet noise, lazy child states
 training/     self-play games, replay buffer, training loop
 evaluation/   baseline players, per-iteration benchmark, game endings, human-game log
 results/      training logs, benchmark CSVs, plots, and the results write-up
-tests/        96 automated tests
+tests/        97 automated tests
 ```
 
 | Part | What it does | Details |
@@ -52,11 +52,12 @@ network. The policy loss fell from about 5 to 2.2 and then flattened.
 The trained agent is **not measurably stronger** than where it started. Under
 a fixed 20-game benchmark, every checkpoint scores within its margin of 0.5
 against the untrained network, a random player and a greedy-capture player,
-and the two final runs drew each other. About 80% of games are drawn, mostly by
+and the two final runs drew each other. Against a human new to chess it won
+none of six games (3 losses, 3 draws, each draw a stalemate of its lone king). About 80% of games are drawn, mostly by
 the 100-ply no-progress rule, so the value head sees almost only 0 targets and
 search cannot tell good positions from bad ones. 400 games is very little data
 for this method. `results/README.md` has every number, the plots, the
-measured game endings, two exploratory runs, and this diagnosis in full.
+measured game endings, the human games, two exploratory runs, and this diagnosis in full.
 
 ## Milestones
 

@@ -4,7 +4,9 @@ evaluation/human_log.py -- record and summarize Agent vs. Human games.
 play_vs_ai.py appends one row per game to a CSV (default
 results/human_games.csv). summarize() turns that file into the agent's score
 against humans, using the same scoring as the benchmark: win = 1,
-draw = 0.5, unfinished (quit) games left out.
+draw = 0.5, unfinished (quit) games left out. With only a handful of games,
+the range is a Wilson 95% interval, which stays meaningful even when one side
+wins every game (the benchmark's +/- margin collapses to 0 there).
 """
 
 import csv
@@ -46,6 +48,16 @@ def append_game(path, **fields):
     return row
 
 
+def wilson_interval(score, n, z=1.96):
+    """95% Wilson interval for a score over n games (draws count as half a win)."""
+    if n == 0:
+        return None, None
+    denom = 1 + z * z / n
+    center = (score + z * z / (2 * n)) / denom
+    half = z * math.sqrt(score * (1 - score) / n + z * z / (4 * n * n)) / denom
+    return max(0.0, center - half), min(1.0, center + half)
+
+
 def summarize(path, checkpoint=None):
     """Totals and the agent's score from the CSV, optionally for one checkpoint only."""
     rows = []
@@ -58,11 +70,11 @@ def summarize(path, checkpoint=None):
             ]
     counts = {name: sum(r["result"] == name for r in rows) for name in RESULTS}
     finished = counts["agent_win"] + counts["human_win"] + counts["draw"]
-    score = margin = None
+    score = low = high = None
     if finished:
         score = (counts["agent_win"] + 0.5 * counts["draw"]) / finished
-        margin = 1.96 * math.sqrt(score * (1 - score) / finished)
-    return {"games": len(rows), **counts, "score": score, "margin": margin}
+        low, high = wilson_interval(score, finished)
+    return {"games": len(rows), **counts, "score": score, "low": low, "high": high}
 
 
 def format_summary(summary):
@@ -72,5 +84,8 @@ def format_summary(summary):
         f"{s['draw']} draws, {s['unfinished']} unfinished"
     )
     if s["score"] is not None:
-        text += f". Agent score {s['score']:.3f} +/- {s['margin']:.3f} (unfinished left out)"
+        text += (
+            f". Agent score {s['score']:.3f}, 95% range {s['low']:.3f} to {s['high']:.3f}"
+            " (unfinished left out)"
+        )
     return text

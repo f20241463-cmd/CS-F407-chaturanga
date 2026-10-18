@@ -16,7 +16,7 @@ from chaturanga.board import Board
 from chaturanga.game import GameState
 from chaturanga.stub_network import zero_stub_network
 from chaturanga.types import Color, Piece, PieceType, square
-from evaluation.human_log import append_game, format_summary, summarize
+from evaluation.human_log import append_game, format_summary, summarize, wilson_interval
 from evaluation.game_endings import classify_ending, count_endings
 from evaluation.players import (
     greedy_capture_player,
@@ -164,6 +164,15 @@ class TestHumanLog(unittest.TestCase):
             self.assertAlmostEqual(s["score"], 0.5)  # (1 + 0.5) / 3 finished
             self.assertEqual(summarize(path)["games"], 5)
             self.assertIn("Agent score 0.500", format_summary(s))
+
+    def test_wilson_interval_stays_wide_when_one_side_wins_everything(self):
+        low, high = wilson_interval(0.0, 6)
+        self.assertEqual(low, 0.0)
+        self.assertGreater(high, 0.3)  # the +/- margin would claim exactly 0
+        low, high = wilson_interval(0.25, 6)
+        self.assertAlmostEqual(low, 0.060, places=3)
+        self.assertAlmostEqual(high, 0.635, places=3)
+        self.assertEqual(wilson_interval(0.5, 0), (None, None))
 
     def test_rejects_unknown_result(self):
         with tempfile.TemporaryDirectory() as tmp:
