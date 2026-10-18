@@ -37,6 +37,36 @@ OMP_NUM_THREADS=1 python -m training.train --iterations 20 --games_per_iter 20 \
 `OMP_NUM_THREADS=1` matters when running several jobs at once: the network is
 small, so extra torch threads only compete with each other.
 
+### Faster runs: parallel self-play and GPU training
+
+```
+OMP_NUM_THREADS=1 python -m training.train --resume checkpoints/final_B/latest.pt \
+    --iterations 220 --games_per_iter 100 --simulations 50 --avoid_repetition \
+    --temperature_moves 1000 --max_plies 800 --buffer_capacity 250000 \
+    --batch_size 256 --train_steps 500 --device mps --workers 6 --seed 1 \
+    --checkpoint_dir checkpoints/long --log checkpoints/long/log.csv
+```
+
+- `--workers N` plays the iteration's games in N processes (about one per CPU
+  core). Each game's seed comes from (`--seed`, iteration, game number), so the
+  games do not depend on N. Workers always run on the CPU.
+- `--device mps` trains on the Apple GPU, about 8 to 10 times faster than one
+  CPU core for this network. Self-play still runs on the CPU workers.
+
+Where the speed comes from, measured on one game with 50 simulations per move
+(an Apple A18 Pro, 2 performance and 4 efficiency cores):
+
+| Change | ms per move |
+|---|---|
+| Before | 259 |
+| Faster rules engine: legal moves computed once per position and cached, check detection that looks outward from the king, precomputed move tables | 48 |
+| Network copy for search with batch norm folded into the convolutions and channels-last memory layout | 19 |
+
+With 6 workers that is about 13 self-play games a minute, against about 1.2
+before. The rules are unchanged: `tests/test_engine_equivalence.py` compares
+the fast engine with a frozen copy of the original (`tests/reference_rules.py`)
+on every ply of 40 random games and on 3000 random positions.
+
 To continue a run, pass `--resume checkpoints/final_B/latest.pt` and a larger
 `--iterations` (the total to reach). The model and optimizer are restored;
 the replay buffer starts empty.
@@ -68,6 +98,11 @@ with a freshly initialized network). Iteration 0 is the untrained network
 itself (left out against `untrained`). One CSV row per iteration is appended to
 `--out` (default `results/benchmark_<opponent>.csv`).
 
+`--workers N` plays the games in N processes, with one seed per game, so
+`--games 100` takes minutes instead of hours; `--iterations 0 100 220` picks
+iterations. Rows made with `--workers` use per-game seeds and rows made
+without it share one random stream, so compare rows made the same way.
+
 The protocol is fixed so that iterations are comparable:
 
 - 20 games per iteration, colors alternating, the same seed for every iteration
@@ -84,7 +119,14 @@ python compare_checkpoints.py --a checkpoints/final_B/latest.pt --b checkpoints/
     --avoid_repetition --max_plies 800
 ```
 
-Use `--b untrained` to compare against a fresh network. Keep
+Use `--b untrained` to compare against a fresh network. The same match under
+the benchmark protocol, on several cores:
+
+```
+python -m evaluation.parallel_match --a checkpoints/long/latest.pt \
+    --b checkpoints/final_B/latest.pt --games 100 --workers 6
+```
+ Keep
 `--avoid_repetition` on: with the defaults (sampling for only 8 plies, then
 greedy), two deterministic players repeat positions and nearly every game ends
 in a threefold-repetition draw, which says nothing about strength.
@@ -142,6 +184,9 @@ python -m pytest -q
 
 `tests/test_training.py` covers the replay buffer, self-play examples and
 value targets, repetition avoidance, one training step and a tiny end-to-end
-run of `train.py` including resume. `tests/test_benchmark.py` and
+run of `train.py` including resume, and that parallel self-play gives the same
+run for any number of workers. `tests/test_benchmark.py` and
 `tests/test_evaluation.py` cover the baseline players, match scoring, the
-benchmark CSV, the game-ending classifier and the human-game log.
+benchmark CSV (also with workers), the game-ending classifier and the
+human-game log. `tests/test_engine_equivalence.py` checks the fast rules
+engine against the original one.

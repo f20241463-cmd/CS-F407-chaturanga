@@ -10,6 +10,9 @@ it densely would cost 16 KB per position, so the buffer keeps just the
 nonzero action indices and their probabilities, and rebuilds the dense
 [4096] vector when a batch is sampled.
 
+Board planes are always 0 or 1, so states are kept as uint8 (exact, and a
+quarter of the memory of float32); any other state is kept as float32.
+
 It is a ring buffer: a plain list plus a write index. Once the list is
 full, each new example overwrites the oldest one.
 
@@ -20,6 +23,22 @@ loop turns them into tensors.
 import numpy as np
 
 POLICY_SIZE = 4096
+
+
+def compact_example(tensor, policy, value):
+    """
+    The stored form of one example: (state, action indices, probabilities,
+    value). Self-play workers send games back in this form, which is much
+    smaller to pass between processes than the dense arrays.
+    """
+    policy = np.asarray(policy, dtype=np.float32)
+    if policy.shape != (POLICY_SIZE,):
+        raise ValueError(f"policy must have shape ({POLICY_SIZE},), got {policy.shape}")
+    state = np.array(tensor, dtype=np.float32)  # copy, so callers can't mutate it
+    if np.all((state == 0) | (state == 1)):
+        state = state.astype(np.uint8)
+    indices = np.flatnonzero(policy).astype(np.int16)
+    return (state, indices, policy[indices].copy(), float(value))
 
 
 class ReplayBuffer:
@@ -35,23 +54,19 @@ class ReplayBuffer:
         return len(self._data)
 
     def add(self, tensor, policy, value):
-        policy = np.asarray(policy, dtype=np.float32)
-        if policy.shape != (POLICY_SIZE,):
-            raise ValueError(
-                f"policy must have shape ({POLICY_SIZE},), got {policy.shape}"
-            )
-        indices = np.flatnonzero(policy).astype(np.int32)
-        entry = (
-            np.array(tensor, dtype=np.float32),  # copy, so callers can't mutate it
-            indices,
-            policy[indices].copy(),
-            float(value),
-        )
+        self.add_compact(compact_example(tensor, policy, value))
+
+    def add_compact(self, entry):
+        """Add one example already in compact_example form."""
         if len(self._data) < self.capacity:
             self._data.append(entry)
         else:
             self._data[self._write_index] = entry
         self._write_index = (self._write_index + 1) % self.capacity
+
+    def add_compact_game(self, entries):
+        for entry in entries:
+            self.add_compact(entry)
 
     def add_game(self, examples):
         for tensor, policy, value in examples:

@@ -54,7 +54,7 @@ def _softmax_masked(logits, legal_mask):
 
 
 def _legal_actions_from_mask(legal_mask):
-    return [i for i, ok in enumerate(legal_mask) if ok]
+    return np.flatnonzero(legal_mask).tolist()
 
 
 def _evaluate_and_expand(

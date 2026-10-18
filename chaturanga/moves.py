@@ -146,19 +146,180 @@ def attack_squares(board: Board, sq: int, piece: Piece) -> List[int]:
     return piece_targets(board, sq, piece)
 
 
+# ---- fast paths -------------------------------------------------------
+#
+# The functions below are what the game actually uses. They follow exactly
+# the same rules as piece_targets / attack_squares above (and list moves in
+# the same order), but read precomputed per-square tables instead of
+# recomputing offsets and bounds every time. tests/test_engine_equivalence.py
+# checks them against a frozen copy of the original engine.
+
+
+def _offset_table(deltas):
+    """For each square, the on-board squares at the given (row, col) offsets, in order."""
+    table = []
+    for sq in range(64):
+        r, c = row_of(sq), col_of(sq)
+        table.append(
+            tuple(square(r + dr, c + dc) for dr, dc in deltas if on_board(r + dr, c + dc))
+        )
+    return tuple(table)
+
+
+def _ray_table(deltas):
+    """For each square, one tuple of squares per direction, nearest first."""
+    table = []
+    for sq in range(64):
+        r, c = row_of(sq), col_of(sq)
+        rays = []
+        for dr, dc in deltas:
+            ray, nr, nc = [], r + dr, c + dc
+            while on_board(nr, nc):
+                ray.append(square(nr, nc))
+                nr, nc = nr + dr, nc + dc
+            rays.append(tuple(ray))
+        table.append(tuple(rays))
+    return tuple(table)
+
+
+_RAJA_TABLE = _offset_table(_ALL8)
+_MANTRI_TABLE = _offset_table(_DIAG)
+_GAJA_TABLE = _offset_table(_GAJA_DELTAS)
+_ASHVA_TABLE = _offset_table(_KNIGHT)
+_RATHA_RAYS = _ray_table(_ORTHO)
+# Padati of each color: the square straight ahead (or None) and its two
+# diagonal capture squares, in the same order as _padati_moves.
+_PADATI_PUSH = {
+    color: tuple(
+        square(row_of(sq) + _padati_forward_dir(color), col_of(sq))
+        if on_board(row_of(sq) + _padati_forward_dir(color), col_of(sq))
+        else None
+        for sq in range(64)
+    )
+    for color in Color
+}
+_PADATI_CAPTURES = {
+    color: _offset_table([(_padati_forward_dir(color), -1), (_padati_forward_dir(color), 1)])
+    for color in Color
+}
+# Squares from which a Padati of `color` attacks a given square: one row
+# behind it (from that color's point of view), one column to either side.
+_PADATI_ATTACKERS = {
+    color: _offset_table([(-_padati_forward_dir(color), -1), (-_padati_forward_dir(color), 1)])
+    for color in Color
+}
+_JUMP_TABLES = {
+    PieceType.RAJA: _RAJA_TABLE,
+    PieceType.MANTRI: _MANTRI_TABLE,
+    PieceType.GAJA: _GAJA_TABLE,
+    PieceType.ASHVA: _ASHVA_TABLE,
+}
+
+
 def generate_pseudo_legal_moves(board: Board, color: Color) -> List[Tuple[int, int]]:
+    """Same moves, in the same order, as piece_targets for every piece of `color`."""
+    squares = board._squares
     moves: List[Tuple[int, int]] = []
-    for sq, piece in board.pieces_of(color):
-        for target in piece_targets(board, sq, piece):
-            moves.append((sq, target))
+    append = moves.append
+    for sq in range(64):
+        piece = squares[sq]
+        if piece is None or piece.color != color:
+            continue
+        pt = piece.piece_type
+        if pt == PieceType.RATHA:
+            for ray in _RATHA_RAYS[sq]:
+                for target in ray:
+                    occ = squares[target]
+                    if occ is None:
+                        append((sq, target))
+                    else:
+                        if occ.color != color:
+                            append((sq, target))
+                        break
+        elif pt == PieceType.PADATI:
+            push = _PADATI_PUSH[color][sq]
+            if push is not None and squares[push] is None:
+                append((sq, push))
+            for target in _PADATI_CAPTURES[color][sq]:
+                occ = squares[target]
+                if occ is not None and occ.color != color:
+                    append((sq, target))
+        else:
+            for target in _JUMP_TABLES[pt][sq]:
+                occ = squares[target]
+                if occ is None or occ.color != color:
+                    append((sq, target))
     return moves
 
 
 def is_square_attacked(board: Board, sq: int, by_color: Color) -> bool:
-    for from_sq, piece in board.pieces_of(by_color):
-        if sq in attack_squares(board, from_sq, piece):
+    """
+    True if any piece of by_color attacks sq, with the same meaning as the
+    original "sq in attack_squares(...)" scan over every by_color piece, but
+    looking outward from sq instead.
+
+    As in attack_squares, a Padati attacks its diagonal squares whatever
+    stands there, while the other pieces only attack squares they could move
+    to, so a square held by a by_color piece is attacked only by a Padati.
+    """
+    return _is_attacked(board._squares, sq, by_color)
+
+
+def _is_attacked(squares, sq, by_color):
+    for origin in _PADATI_ATTACKERS[by_color][sq]:
+        p = squares[origin]
+        if p is not None and p.color == by_color and p.piece_type == PieceType.PADATI:
             return True
+    target = squares[sq]
+    if target is not None and target.color == by_color:
+        return False
+    for pt, table in _JUMP_TABLES.items():
+        for origin in table[sq]:
+            p = squares[origin]
+            if p is not None and p.color == by_color and p.piece_type == pt:
+                return True
+    for ray in _RATHA_RAYS[sq]:
+        for origin in ray:
+            p = squares[origin]
+            if p is not None:
+                if p.color == by_color and p.piece_type == PieceType.RATHA:
+                    return True
+                break
     return False
+
+
+def legal_moves_fast(board: Board, color: Color) -> List[Tuple[int, int]]:
+    """
+    Pseudo-legal moves of `color` that do not leave its own Raja attacked,
+    in generation order. Equivalent to simulating each move on a cloned
+    board and calling is_square_attacked, but makes and unmakes the move
+    on one scratch copy. Promotion is ignored here on purpose: it changes
+    only the moving piece's type, which cannot affect whether the mover's
+    own Raja is attacked.
+    """
+    squares = list(board._squares)
+    king_sq = None
+    for i in range(64):
+        p = squares[i]
+        if p is not None and p.color == color and p.piece_type == PieceType.RAJA:
+            king_sq = i
+            break
+    enemy = color.opponent
+    legal = []
+    for move in generate_pseudo_legal_moves(board, color):
+        from_sq, to_sq = move
+        moving = squares[from_sq]
+        captured = squares[to_sq]
+        squares[from_sq] = None
+        squares[to_sq] = moving
+        k = to_sq if moving.piece_type == PieceType.RAJA else king_sq
+        # No Raja of our own on the board: every move counts as illegal,
+        # as in the original (find_king_square returned None).
+        if k is not None and not _is_attacked(squares, k, enemy):
+            legal.append(move)
+        squares[from_sq] = moving
+        squares[to_sq] = captured
+    return legal
 
 
 if __name__ == "__main__":

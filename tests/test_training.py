@@ -399,6 +399,54 @@ class TestTrainLoop(unittest.TestCase):
             self.assertEqual(step, 3)
             self.assertEqual(metadata["log_row"]["iteration"], 3)
 
+    def test_parallel_self_play_does_not_depend_on_worker_count(self):
+        import csv
+        import os
+        import tempfile
+
+        import torch
+
+        from network.checkpoint import load_checkpoint
+        from training import train
+
+        def run(tmp, workers):
+            ckpt_dir = os.path.join(tmp, f"ckpt{workers}")
+            log = os.path.join(tmp, f"log{workers}.csv")
+            with mock.patch("builtins.print"):
+                train.main(
+                    [
+                        "--iterations", "2", "--games_per_iter", "3",
+                        "--simulations", "3", "--max_plies", "8",
+                        "--min_buffer", "1", "--train_steps", "2", "--batch_size", "4",
+                        "--checkpoint_dir", ckpt_dir, "--log", log,
+                        "--workers", str(workers),
+                    ]
+                )  # fmt: skip
+            with open(log) as f:
+                rows = list(csv.DictReader(f))
+            model, _, step, _ = load_checkpoint(os.path.join(ckpt_dir, "latest.pt"))
+            return rows, model, step
+
+        with tempfile.TemporaryDirectory() as tmp:
+            rows2, model2, step2 = run(tmp, 2)
+            rows3, model3, step3 = run(tmp, 3)
+
+        self.assertEqual((step2, step3), (2, 2))
+        self.assertEqual([r["games"] for r in rows2], ["3", "3"])
+        keys = ["white_wins", "black_wins", "draws", "unfinished", "avg_plies",
+                "buffer_size", "loss"]  # fmt: skip
+        self.assertEqual(
+            [[r[k] for k in keys] for r in rows2], [[r[k] for k in keys] for r in rows3]
+        )
+        for a, b in zip(model2.state_dict().values(), model3.state_dict().values()):
+            self.assertTrue(torch.equal(a, b))
+
+    def test_workers_must_be_positive(self):
+        from training import train
+
+        with mock.patch("sys.stderr"), self.assertRaises(SystemExit):
+            train.parse_args(["--workers", "0"])
+
 
 if __name__ == "__main__":
     unittest.main()

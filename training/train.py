@@ -20,6 +20,7 @@ Run from the repo root:
 
 import argparse
 import csv
+import multiprocessing
 import os
 import random
 import time
@@ -31,7 +32,7 @@ from network.agent import make_network_fn
 from network.checkpoint import load_checkpoint, save_checkpoint
 from network.loss import AlphaZeroLoss
 from network.model import ChaturangaNet
-from training.replay_buffer import ReplayBuffer
+from training.replay_buffer import ReplayBuffer, compact_example
 from training.self_play import play_self_play_game
 
 LOG_FIELDS = [
@@ -154,7 +155,19 @@ def parse_args(argv=None):
     )
     p.add_argument("--device", default="cpu")
     p.add_argument("--seed", type=int, default=0)
-    return p.parse_args(argv)
+    p.add_argument(
+        "--workers",
+        type=int,
+        default=1,
+        help="self-play processes. 1 (default) plays the games one after another "
+        "in this process, as before. With more, each game runs in a worker with "
+        "its own seed derived from (--seed, iteration, game number), so the games "
+        "do not depend on how many workers there are. Use about one per CPU core.",
+    )
+    args = p.parse_args(argv)
+    if args.workers < 1:
+        p.error("--workers must be at least 1")
+    return args
 
 
 def append_log_row(path, row):
@@ -165,6 +178,85 @@ def append_log_row(path, row):
         if write_header:
             writer.writeheader()
         writer.writerow(row)
+
+
+_SELF_PLAY_KEYS = (
+    "simulations",
+    "c_puct",
+    "temperature_moves",
+    "dirichlet_alpha",
+    "dirichlet_eps",
+    "max_plies",
+    "draw_value",
+    "material_scale",
+    "avoid_repetition",
+)
+
+# Per-process state of a self-play worker: the network it is currently
+# playing with, and which iteration's weights those are.
+_worker = {"iteration": None, "network_fn": None, "model": None}
+
+
+def _init_worker():
+    # One thread per worker: the network is small, so threads in different
+    # workers would only compete for the same cores.
+    torch.set_num_threads(1)
+
+
+def _play_one_game(task):
+    """Worker side: play one self-play game with this iteration's weights."""
+    iteration, game_index, seed, state_dict, settings = task
+    if _worker["iteration"] != iteration:
+        if _worker["model"] is None:
+            _worker["model"] = ChaturangaNet()
+        _worker["model"].load_state_dict(state_dict)
+        _worker["network_fn"] = make_network_fn(_worker["model"])
+        _worker["iteration"] = iteration
+    t0 = time.time()
+    examples, info = play_self_play_game(
+        _worker["network_fn"],
+        num_simulations=settings["simulations"],
+        c_puct=settings["c_puct"],
+        temperature_moves=settings["temperature_moves"],
+        dirichlet_alpha=settings["dirichlet_alpha"],
+        dirichlet_eps=settings["dirichlet_eps"],
+        max_plies=settings["max_plies"],
+        draw_value=settings["draw_value"],
+        rng=np.random.default_rng(seed),
+        material_scale=settings["material_scale"],
+        avoid_repetition=settings["avoid_repetition"],
+    )
+    compact = [compact_example(t, p, v) for t, p, v in examples]
+    return game_index, compact, info, time.time() - t0
+
+
+def game_seed(run_seed, iteration, game_index):
+    """Seed for one self-play game, independent of the number of workers."""
+    return [int(run_seed), int(iteration), int(game_index)]
+
+
+def run_self_play_parallel(model, args, pool, iteration, run_seed):
+    """
+    Play this iteration's games in the worker pool. Results come back in
+    game order, each game as a list of compact_example entries.
+    """
+    state_dict = {k: v.detach().cpu() for k, v in model.state_dict().items()}
+    settings = {k: getattr(args, k) for k in _SELF_PLAY_KEYS}
+    tasks = [
+        (iteration, g, game_seed(run_seed, iteration, g), state_dict, settings)
+        for g in range(args.games_per_iter)
+    ]
+    results = [None] * args.games_per_iter
+    for done, (g, examples, info, seconds) in enumerate(
+        pool.imap_unordered(_play_one_game, tasks), start=1
+    ):
+        results[g] = (examples, info)
+        print(
+            f"  game {g + 1} ({done}/{args.games_per_iter} done): "
+            f"{info['outcome']:10s} {info['plies']:4d} plies  ({seconds:.1f}s)",
+            flush=True,
+        )
+    return [r[0] for r in results], [r[1] for r in results]
 
 
 def run_self_play(model, args, rng):
@@ -209,6 +301,10 @@ def run_training(model, optimizer, loss_fn, buffer, args):
 def main(argv=None):
     args = parse_args(argv)
 
+    # Seed before building the network, so a fresh run's initial weights
+    # come from --seed too (they used to depend on whatever torch's random
+    # state happened to be).
+    torch.manual_seed(args.seed)
     model = ChaturangaNet()
     start_iter = 0
     if args.resume:
@@ -254,16 +350,40 @@ def main(argv=None):
         f"{args.train_steps} steps/iter of batch {args.batch_size}, device {args.device}"
     )
 
+    pool = None
+    if args.workers > 1:
+        # "spawn" starts clean processes (no copied torch state), the macOS default.
+        pool = multiprocessing.get_context("spawn").Pool(
+            args.workers, initializer=_init_worker
+        )
+        print(f"Self-play in {args.workers} worker processes.")
+    try:
+        _train_loop(model, optimizer, loss_fn, buffer, args, rng, run_seed, start_iter, pool)
+    finally:
+        if pool is not None:
+            pool.close()
+            pool.join()
+
+
+def _train_loop(model, optimizer, loss_fn, buffer, args, rng, run_seed, start_iter, pool):
     run_start = time.time()
     for done, iteration in enumerate(
         range(start_iter + 1, args.iterations + 1), start=1
     ):
         print(f"\nIteration {iteration}/{args.iterations}: self-play")
         t0 = time.time()
-        examples_per_game, infos = run_self_play(model, args, rng)
+        if pool is None:
+            examples_per_game, infos = run_self_play(model, args, rng)
+            for examples in examples_per_game:
+                buffer.add_game(examples)
+        else:
+            compact_games, infos = run_self_play_parallel(
+                model, args, pool, iteration, run_seed
+            )
+            for entries in compact_games:
+                buffer.add_compact_game(entries)
+            del compact_games
         selfplay_seconds = time.time() - t0
-        for examples in examples_per_game:
-            buffer.add_game(examples)
 
         t0 = time.time()
         steps = 0

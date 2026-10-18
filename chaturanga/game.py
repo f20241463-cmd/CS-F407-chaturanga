@@ -20,7 +20,7 @@ the original doc didn't fix this):
 from typing import List, Optional, Tuple
 
 from .board import Board
-from .moves import generate_pseudo_legal_moves, is_square_attacked
+from .moves import is_square_attacked, legal_moves_fast
 from .types import Color, PieceType, row_of
 
 Move = Tuple[int, int]
@@ -42,6 +42,14 @@ class GameState:
         # history: tuple of (board_squares_tuple, side_to_move) snapshots,
         # used only for threefold-repetition detection.
         self.history: Tuple[Tuple, ...] = history if history is not None else ()
+        # Caches for legal_moves() and result(). Each is stored with the
+        # position it was computed for and recomputed if the board, side to
+        # move, clock or history has changed since (tests edit .board
+        # directly after construction), so a cached answer is never stale.
+        self._legal_key = None
+        self._legal = None
+        self._result_key = None
+        self._result = None
 
     # ---- check / legality -------------------------------------------------
 
@@ -55,11 +63,11 @@ class GameState:
         return is_square_attacked(self.board, king_sq, color.opponent)
 
     def legal_moves(self) -> List[Move]:
-        legal: List[Move] = []
-        for mv in generate_pseudo_legal_moves(self.board, self.side_to_move):
-            if not self._leaves_own_king_in_check(mv):
-                legal.append(mv)
-        return legal
+        key = (tuple(self.board._squares), self.side_to_move)
+        if key != self._legal_key:
+            self._legal = legal_moves_fast(self.board, self.side_to_move)
+            self._legal_key = key
+        return list(self._legal)  # a copy, so callers cannot change the cache
 
     def _leaves_own_king_in_check(self, move: Move) -> bool:
         # Cheap simulate-and-check-and-discard; fine at this scale
@@ -91,7 +99,8 @@ class GameState:
         return new_board
 
     def apply_move(self, move: Move) -> "GameState":
-        if move not in self.legal_moves():
+        self.legal_moves()  # refresh the cache if needed
+        if move not in self._legal:
             raise ValueError(f"Illegal move: {move}")
         from_sq, to_sq = move
         moved_piece = self.board.piece_at(from_sq)
@@ -110,7 +119,10 @@ class GameState:
         )
 
     def _snapshot(self) -> Tuple:
-        return (tuple(self.board.to_dict().items()), self.side_to_move)
+        # The 64 squares plus the side to move. Two snapshots are equal
+        # exactly when the boards and sides are, as with the earlier
+        # (occupied squares, side) form, but this is cheaper to build.
+        return (tuple(self.board._squares), self.side_to_move)
 
     # ---- terminal detection ------------------------------------------
 
@@ -122,10 +134,23 @@ class GameState:
         (the player who would move next, if the game isn't over).
         +1 = that player has won, -1 = lost, 0 = draw, None = ongoing.
         Matches contract section 2.10."""
+        key = (
+            tuple(self.board._squares),
+            self.side_to_move,
+            self.halfmove_clock,
+            self.history,
+        )
+        if self._result_key is None or key != self._result_key:
+            self._result = self._compute_result()
+            self._result_key = key
+        return self._result
+
+    def _compute_result(self) -> Optional[int]:
         if self.board.find_king_square(self.side_to_move) is None:
             return -1  # own king already gone -> loss
 
-        if not self.legal_moves():
+        self.legal_moves()  # refresh the cache if needed
+        if not self._legal:
             if self.is_in_check():
                 return -1  # checkmate: side to move has lost
             return 0  # stalemate -> draw
