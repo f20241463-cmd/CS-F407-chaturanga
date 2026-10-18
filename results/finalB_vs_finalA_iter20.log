@@ -1,0 +1,33 @@
+A = checkpoints/final_B/iter_0020.pt (step 20)
+B = checkpoints/final_A/iter_0020.pt (step 20)
+20 games, 50 sims/move, temperature 0.3 for the first 1000 plies, max 800 plies, avoiding repetition draws
+  game   1: A played White -> unfinished (800 plies)
+  game   2: A played Black -> draw       (233 plies)
+  game   3: A played White -> draw       (426 plies)
+  game   4: A played Black -> draw       (339 plies)
+  game   5: A played White -> draw       (628 plies)
+  game   6: A played Black -> draw       (690 plies)
+  game   7: A played White -> draw       (682 plies)
+  game   8: A played Black -> unfinished (800 plies)
+  game   9: A played White -> draw       (252 plies)
+  game  10: A played Black -> draw       (181 plies)
+  game  11: A played White -> black      (392 plies)
+  game  12: A played Black -> draw       (313 plies)
+  game  13: A played White -> draw       (202 plies)
+  game  14: A played Black -> draw       (581 plies)
+  game  15: A played White -> draw       (353 plies)
+  game  16: A played Black -> draw       (268 plies)
+  game  17: A played White -> unfinished (800 plies)
+  game  18: A played Black -> black      (390 plies)
+  game  19: A played White -> draw       (659 plies)
+  game  20: A played Black -> draw       (604 plies)
+
+Games:       20
+A wins:      1
+B wins:      1
+Draws:       15
+Unfinished:  3
+A score (win=1, draw=0.5, unfinished excluded): 0.500 +/- 0.082  (0.5 = equal strength)
+Avg length:  479.6 plies
+Repetition draws avoided: 1291 moves
+Elapsed:     1515.3s

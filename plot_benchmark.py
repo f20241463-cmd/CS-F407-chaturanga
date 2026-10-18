@@ -26,6 +26,7 @@ from plot_training_curves import (  # noqa: E402
     SURFACE,
     TEXT_PRIMARY,
     TEXT_SECONDARY,
+    add_end_labels,
     style_axis,
 )
 
@@ -49,30 +50,38 @@ def read_rows(path):
 def main():
     parser = argparse.ArgumentParser(description="Plot benchmark score vs iteration")
     parser.add_argument("--csvs", nargs="+", required=True)
+    parser.add_argument(
+        "--labels",
+        nargs="+",
+        default=None,
+        help="one name per CSV (default: the opponent's name)",
+    )
     parser.add_argument("--out", default="results/benchmark_curve.png")
     parser.add_argument("--title", default="Agent strength across training iterations")
     args = parser.parse_args()
     if len(args.csvs) > len(SERIES_COLORS):
         parser.error(f"at most {len(SERIES_COLORS)} CSVs per figure")
+    if args.labels and len(args.labels) != len(args.csvs):
+        parser.error("--labels needs one name per --csvs entry")
 
     fig, ax = plt.subplots(figsize=(9, 5), facecolor=SURFACE)
-    style_axis(ax, "Match score (win = 1, draw = 0.5), with rough 95% range")
-    ax.axhline(0.5, color=TEXT_SECONDARY, linewidth=1, linestyle=(0, (4, 3)))
-    ax.annotate(
-        "even",
-        (0, 0.5),
-        xytext=(2, 4),
-        textcoords="offset points",
-        fontsize=8.5,
-        color=TEXT_SECONDARY,
+    style_axis(
+        ax,
+        "Match score (win = 1, draw = 0.5), rough 95% range; dashed line = even",
     )
+    ax.axhline(0.5, color=TEXT_SECONDARY, linewidth=1, linestyle=(0, (4, 3)))
 
+    end_labels = []
     for i, path in enumerate(args.csvs):
         rows, opponent = read_rows(path)
-        xs = [int(r["iteration"]) for r in rows]
+        # Shift each series a little sideways so equal scores do not hide each other.
+        dodge = 0.12 * (i - (len(args.csvs) - 1) / 2)
+        xs = [int(r["iteration"]) + dodge for r in rows]
         ys = [float(r["score"]) for r in rows]
         errs = [float(r["margin"]) for r in rows]
-        label = OPPONENT_NAMES.get(opponent, opponent)
+        label = (
+            args.labels[i] if args.labels else OPPONENT_NAMES.get(opponent, opponent)
+        )
         ax.errorbar(
             xs,
             ys,
@@ -87,15 +96,7 @@ def main():
             capsize=3,
             label=label,
         )
-        ax.annotate(
-            label,
-            (xs[-1], ys[-1]),
-            xytext=(8, 0),
-            textcoords="offset points",
-            va="center",
-            fontsize=8.5,
-            color=TEXT_SECONDARY,
-        )
+        end_labels.append((label, xs[-1], ys[-1]))
 
     ax.set_ylim(0, 1)
     ax.set_xlabel(
@@ -106,7 +107,15 @@ def main():
     if len(args.csvs) > 1:
         ax.legend(frameon=False, fontsize=9, labelcolor=TEXT_PRIMARY, loc="upper left")
     fig.suptitle(args.title, x=0.01, ha="left", fontsize=13, color=TEXT_PRIMARY)
-    fig.tight_layout(rect=(0, 0, 0.93, 0.95))
+    # Place the labels, let tight_layout make room for them, then place them again.
+    # Start every label right of the rightmost (dodged) point, clear of all markers.
+    right = max(x for _, x, _ in end_labels)
+    end_labels = [(label, right, y) for label, _, y in end_labels]
+    placed = add_end_labels(ax, end_labels)
+    fig.tight_layout(rect=(0, 0, 1, 0.95))
+    for a in placed:
+        a.remove()
+    add_end_labels(ax, end_labels)
     fig.savefig(args.out, dpi=150, facecolor=SURFACE)
     print(f"Saved {args.out}")
 

@@ -72,12 +72,40 @@ def style_axis(ax, title):
     ax.set_xlabel("Iteration", color=TEXT_SECONDARY, fontsize=9)
 
 
+def add_end_labels(ax, items, min_gap_pt=11):
+    """Direct labels at each line's end, in text ink, pushed apart so they never overlap."""
+    to_pt = 72.0 / ax.figure.dpi
+    placed = []
+    for label, x, y in items:
+        y_pt = ax.transData.transform((x, y))[1] * to_pt
+        placed.append([y_pt, y_pt, label, x, y])
+    placed.sort()
+    for prev, cur in zip(placed, placed[1:]):
+        if cur[1] - prev[1] < min_gap_pt:
+            cur[1] = prev[1] + min_gap_pt
+    return [
+        ax.annotate(
+            label,
+            (x, y),
+            xytext=(6, label_pt - y_pt),
+            textcoords="offset points",
+            va="center",
+            fontsize=8.5,
+            color=TEXT_SECONDARY,
+            # Surface-colored backing so a gridline or reference line never runs through the text.
+            bbox=dict(boxstyle="square,pad=0.1", facecolor=SURFACE, edgecolor="none"),
+        )
+        for y_pt, label_pt, label, x, y in placed
+    ]
+
+
 def plot(logs, labels, out_path, title):
     if len(logs) > len(SERIES_COLORS):
         raise ValueError(f"at most {len(SERIES_COLORS)} runs per figure")
     runs = [(label, read_log(path)) for label, path in zip(labels, logs)]
 
     fig, axes = plt.subplots(2, 2, figsize=(11, 7), facecolor=SURFACE)
+    end_labels = {}
     for ax, (field, panel_title, scale) in zip(axes.flat, PANELS):
         style_axis(ax, panel_title)
         for i, (label, data) in enumerate(runs):
@@ -101,16 +129,7 @@ def plot(logs, labels, out_path, title):
                 label=label,
             )
             if len(runs) > 1:
-                # Direct label at the line's end, in text ink (not series color).
-                ax.annotate(
-                    label,
-                    (xs[-1], ys[-1]),
-                    xytext=(6, 0),
-                    textcoords="offset points",
-                    va="center",
-                    fontsize=8.5,
-                    color=TEXT_SECONDARY,
-                )
+                end_labels.setdefault(ax, []).append((label, xs[-1], ys[-1]))
         ax.set_xlim(left=0.5)
         if field == "decisive_fraction":
             ax.set_ylim(0, 100)
@@ -131,6 +150,14 @@ def plot(logs, labels, out_path, title):
         )
     fig.suptitle(title, x=0.01, ha="left", fontsize=13, color=TEXT_PRIMARY)
     fig.tight_layout(rect=(0, 0, 1, 0.95))
+    # Place the labels, let tight_layout make room for them, then place them
+    # again so the overlap check uses the final axes size.
+    placed = [a for ax, items in end_labels.items() for a in add_end_labels(ax, items)]
+    fig.tight_layout(rect=(0, 0, 1, 0.95))
+    for a in placed:
+        a.remove()
+    for ax, items in end_labels.items():
+        add_end_labels(ax, items)
     fig.savefig(out_path, dpi=150, facecolor=SURFACE)
     print(f"Saved {out_path}")
 

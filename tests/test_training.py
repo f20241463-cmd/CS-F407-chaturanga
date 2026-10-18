@@ -360,5 +360,45 @@ class TestTrainStep(unittest.TestCase):
         self.assertTrue(model.training)
 
 
+@unittest.skipIf(torch is None, "torch is not installed")
+class TestTrainLoop(unittest.TestCase):
+    def test_tiny_run_writes_log_and_checkpoints_then_resumes(self):
+        import csv
+        import os
+        import tempfile
+
+        from network.checkpoint import load_checkpoint
+        from training import train
+
+        with tempfile.TemporaryDirectory() as tmp:
+            ckpt_dir = os.path.join(tmp, "ckpt")
+            log = os.path.join(tmp, "log.csv")
+            common = [
+                "--games_per_iter", "1", "--simulations", "2", "--max_plies", "6",
+                "--min_buffer", "1", "--train_steps", "1", "--batch_size", "4",
+                "--checkpoint_dir", ckpt_dir, "--log", log,
+            ]  # fmt: skip
+            with mock.patch("builtins.print"):
+                train.main(["--iterations", "2", *common])
+                train.main(
+                    [
+                        "--iterations", "3", *common,
+                        "--resume", os.path.join(ckpt_dir, "latest.pt"),
+                    ]
+                )  # fmt: skip
+
+            with open(log) as f:
+                rows = list(csv.DictReader(f))
+            self.assertEqual([r["iteration"] for r in rows], ["1", "2", "3"])
+            self.assertTrue(all(r["train_steps"] == "1" for r in rows))
+            for i in (1, 2, 3):
+                self.assertTrue(
+                    os.path.exists(os.path.join(ckpt_dir, f"iter_{i:04d}.pt"))
+                )
+            _, _, step, metadata = load_checkpoint(os.path.join(ckpt_dir, "latest.pt"))
+            self.assertEqual(step, 3)
+            self.assertEqual(metadata["log_row"]["iteration"], 3)
+
+
 if __name__ == "__main__":
     unittest.main()
