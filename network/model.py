@@ -123,7 +123,8 @@ class ChaturangaNet(nn.Module):
             input:  state_tensor [13, 8, 8] (float32 numpy array)
             output: (policy_logits: [4096] float32 numpy array, value: float in [-1, 1])
         """
-        self.eval()
+        if self.training:
+            self.eval()
         if state_tensor.shape != (13, 8, 8):
             raise ValueError(f"Expected state tensor shape (13, 8, 8), got {state_tensor.shape}")
 

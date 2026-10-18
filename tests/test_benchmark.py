@@ -182,3 +182,60 @@ class TestHumanLog(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipIf(torch is None, "needs torch")
+class TestParallelMatch(unittest.TestCase):
+    def test_same_results_with_or_without_workers(self):
+        from evaluation.parallel_match import (
+            make_pool,
+            mcts_spec,
+            play_match_parallel,
+        )
+
+        agent = mcts_spec("untrained", seed=0, simulations=3)
+        for opponent in ({"kind": "random"}, {"kind": "greedy"}):
+            serial = play_match_parallel(agent, opponent, 6, seed=5, max_plies=40)
+            pool = make_pool(2)
+            try:
+                parallel = play_match_parallel(
+                    agent, opponent, 6, seed=5, max_plies=40, pool=pool
+                )
+            finally:
+                pool.close()
+                pool.join()
+            self.assertEqual(serial, parallel)
+            total = sum(serial[k] for k in ("wins", "losses", "draws", "unfinished"))
+            self.assertEqual(total, 6)
+            self.assertEqual(len(serial["plies"]), 6)
+
+    def test_benchmark_rows_do_not_depend_on_worker_count(self):
+        import csv
+        from unittest import mock
+
+        from evaluation import benchmark
+        from network.checkpoint import save_checkpoint
+        from network.model import ChaturangaNet
+
+        with tempfile.TemporaryDirectory() as tmp:
+            torch.manual_seed(1)
+            save_checkpoint(os.path.join(tmp, "iter_0001.pt"), ChaturangaNet(), step=1)
+            rows = {}
+            for workers in (1, 2):
+                out = os.path.join(tmp, f"bench{workers}.csv")
+                with mock.patch("builtins.print"):
+                    benchmark.main(
+                        [
+                            "--checkpoint_dir", tmp, "--opponent", "random",
+                            "--games", "4", "--simulations", "3",
+                            "--max_plies", "30", "--workers", str(workers),
+                            "--out", out,
+                        ]
+                    )  # fmt: skip
+                with open(out) as f:
+                    rows[workers] = [
+                        {k: v for k, v in r.items() if k != "seconds"}
+                        for r in csv.DictReader(f)
+                    ]
+            self.assertEqual([r["iteration"] for r in rows[1]], ["0", "1"])
+            self.assertEqual(rows[1], rows[2])
