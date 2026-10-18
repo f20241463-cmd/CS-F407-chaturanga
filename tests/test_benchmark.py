@@ -16,6 +16,7 @@ from chaturanga.board import Board
 from chaturanga.game import GameState
 from chaturanga.stub_network import zero_stub_network
 from chaturanga.types import Color, Piece, PieceType, square
+from evaluation.game_endings import classify_ending, count_endings
 from evaluation.players import (
     greedy_capture_player,
     make_mcts_player,
@@ -99,6 +100,47 @@ class TestFindIterations(unittest.TestCase):
                 open(os.path.join(tmp, name), "w").close()
             found = find_iterations(tmp)
         self.assertEqual([it for it, _ in found], [2, 10])
+
+
+def _kings_and_rooks(rook_squares, side_to_move=Color.BLACK):
+    """Black king on a8, White king on h1, White rooks on the given squares."""
+    state = GameState(board=Board(), side_to_move=side_to_move)
+    state.board.set_piece(square(7, 0), Piece(PieceType.RAJA, Color.BLACK))
+    state.board.set_piece(square(0, 7), Piece(PieceType.RAJA, Color.WHITE))
+    for sq in rook_squares:
+        state.board.set_piece(sq, Piece(PieceType.RATHA, Color.WHITE))
+    return state
+
+
+class TestGameEndings(unittest.TestCase):
+    def test_each_rule_is_named(self):
+        # Rooks on a1 and b1: the a-file rook checks, the b-file rook covers b7/b8.
+        self.assertEqual(
+            classify_ending(_kings_and_rooks([square(0, 0), square(0, 1)])),
+            "checkmate",
+        )
+        # Rooks on b1 and h7: no check, but a7, b7 and b8 are all covered.
+        self.assertEqual(
+            classify_ending(_kings_and_rooks([square(0, 1), square(6, 7)])),
+            "stalemate",
+        )
+        self.assertEqual(
+            classify_ending(GameState(halfmove_clock=100)), "no-progress rule"
+        )
+        state = GameState()
+        for move in [(6, 21), (62, 45), (21, 6), (45, 62)] * 2:
+            state = state.apply_move(move)
+        self.assertEqual(classify_ending(state), "threefold repetition")
+        no_black_king = GameState(board=Board(), side_to_move=Color.BLACK)
+        no_black_king.board.set_piece(square(0, 7), Piece(PieceType.RAJA, Color.WHITE))
+        self.assertEqual(classify_ending(no_black_king), "king captured")
+        self.assertEqual(classify_ending(GameState()), "unfinished (ply cap)")
+
+    def test_count_endings_respects_the_ply_cap(self):
+        counts = count_endings(
+            random_player, random_player, 2, np.random.default_rng(0), max_plies=5
+        )
+        self.assertEqual(counts, {"unfinished (ply cap)": 2})
 
 
 if __name__ == "__main__":

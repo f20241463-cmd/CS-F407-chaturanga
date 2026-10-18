@@ -1,0 +1,4 @@
+iteration,checkpoint,opponent,games,wins,losses,draws,unfinished,score,margin,avg_plies,seconds
+0,untrained,greedy,20,2,0,18,0,0.55,0.0657,461.1,497.8
+10,checkpoints/final_B/iter_0010.pt,greedy,20,0,1,18,1,0.4737,0.0502,495.9,631.1
+20,checkpoints/final_B/iter_0020.pt,greedy,20,0,3,17,0,0.425,0.0782,486.1,652.9

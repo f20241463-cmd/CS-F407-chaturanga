@@ -1,0 +1,7 @@
+iteration,checkpoint,opponent,games,wins,losses,draws,unfinished,score,margin,avg_plies,seconds
+0,untrained,random,20,2,0,18,0,0.55,0.0657,517.9,572.1
+2,checkpoints/iter_0002.pt,random,20,0,0,20,0,0.5,0.0,527.4,909.0
+4,checkpoints/iter_0004.pt,random,20,2,1,17,0,0.525,0.0842,478.9,877.2
+6,checkpoints/iter_0006.pt,random,20,0,1,15,4,0.4688,0.0593,587.9,1087.1
+8,checkpoints/iter_0008.pt,random,20,0,1,16,3,0.4706,0.0559,584.9,1148.3
+10,checkpoints/iter_0010.pt,random,20,0,0,14,6,0.5,0.0,600.8,1076.5

@@ -8,7 +8,7 @@ The search module implements guided Monte Carlo Tree Search following the AlphaZ
 
 The module passes 44 automated tests: 36 covering the Chaturanga rules engine and 8 covering MCTS itself. The MCTS tests include an independent check against a toy game with a known correct answer, confirming the search mechanics (selection, expansion, backpropagation) work correctly in isolation from the real environment. A separate sanity check against the actual Chaturanga environment, using an untrained network with uniform policy output, confirmed that simulation visits spread evenly across all legal moves as expected when no learned signal is present.
 
-Once the real network module (Student 2) was merged, a further integration check (`network_integration_preview.py`) confirmed MCTS runs correctly end to end against the actual `ChaturangaNet`, with deterministic, reproducible output across repeated runs on the same network weights. Combined with the network module's own 7 tests, the full suite stood at 51 automated tests passing. Tests added later for root Dirichlet noise (5) and checkpoint loading and match scoring (5) bring it to 61.
+Once the real network module (Student 2) was merged, a further integration check (`network_integration_preview.py`) confirmed MCTS runs correctly end to end against the actual `ChaturangaNet`, with deterministic, reproducible output across repeated runs on the same network weights. Combined with the network module's own 7 tests, the full suite stood at 51 automated tests passing. Tests added later for root Dirichlet noise (5) and checkpoint loading and match scoring (5) bring it to 61. With the training pipeline and the evaluation suite added, the full suite is now 93 tests (`python -m pytest -q`).
 
 ## Reproducibility
 
@@ -34,22 +34,146 @@ This is a notably different result from the stub-network baseline above, and the
 
 With only 8 decided games, this result is not statistically strong evidence that the real network is worse than random, the sample is too small either way. What it does establish is a clean, honest "before training" data point: at initialization, the network provides no demonstrated advantage over random play. This is the gap the self-play training loop (Student 2, in progress) exists to close, and this result gives a concrete number to compare future trained checkpoints against.
 
-## Why most games are draws
+## Self-play training (Milestones 3 and 4)
 
-Across every run, 85 to 90 percent of games ended in a draw rather than a decisive result. This matches the project's own random-vs-random baseline (see `chaturanga`'s `play.py --mode random` output) and appears to be a property of weak play in this environment generally, rather than anything specific to MCTS or to which network is guiding it. It limits how many decided games any given run size can produce, which is the main constraint on tightening the confidence interval on any of the results above.
+The training loop and its options are documented in `training/README.md`. All
+runs below use the default network (4 residual blocks, 64 filters) and only the
+rules of the game, as the official plan requires, except the two runs marked
+exploratory.
 
-One related note from testing with the real network specifically: games against the untrained network required a notably higher `--max_plies` cap (1500, versus 600-900 for the stub) to resolve naturally rather than being cut off. This is consistent with the same underlying cause described above, a fixed biased prior can lead MCTS into repetitive, non-progressing move patterns more readily than fresh random noise does.
+### Final runs
 
-## Limitations and next steps
+Two runs of 20 iterations x 20 self-play games (400 games each), 50 MCTS
+simulations per move, root Dirichlet noise (alpha 0.3, weight 0.25), 800-ply
+cap, draws valued 0, 400 Adam steps of batch 64 per iteration, replay buffer of
+20000 positions, and repetition avoidance on. They differ only in how moves are
+picked during self-play:
 
-The stub-network results measure what search depth alone contributes, with no learned signal involved. The real-network result measures the opposite: what an untrained but structurally real network contributes, which so far is no better than random. The simulation-depth sweep's per-depth samples (1 to 4 decided games each) are too small to support a confident claim about how win rate scales with simulation count specifically; the pooled across-depth result is the more defensible number from that data.
+| Run | Move choice in self-play | Decisive games | Policy loss (iter 1 to 20) | Time |
+|---|---|---|---|---|
+| Final A | sample for 30 plies, then most visited | 71 of 400 (18%) | 5.15 to 2.35 | 7.1 h |
+| Final B | sample the whole game | 90 of 400 (22%) | 4.89 to 2.23 | 6.8 h |
 
-As Student 2's training loop produces checkpoints, rerunning this same benchmark (`evaluate_vs_random.py --network real`) against each one, and eventually checkpoint-vs-checkpoint rather than checkpoint-vs-random, is the natural way to produce the learning-curve evidence Milestone 4 calls for. The "before training" number above (37.5 percent, 8 decided games) is the baseline that progress should be measured against.
+`training_curves.png` shows both, plus the earlier 30-simulation run 1. The
+policy loss falls quickly for 5 iterations and then flattens; value loss stays
+small (under 0.05) and noisy, because about 80% of games are drawn and every
+position in a drawn game has target 0. The share of decisive games does not trend upward.
+
+### Benchmark protocol
+
+`python -m evaluation.benchmark` plays 20 games per checkpoint with a fixed
+protocol so iterations can be compared: the agent uses 50 simulations, no
+root noise, temperature 0.3 for the whole game and repetition avoidance;
+colors alternate; every checkpoint faces the same seeded game sequence; games
+stop at 800 plies and unfinished games are left out of the score. Score =
+(wins + 0.5 x draws) / finished games, with a rough 95% margin. Opponents are
+`random`, `greedy` (captures the most valuable piece it can, otherwise random)
+and `untrained` (the same MCTS agent with a fresh network).
+
+### Results: no measurable strength gain
+
+Final run B (`benchmark_curve_finalB.png`):
+
+| Iteration | vs untrained | vs random | vs greedy-capture |
+|---|---|---|---|
+| 0 (untrained) | (0.5 by definition) | 0.550 +/- 0.066 | 0.550 +/- 0.066 |
+| 4 | 0.500 +/- 0.103 | | |
+| 8 | 0.500 +/- 0.115 | | |
+| 10 | | 0.444 +/- 0.106 | 0.474 +/- 0.050 |
+| 12 | 0.423 +/- 0.098 | | |
+| 16 | 0.393 +/- 0.108 | | |
+| 20 | 0.500 +/- 0.087 | 0.472 +/- 0.093 | 0.425 +/- 0.078 |
+
+Final run A against the untrained network (`benchmark_curve_final_vs_untrained.png`):
+0.444, 0.433, 0.382, 0.393 and 0.500 at iterations 4, 8, 12, 16 and 20, with
+margins of 0.09 to 0.18.
+
+Head to head, final B iteration 20 against final A iteration 20 (20 games, same
+protocol): 1 win each, 15 draws, 3 unfinished, score 0.500 +/- 0.082
+(`finalB_vs_finalA_iter20.log`).
+
+Every score is within its margin of 0.5. After 400 self-play games, neither
+run is measurably stronger than the untrained network, than random play or than
+greedy capture, and the two runs are even with each other. Final B is the one
+kept (`checkpoints/final_B/latest.pt`): it ties A head to head and at iteration
+20, and is never behind A at the earlier benchmarked iterations, but the gap is
+within noise. Run 1 (30 simulations, 100 games) was also flat against random
+(0.469 to 0.550) and greedy (0.450 to 0.550), in `benchmark_run1_*.csv`.
+
+We checked for a pipeline error before accepting this. The tests cover the
+value-target signs, the policy targets and a full train-and-resume run, and the
+state encoding and the action indices both use absolute board squares (with a
+side-to-move plane), so they agree for Black.
+
+### Why most games are draws (measured)
+
+How games end, for final B iteration 16 under the benchmark protocol, 10 games
+each (`python -m evaluation.game_endings --checkpoint checkpoints/final_B/iter_0016.pt --opponent random --games 10`):
+
+| Ending | vs itself | vs random | vs greedy-capture |
+|---|---|---|---|
+| No-progress rule (100 plies without capture or pawn move) | 5 | 5 | 7 |
+| Threefold repetition | 2 | 3 | 3 |
+| Checkmate | 2 | 1 | 0 |
+| 800-ply cap reached | 1 | 1 | 0 |
+
+The main cause is the no-progress rule, not repetition: the agent reaches
+positions it could win but cannot convert them, and shuffles until the
+100-ply rule ends the game. Repetition still happens because random and greedy
+do not avoid it, and because avoidance gives way when every move would repeat.
+
+### Diagnosis
+
+- **Too little data.** 400 games (about 200,000 positions) per run is very
+  small for AlphaZero-style learning; the original work used millions of games.
+- **The value head learns almost nothing.** With about 80% of games drawn, most
+  value targets are 0. In run 1, 81% of value predictions were within 0.05 of 0
+  and their correlation with material balance was +0.07. Without a useful value,
+  50-simulation search cannot tell a lost piece from a quiet move, so trained
+  play is not sharper than untrained play.
+- **Long games dilute the signal.** Games average 400 to 600 plies, so a single
+  result at the end is spread over hundreds of mostly quiet positions.
+
+### Exploratory runs (outside the official plan)
+
+Both are kept only as labeled experiments (`training_curves_exploratory.png`).
+
+- **Material value targets** (`--material_scale 5`, 30 simulations, 10 iterations x 10 games):
+  drawn games get value targets from the final material balance. This uses
+  piece values, which is human domain knowledge. The value head did learn
+  material (correlation +0.45 on self-play positions), but strength did not
+  improve: 0.474 +/- 0.089 and 0.469 +/- 0.105 against untrained at iterations
+  5 and 10. With a uniform policy and this value head, the agent scored 0.500
+  (0 wins, 0 losses) against untrained, versus 0.625 +/- 0.137 for the
+  untrained value head with a uniform policy.
+- **100 simulations per move** (10 iterations x 10 games, also with
+  `--material_scale 5`), above the 30 to 50 allowed: decisive games peaked at 60% in iteration 3, but strength against
+  untrained was 0.421 +/- 0.082 at iteration 5 and 0.346 +/- 0.125 at
+  iteration 10.
+
+### What would most likely help
+
+More self-play games per iteration and many more iterations (the compute is the
+limit: about 20 minutes per iteration of 20 games on one CPU core), running
+several self-play workers in parallel, and a shorter game cap so results reach
+the value head more often.
+
+## Limitations
+
+The stub-network results measure what search depth alone contributes, with no learned signal involved. The simulation-depth sweep's per-depth samples (1 to 4 decided games each) are too small to support a confident claim about how win rate scales with simulation count specifically; the pooled across-depth result is the more defensible number from that data. Every benchmark above uses 20 games per checkpoint, so margins are about +/- 0.1; smaller differences cannot be resolved.
 
 ## Files in this folder
 
-- `mcts_vs_random_60games.log` — first stub-network baseline run
-- `mcts_vs_random_200games.log` — larger stub-network baseline run
-- `sweep_results.csv` — simulation-depth sweep, raw numbers (stub network)
-- `sweep_win_rate_vs_sims.png` — simulation-depth sweep, plotted (stub network)
-- `mcts_vs_real_untrained_60games.log` — real (untrained) network baseline run
+- `mcts_vs_random_60games.log`: first stub-network baseline run
+- `mcts_vs_random_200games.log`: larger stub-network baseline run
+- `sweep_results.csv`: simulation-depth sweep, raw numbers (stub network)
+- `sweep_win_rate_vs_sims.png`: simulation-depth sweep, plotted (stub network)
+- `mcts_vs_real_untrained_60games.log`: real (untrained) network baseline run
+- `training_log_finalA.csv`, `training_log_finalB.csv`: per-iteration logs of the final runs
+- `training_log_run1.csv`: first run (30 simulations, 10 iterations x 10 games)
+- `training_log_material_exploratory.csv`, `training_log_sims100_exploratory.csv`: exploratory runs
+- `training_curves.png`, `training_curves_exploratory.png`: loss, decisive share and game length per iteration
+- `benchmark_finalA_untrained.csv`, `benchmark_finalB_{untrained,random,greedy}.csv`: final-run benchmarks
+- `benchmark_run1_{random,greedy}.csv`, `benchmark_material_untrained.csv`, `benchmark_sims100_untrained.csv`: earlier benchmarks
+- `benchmark_curve_finalB.png`, `benchmark_curve_final_vs_untrained.png`: benchmark score per iteration
+- `finalB_vs_finalA_iter20.log`: head-to-head match of the two final runs

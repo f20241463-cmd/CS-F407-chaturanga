@@ -1,0 +1,3 @@
+iteration,checkpoint,opponent,games,wins,losses,draws,unfinished,score,margin,avg_plies,seconds
+5,checkpoints/sims100/iter_0005.pt,untrained,20,0,3,16,1,0.4211,0.082,478.8,1853.4
+10,checkpoints/sims100/iter_0010.pt,untrained,20,0,4,9,7,0.3462,0.1254,589.1,1883.7
