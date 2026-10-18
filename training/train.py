@@ -326,6 +326,8 @@ def main(argv=None):
                 f"loss {losses['loss']:.4f} (policy {losses['policy_loss']:.4f}, "
                 f"value {losses['value_loss']:.4f})"
             )
+        elif args.train_steps == 0:
+            loss_text = "training disabled (--train_steps 0)"
         else:
             loss_text = (
                 f"no training yet (buffer {len(buffer)} < min_buffer {args.min_buffer})"
