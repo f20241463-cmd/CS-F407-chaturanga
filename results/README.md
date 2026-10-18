@@ -8,7 +8,7 @@ The search module implements guided Monte Carlo Tree Search following the AlphaZ
 
 The module passes 44 automated tests: 36 covering the Chaturanga rules engine and 8 covering MCTS itself. The MCTS tests include an independent check against a toy game with a known correct answer, confirming the search mechanics (selection, expansion, backpropagation) work correctly in isolation from the real environment. A separate sanity check against the actual Chaturanga environment, using an untrained network with uniform policy output, confirmed that simulation visits spread evenly across all legal moves as expected when no learned signal is present.
 
-Once the real network module (Student 2) was merged, a further integration check (`network_integration_preview.py`) confirmed MCTS runs correctly end to end against the actual `ChaturangaNet`, with deterministic, reproducible output across repeated runs on the same network weights. Combined with the network module's own 7 tests, the full suite stood at 51 automated tests passing. Tests added later for root Dirichlet noise (5) and checkpoint loading and match scoring (5) bring it to 61. With the training pipeline and the evaluation suite added, the full suite is now 96 tests (`python -m pytest -q`).
+Once the real network module (Student 2) was merged, a further integration check (`network_integration_preview.py`) confirmed MCTS runs correctly end to end against the actual `ChaturangaNet`, with deterministic, reproducible output across repeated runs on the same network weights. Combined with the network module's own 7 tests, the full suite stood at 51 automated tests passing. Tests added later for root Dirichlet noise (5) and checkpoint loading and match scoring (5) bring it to 61. With the training pipeline and the evaluation suite added, the full suite is now 97 tests (`python -m pytest -q`).
 
 ## Reproducibility
 
@@ -110,6 +110,31 @@ value-target signs, the policy targets and a full train-and-resume run, and the
 state encoding and the action indices both use absolute board squares (with a
 side-to-move plane), so they agree for Black.
 
+### Agent vs. Human
+
+Six games against final B (`checkpoints/final_B/latest.pt`, 50 simulations,
+repetition avoidance, always its most visited move), played by a team member
+who is new to chess, alternating colors. Every game is in `human_games.csv`
+with its full move list.
+
+| Game | Human plays | Result | Ending | Plies | Pieces left (human / agent) |
+|---|---|---|---|---|---|
+| 1 | White | Human win | Checkmate | 91 | 11 / 2 |
+| 2 | Black | Human win | Checkmate | 128 | 12 / 2 |
+| 3 | White | Draw | Stalemate | 137 | 12 / 1 |
+| 4 | Black | Human win | Checkmate | 90 | 16 / 1 |
+| 5 | White | Draw | Stalemate | 161 | 8 / 1 |
+| 6 | Black | Draw | Stalemate | 260 | 7 / 1 |
+
+The agent won none of the six: 3 human wins and 3 draws, an agent score of
+0.250 (95% Wilson range 0.060 to 0.635; `python play_vs_ai.py --summary`).
+Six games cannot separate that score from 0.5 statistically, but the final
+positions are one-sided. In every game the agent was left with at most two
+pieces, and in all three draws it had only its king, which the human
+stalemated while trying to checkmate it. This matches the benchmark: the agent
+gives material away and cannot tell a lost position from a quiet one, so even a
+beginner beats it.
+
 ### Why most games are draws (measured)
 
 How games end, for final B iteration 16 under the benchmark protocol, 10 games
@@ -183,3 +208,4 @@ The stub-network results measure what search depth alone contributes, with no le
 - `benchmark_curve_finalB.png`, `benchmark_curve_final_vs_untrained.png`: benchmark score per iteration
 - `finalB_vs_finalA_iter20.log`: head-to-head match of the two final runs
 - `finalB_iter20_vs_iter10.log`: final B iteration 20 against its own iteration 10
+- `human_games.csv`: Agent vs. Human games against final B, with full move lists
