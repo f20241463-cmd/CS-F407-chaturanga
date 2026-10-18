@@ -99,12 +99,27 @@ Plays games under the benchmark protocol and counts which rule ended each one
 (checkmate, stalemate, the 100-ply no-progress rule, threefold repetition, or
 the ply cap). Opponents: `random`, `greedy`, `untrained` or `self`.
 
-### Against random, or play it yourself
+### Against random
 
 ```
 python evaluate_vs_random.py --checkpoint checkpoints/final_B/latest.pt
-python play_vs_ai.py --checkpoint checkpoints/final_B/latest.pt
 ```
+
+### Against a human
+
+```
+python play_vs_ai.py --checkpoint checkpoints/final_B/latest.pt --player YOUR_NAME
+python play_vs_ai.py --checkpoint checkpoints/final_B/latest.pt --player YOUR_NAME --human_color black
+python play_vs_ai.py --summary --checkpoint checkpoints/final_B/latest.pt
+```
+
+The AI plays like the benchmark agent: 50 simulations and repetition
+avoidance, always choosing its most visited move. Enter moves as `e2e4`; type
+`legal` to list legal moves, `resign` to give up (an agent win) or `quit` to
+stop (unfinished). Every game is appended to `results/human_games.csv` with the
+result, the rule that ended it and the full move list (`--no_log` to skip).
+`--summary` prints the agent's score against humans, scored like the benchmark
+(win 1, draw 0.5, unfinished left out). Alternate colors between games.
 
 ## Plotting
 
@@ -129,4 +144,4 @@ python -m pytest -q
 value targets, repetition avoidance, one training step and a tiny end-to-end
 run of `train.py` including resume. `tests/test_benchmark.py` and
 `tests/test_evaluation.py` cover the baseline players, match scoring, the
-benchmark CSV and the game-ending classifier.
+benchmark CSV, the game-ending classifier and the human-game log.

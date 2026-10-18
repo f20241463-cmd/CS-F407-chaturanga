@@ -16,6 +16,7 @@ from chaturanga.board import Board
 from chaturanga.game import GameState
 from chaturanga.stub_network import zero_stub_network
 from chaturanga.types import Color, Piece, PieceType, square
+from evaluation.human_log import append_game, format_summary, summarize
 from evaluation.game_endings import classify_ending, count_endings
 from evaluation.players import (
     greedy_capture_player,
@@ -141,6 +142,33 @@ class TestGameEndings(unittest.TestCase):
             random_player, random_player, 2, np.random.default_rng(0), max_plies=5
         )
         self.assertEqual(counts, {"unfinished (ply cap)": 2})
+
+
+class TestHumanLog(unittest.TestCase):
+    def test_append_and_summarize(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "sub", "human.csv")
+            self.assertEqual(summarize(path)["games"], 0)
+            for result, ckpt in [
+                ("agent_win", "a.pt"),
+                ("human_win", "a.pt"),
+                ("draw", "a.pt"),
+                ("unfinished", "a.pt"),
+                ("agent_win", "b.pt"),
+            ]:
+                append_game(path, player="p", checkpoint=ckpt, result=result)
+            s = summarize(path, checkpoint="a.pt")
+            self.assertEqual(
+                (s["games"], s["agent_win"], s["human_win"], s["draw"]), (4, 1, 1, 1)
+            )
+            self.assertAlmostEqual(s["score"], 0.5)  # (1 + 0.5) / 3 finished
+            self.assertEqual(summarize(path)["games"], 5)
+            self.assertIn("Agent score 0.500", format_summary(s))
+
+    def test_rejects_unknown_result(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(ValueError):
+                append_game(os.path.join(tmp, "h.csv"), result="win")
 
 
 if __name__ == "__main__":

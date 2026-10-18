@@ -8,7 +8,7 @@ The search module implements guided Monte Carlo Tree Search following the AlphaZ
 
 The module passes 44 automated tests: 36 covering the Chaturanga rules engine and 8 covering MCTS itself. The MCTS tests include an independent check against a toy game with a known correct answer, confirming the search mechanics (selection, expansion, backpropagation) work correctly in isolation from the real environment. A separate sanity check against the actual Chaturanga environment, using an untrained network with uniform policy output, confirmed that simulation visits spread evenly across all legal moves as expected when no learned signal is present.
 
-Once the real network module (Student 2) was merged, a further integration check (`network_integration_preview.py`) confirmed MCTS runs correctly end to end against the actual `ChaturangaNet`, with deterministic, reproducible output across repeated runs on the same network weights. Combined with the network module's own 7 tests, the full suite stood at 51 automated tests passing. Tests added later for root Dirichlet noise (5) and checkpoint loading and match scoring (5) bring it to 61. With the training pipeline and the evaluation suite added, the full suite is now 93 tests (`python -m pytest -q`).
+Once the real network module (Student 2) was merged, a further integration check (`network_integration_preview.py`) confirmed MCTS runs correctly end to end against the actual `ChaturangaNet`, with deterministic, reproducible output across repeated runs on the same network weights. Combined with the network module's own 7 tests, the full suite stood at 51 automated tests passing. Tests added later for root Dirichlet noise (5) and checkpoint loading and match scoring (5) bring it to 61. With the training pipeline and the evaluation suite added, the full suite is now 96 tests (`python -m pytest -q`).
 
 ## Reproducibility
 
@@ -91,6 +91,11 @@ margins of 0.09 to 0.18.
 Head to head, final B iteration 20 against final A iteration 20 (20 games, same
 protocol): 1 win each, 15 draws, 3 unfinished, score 0.500 +/- 0.082
 (`finalB_vs_finalA_iter20.log`).
+
+Against its own earlier self, final B iteration 20 played iteration 10 (20
+games, same protocol): 0 wins, 0 losses, 15 draws, 5 unfinished, score 0.500
+(`finalB_iter20_vs_iter10.log`). Ten more iterations of training did not
+produce a single win over the older network.
 
 Every score is within its margin of 0.5. After 400 self-play games, neither
 run is measurably stronger than the untrained network, than random play or than
@@ -177,3 +182,4 @@ The stub-network results measure what search depth alone contributes, with no le
 - `benchmark_run1_{random,greedy}.csv`, `benchmark_material_untrained.csv`, `benchmark_sims100_untrained.csv`: earlier benchmarks
 - `benchmark_curve_finalB.png`, `benchmark_curve_final_vs_untrained.png`: benchmark score per iteration
 - `finalB_vs_finalA_iter20.log`: head-to-head match of the two final runs
+- `finalB_iter20_vs_iter10.log`: final B iteration 20 against its own iteration 10
