@@ -156,6 +156,33 @@ def parse_args(argv=None):
     p.add_argument("--device", default="cpu")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument(
+        "--res_blocks",
+        type=int,
+        default=4,
+        help="residual blocks of a new network (4-6). Ignored with --resume, "
+        "which keeps the checkpoint's size.",
+    )
+    p.add_argument(
+        "--filters",
+        type=int,
+        default=64,
+        help="filters per layer of a new network (64-128). Ignored with --resume.",
+    )
+    p.add_argument(
+        "--bootstrap_model",
+        default=None,
+        help="checkpoint that plays the self-play games of the first "
+        "--bootstrap_iters iterations instead of the network being trained. "
+        "Lets a new (for example bigger) network start from games of an "
+        "earlier self-play agent instead of random play.",
+    )
+    p.add_argument(
+        "--bootstrap_iters",
+        type=int,
+        default=0,
+        help="iterations 1..N use --bootstrap_model for self-play (default 0)",
+    )
+    p.add_argument(
         "--workers",
         type=int,
         default=1,
@@ -167,6 +194,14 @@ def parse_args(argv=None):
     args = p.parse_args(argv)
     if args.workers < 1:
         p.error("--workers must be at least 1")
+    if not 4 <= args.res_blocks <= 6:
+        p.error("--res_blocks must be between 4 and 6")
+    if not 64 <= args.filters <= 128:
+        p.error("--filters must be between 64 and 128")
+    if args.bootstrap_iters < 0:
+        p.error("--bootstrap_iters must be at least 0")
+    if args.bootstrap_iters and not args.bootstrap_model:
+        p.error("--bootstrap_iters needs --bootstrap_model")
     return args
 
 
@@ -194,7 +229,16 @@ _SELF_PLAY_KEYS = (
 
 # Per-process state of a self-play worker: the network it is currently
 # playing with, and which iteration's weights those are.
-_worker = {"iteration": None, "network_fn": None, "model": None}
+_worker = {"iteration": None, "network_fn": None, "model": None, "config": None}
+
+
+def model_config(model):
+    """The constructor arguments that rebuild a network of the same size."""
+    return {
+        "in_channels": model.in_channels,
+        "num_res_blocks": model.num_res_blocks,
+        "num_filters": model.num_filters,
+    }
 
 
 def _init_worker():
@@ -205,10 +249,11 @@ def _init_worker():
 
 def _play_one_game(task):
     """Worker side: play one self-play game with this iteration's weights."""
-    iteration, game_index, seed, state_dict, settings = task
+    iteration, game_index, seed, state_dict, config, settings = task
     if _worker["iteration"] != iteration:
-        if _worker["model"] is None:
-            _worker["model"] = ChaturangaNet()
+        if _worker["config"] != config:
+            _worker["model"] = ChaturangaNet(**config)
+            _worker["config"] = config
         _worker["model"].load_state_dict(state_dict)
         _worker["network_fn"] = make_network_fn(_worker["model"])
         _worker["iteration"] = iteration
@@ -242,8 +287,9 @@ def run_self_play_parallel(model, args, pool, iteration, run_seed):
     """
     state_dict = {k: v.detach().cpu() for k, v in model.state_dict().items()}
     settings = {k: getattr(args, k) for k in _SELF_PLAY_KEYS}
+    config = model_config(model)
     tasks = [
-        (iteration, g, game_seed(run_seed, iteration, g), state_dict, settings)
+        (iteration, g, game_seed(run_seed, iteration, g), state_dict, config, settings)
         for g in range(args.games_per_iter)
     ]
     results = [None] * args.games_per_iter
@@ -305,7 +351,7 @@ def main(argv=None):
     # come from --seed too (they used to depend on whatever torch's random
     # state happened to be).
     torch.manual_seed(args.seed)
-    model = ChaturangaNet()
+    model = ChaturangaNet(num_res_blocks=args.res_blocks, num_filters=args.filters)
     start_iter = 0
     if args.resume:
         model, _, start_iter, _ = load_checkpoint(args.resume, device=args.device)
@@ -335,6 +381,20 @@ def main(argv=None):
             "(model and optimizer restored; the replay buffer starts empty)."
         )
 
+    bootstrap = None
+    if args.bootstrap_iters > start_iter:
+        bootstrap, _, _, _ = load_checkpoint(args.bootstrap_model, device=args.device)
+        bootstrap.eval()
+        print(
+            f"Self-play of iterations {start_iter + 1}..{args.bootstrap_iters} "
+            f"is played by {args.bootstrap_model}."
+        )
+    cfg = model_config(model)
+    print(
+        f"Network: {cfg['num_res_blocks']} residual blocks, {cfg['num_filters']} "
+        f"filters, {sum(t.numel() for t in model.parameters()):,} parameters."
+    )
+
     loss_fn = AlphaZeroLoss()
     buffer = ReplayBuffer(capacity=args.buffer_capacity, seed=run_seed)
 
@@ -358,27 +418,35 @@ def main(argv=None):
         )
         print(f"Self-play in {args.workers} worker processes.")
     try:
-        _train_loop(model, optimizer, loss_fn, buffer, args, rng, run_seed, start_iter, pool)
+        _train_loop(
+            model, optimizer, loss_fn, buffer, args, rng, run_seed, start_iter, pool,
+            bootstrap,
+        )
     finally:
         if pool is not None:
             pool.close()
             pool.join()
 
 
-def _train_loop(model, optimizer, loss_fn, buffer, args, rng, run_seed, start_iter, pool):
+def _train_loop(model, optimizer, loss_fn, buffer, args, rng, run_seed, start_iter, pool,
+                bootstrap=None):  # fmt: skip
     run_start = time.time()
     for done, iteration in enumerate(
         range(start_iter + 1, args.iterations + 1), start=1
     ):
-        print(f"\nIteration {iteration}/{args.iterations}: self-play")
+        player = model
+        if bootstrap is not None and iteration <= args.bootstrap_iters:
+            player = bootstrap
+        who = "" if player is model else " (bootstrap model)"
+        print(f"\nIteration {iteration}/{args.iterations}: self-play{who}")
         t0 = time.time()
         if pool is None:
-            examples_per_game, infos = run_self_play(model, args, rng)
+            examples_per_game, infos = run_self_play(player, args, rng)
             for examples in examples_per_game:
                 buffer.add_game(examples)
         else:
             compact_games, infos = run_self_play_parallel(
-                model, args, pool, iteration, run_seed
+                player, args, pool, iteration, run_seed
             )
             for entries in compact_games:
                 buffer.add_compact_game(entries)
