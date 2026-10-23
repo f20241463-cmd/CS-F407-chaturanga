@@ -17,7 +17,7 @@ mcts/         guided MCTS with PUCT, root Dirichlet noise, lazy child states
 training/     self-play games, replay buffer, training loop
 evaluation/   baseline players, per-iteration benchmark, game endings, human-game log
 results/      training logs, benchmark CSVs, plots, and the results write-up
-tests/        97 automated tests
+tests/        108 automated tests
 ```
 
 | Part | What it does | Details |

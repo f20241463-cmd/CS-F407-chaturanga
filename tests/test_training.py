@@ -447,6 +447,71 @@ class TestTrainLoop(unittest.TestCase):
         with mock.patch("sys.stderr"), self.assertRaises(SystemExit):
             train.parse_args(["--workers", "0"])
 
+    def _tiny(self, tmp, name, *extra):
+        import os
+
+        from training import train
+
+        ckpt_dir = os.path.join(tmp, name)
+        with mock.patch("builtins.print"):
+            train.main(
+                [
+                    "--games_per_iter", "2", "--simulations", "3", "--max_plies", "6",
+                    "--min_buffer", "1", "--train_steps", "1", "--batch_size", "4",
+                    "--checkpoint_dir", ckpt_dir, "--log", os.path.join(tmp, name + ".csv"),
+                    *extra,
+                ]
+            )  # fmt: skip
+        return os.path.join(ckpt_dir, "latest.pt")
+
+    def test_bigger_network_bootstrapped_from_a_smaller_one(self):
+        import tempfile
+
+        from network.checkpoint import load_checkpoint
+        from training import train
+
+        with tempfile.TemporaryDirectory() as tmp:
+            small = self._tiny(tmp, "small", "--iterations", "1")
+
+            # Serial: record which network plays each iteration's games.
+            players = []
+            real = train.run_self_play
+
+            def spy(model, args, rng):
+                players.append(train.model_config(model))
+                return real(model, args, rng)
+
+            with mock.patch.object(train, "run_self_play", spy):
+                big = self._tiny(
+                    tmp, "big", "--iterations", "3", "--res_blocks", "5",
+                    "--filters", "96", "--bootstrap_model", small,
+                    "--bootstrap_iters", "2",
+                )  # fmt: skip
+            # Parallel: workers switch between the two sizes without errors.
+            self._tiny(
+                tmp, "big_parallel", "--iterations", "3", "--res_blocks", "5",
+                "--filters", "96", "--bootstrap_model", small,
+                "--bootstrap_iters", "2", "--workers", "2",
+            )  # fmt: skip
+            model, _, step, _ = load_checkpoint(big)
+
+        small_cfg = {"in_channels": 13, "num_res_blocks": 4, "num_filters": 64}
+        big_cfg = {"in_channels": 13, "num_res_blocks": 5, "num_filters": 96}
+        self.assertEqual(players, [small_cfg, small_cfg, big_cfg])
+        self.assertEqual(train.model_config(model), big_cfg)
+        self.assertEqual(step, 3)
+
+    def test_network_size_and_bootstrap_arguments_are_checked(self):
+        from training import train
+
+        for bad in (
+            ["--res_blocks", "7"],
+            ["--filters", "32"],
+            ["--bootstrap_iters", "2"],
+        ):
+            with mock.patch("sys.stderr"), self.assertRaises(SystemExit):
+                train.parse_args(bad)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -69,7 +69,29 @@ on every ply of 40 random games and on 3000 random positions.
 
 To continue a run, pass `--resume checkpoints/final_B/latest.pt` and a larger
 `--iterations` (the total to reach). The model and optimizer are restored;
-the replay buffer starts empty.
+the replay buffer starts empty. The `--lr` given on the command line replaces
+the saved one, so a resumed run can continue at a lower learning rate.
+
+### A bigger network, started from an earlier agent's games
+
+```
+OMP_NUM_THREADS=1 python -m training.train --res_blocks 6 --filters 128 \
+    --bootstrap_model checkpoints/long/iter_0300.pt --bootstrap_iters 5 \
+    --iterations 300 --games_per_iter 100 --simulations 50 --avoid_repetition \
+    --temperature_moves 1000 --max_plies 800 --buffer_capacity 250000 \
+    --min_buffer 150000 --batch_size 256 --train_steps 500 --device mps \
+    --workers 6 --seed 2 --checkpoint_dir checkpoints/big --log checkpoints/big/log.csv
+```
+
+- `--res_blocks` (4 to 6) and `--filters` (64 to 128) set the size of a new
+  network. 6 blocks of 128 filters is the largest the official plan allows,
+  about 4 times the parameters of the default 4 x 64. With `--resume` the
+  checkpoint's size is kept.
+- `--bootstrap_model` and `--bootstrap_iters N` let an earlier checkpoint play
+  the self-play games of iterations 1 to N while the new network trains on
+  them. A new network then starts from games of a trained self-play agent
+  instead of random play. From iteration N + 1 on it plays its own games as
+  usual. Only our own self-play agent is used, no outside knowledge.
 
 ### Options worth knowing
 
@@ -186,7 +208,8 @@ python -m pytest -q
 `tests/test_training.py` covers the replay buffer, self-play examples and
 value targets, repetition avoidance, one training step and a tiny end-to-end
 run of `train.py` including resume, and that parallel self-play gives the same
-run for any number of workers. `tests/test_benchmark.py` and
+run for any number of workers, and that a bigger network can train on games
+played by a smaller bootstrap checkpoint. `tests/test_benchmark.py` and
 `tests/test_evaluation.py` cover the baseline players, match scoring, the
 benchmark CSV (also with workers), the game-ending classifier and the
 human-game log. `tests/test_engine_equivalence.py` checks the fast rules
