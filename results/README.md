@@ -181,16 +181,149 @@ Both are kept only as labeled experiments (`training_curves_exploratory.png`).
   untrained was 0.421 +/- 0.082 at iteration 5 and 0.346 +/- 0.125 at
   iteration 10.
 
-### What would most likely help
+### What we changed next
 
-More self-play games per iteration and many more iterations (the compute is the
-limit: about 20 minutes per iteration of 20 games on one CPU core), running
-several self-play workers in parallel, and a shorter game cap so results reach
-the value head more often.
+The diagnosis pointed at too little data, and the compute was the limit (about
+20 minutes per iteration of 20 games on one CPU core). We made self-play about
+11 times faster without changing the rules or the search (a faster rules
+engine, a faster network copy for search, and 6 parallel self-play workers;
+see `training/README.md`), and then trained much longer.
+
+## The long run (final model)
+
+### Setup
+
+The run continues from final B (iteration 20) under the same official
+settings: 4 residual blocks and 64 filters, 50 simulations, root noise,
+repetition avoidance, 800-ply cap, draws valued 0, no domain knowledge. Per
+iteration: 100 self-play games, then 500 Adam steps of batch 256 from a replay
+buffer of 250,000 positions.
+
+| Iterations | Learning rate | Notes |
+|---|---|---|
+| 21 to 420 | 1e-3 | restarted once at 220; after a restart the buffer refills before training resumes |
+| 421 to 500 | 1e-4 | two stretches of 40 |
+| 501 to 560 | 3e-5 | final stretch |
+
+In total 540 iterations, 54,000 self-play games, about 23.7 million positions
+and about 144 hours on one laptop (Apple A18 Pro, 6 CPU cores for self-play,
+its GPU for training). `training_curves_long.png` shows the curves and
+`training_log_long.csv` has every iteration (1 to 20 are final B).
+
+### Progress against the starting model
+
+Every so often a checkpoint played final B (iteration 20) for 100 games under
+the benchmark protocol (`long_run_matches/`):
+
+| Iteration | Wins | Losses | Draws | Unfinished | Score |
+|---|---|---|---|---|---|
+| 40 | 10 | 3 | 61 | 26 | 0.547 +/- 0.047 |
+| 60 | 11 | 5 | 62 | 22 | 0.538 +/- 0.050 |
+| 74 | 15 | 3 | 72 | 10 | 0.567 +/- 0.044 |
+| 100 | 18 | 4 | 61 | 17 | 0.584 +/- 0.052 |
+| 140 | 27 | 2 | 57 | 14 | 0.645 +/- 0.053 |
+| 180 | 18 | 3 | 68 | 11 | 0.584 +/- 0.047 |
+| 220 | 21 | 5 | 57 | 17 | 0.596 +/- 0.057 |
+| 300 | 27 | 5 | 52 | 16 | 0.631 +/- 0.060 |
+| 380 | 11 | 5 | 63 | 21 | 0.538 +/- 0.049 |
+| 500 | 27 | 3 | 60 | 10 | 0.633 +/- 0.053 |
+| **560 (final)** | **27** | **0** | **59** | **14** | **0.657 +/- 0.049** |
+
+Unlike the 400-game runs, training now clearly helps: every checkpoint from
+iteration 40 on beats the starting model, and the final one won 27 games and
+lost none. Most of the gain came in the first 100 to 140 iterations. From there
+to iteration 420 the score only moved up and down by about the size of its margin.
+
+### Lowering the learning rate
+
+To pick a model, iterations 140, 300, 420 and 460 (the first 40 at learning
+rate 1e-4) played each other, 100 games per pair:
+
+| | vs 140 | vs 300 | vs 420 | vs 460 |
+|---|---|---|---|---|
+| 140 | | 0.511 | 0.488 | 0.413 |
+| 300 | 0.489 | | 0.500 | 0.463 |
+| 420 | 0.512 | 0.500 | | 0.453 |
+| 460 | **0.587** | **0.537** | **0.547** | |
+
+(Score of the row model against the column model.) Iterations 140, 300 and 420
+are even with each other, and 460 beats all three (41 wins, 9 losses in
+total). At learning rate 1e-3 the network kept moving around one level without
+settling; the lower rate let it settle, which is why the last 140 iterations
+use 1e-4 and then 3e-5. Each further stretch still helped a little:
+
+| Match | Games | Wins | Losses | Score |
+|---|---|---|---|---|
+| 500 vs 460 | 100 | 8 | 3 | 0.526 +/- 0.033 |
+| 530 vs 500 | 100 | 3 | 2 | 0.505 +/- 0.022 |
+| 560 vs 500 | 100 | 8 | 2 | 0.531 +/- 0.031 |
+| 560 vs 500, second seed | 200 | 18 | 10 | 0.520 +/- 0.026 |
+
+Over 300 games iteration 560 scores 0.524 against 500, so it is the final model
+(`models/chaturangzero_final.pt` in the repo).
+
+### Benchmarks of the final model
+
+Each point is 100 games under the benchmark protocol, the same seeded game
+sequence for every checkpoint (`benchmark_long_{random,greedy,untrained}.csv`,
+plotted in `benchmark_curve_long.png`):
+
+| Iteration | vs random | vs untrained | vs greedy |
+|---|---|---|---|
+| 0 (untrained) | 11 W, 2 L: 0.547 | | 3 W, 1 L: 0.510 |
+| 20 (final B) | 4 W, 6 L: 0.489 | 4 W, 18 L: 0.419 | 0 W, 6 L: 0.469 |
+| 100 | 6 W, 1 L: 0.525 | 7 W, 9 L: 0.487 | 1 W, 2 L: 0.495 |
+| 220 | 15 W, 2 L: 0.566 | 23 W, 13 L: 0.560 | 0 W, 0 L: 0.500 |
+| 420 | 10 W, 2 L: 0.540 | 13 W, 8 L: 0.533 | 1 W, 5 L: 0.480 |
+| 500 | 20 W, 0 L: 0.600 | 16 W, 3 L: 0.577 | 0 W, 4 L: 0.480 |
+| **560 (final)** | **16 W, 0 L: 0.581** | **17 W, 4 L: 0.572** | **0 W, 1 L: 0.495** |
+
+Margins are about +/- 0.04 against random and +/- 0.05 against untrained. The
+final model beats random and untrained play clearly and almost never loses to
+them (0 and 4 losses in 100 games), where final B lost more than it won. It
+does not beat greedy capture: 99 of 100 games are draws.
+
+### How the final model's games end
+
+`python -m evaluation.game_endings --checkpoint checkpoints/final.pt`, 30 games each
+(`final_endings_{random,greedy}.log`):
+
+| Ending | vs random | vs greedy |
+|---|---|---|
+| Checkmate | 3 | 1 |
+| Stalemate | 0 | 2 |
+| No-progress rule | 12 | 27 |
+| Threefold repetition | 14 | 0 |
+| 800-ply cap | 1 | 0 |
+
+The model has learned not to lose and to win material, but it still rarely
+converts: most games end by the 100-ply no-progress rule or, against random, by
+repetitions the random player causes. Checkmating needs a long precise plan,
+and with about 80% of self-play games drawn the value head gets few examples of
+how a win is finished. This is the main limitation of the final model.
+
+### A bigger network (stopped)
+
+We also tried the largest network the plan allows: 6 residual blocks and 128
+filters (2.3 million parameters, about 2.8 times the default). It was trained
+from scratch with the same settings, but iterations 1 to 5 used self-play games
+played by iteration 460, so it did not start from random play
+(`--bootstrap_model`, see `training/README.md`). Each iteration took about 25 to
+30 minutes, against about 9 for the default network.
+
+| Match | Wins | Losses | Score |
+|---|---|---|---|
+| big iteration 30 vs 460 | 4 | 21 | 0.411 +/- 0.048 |
+| big iteration 60 vs 460 | 3 | 17 | 0.427 +/- 0.043 |
+| big iteration 60 vs 420 | 8 | 14 | 0.468 +/- 0.049 |
+
+After 61 iterations (about 31 hours) it was still behind the default network and
+improving slowly, so we stopped it and spent the time on the lower learning
+rate instead (`training_log_big_exploratory.csv`).
 
 ## Limitations
 
-The stub-network results measure what search depth alone contributes, with no learned signal involved. The simulation-depth sweep's per-depth samples (1 to 4 decided games each) are too small to support a confident claim about how win rate scales with simulation count specifically; the pooled across-depth result is the more defensible number from that data. Every benchmark above uses 20 games per checkpoint, so margins are about +/- 0.1; smaller differences cannot be resolved.
+The stub-network results measure what search depth alone contributes, with no learned signal involved. The simulation-depth sweep's per-depth samples (1 to 4 decided games each) are too small to support a confident claim about how win rate scales with simulation count specifically; the pooled across-depth result is the more defensible number from that data. The benchmarks of the 400-game runs use 20 games per checkpoint, so their margins are about +/- 0.1; the long-run matches and benchmarks use 100 games (200 for the last comparison), with margins of about +/- 0.03 to 0.06. Differences smaller than that cannot be resolved, and with most games drawn a score says little about how often the model can actually win. The human games so far were played against final B, not the final model.
 
 ## Files in this folder
 
@@ -209,3 +342,8 @@ The stub-network results measure what search depth alone contributes, with no le
 - `finalB_vs_finalA_iter20.log`: head-to-head match of the two final runs
 - `finalB_iter20_vs_iter10.log`: final B iteration 20 against its own iteration 10
 - `human_games.csv`: Agent vs. Human games against final B, with full move lists
+- `training_log_long.csv`: every iteration of the long run (1 to 20 are final B); `training_curves_long.png` plots it
+- `training_log_big_exploratory.csv`: the stopped 6 x 128 network
+- `benchmark_long_{random,greedy,untrained}.csv`, `benchmark_curve_long.png`: long-run benchmarks, 100 games per checkpoint
+- `long_run_matches/`: every head-to-head match of the long run (`rN` is iteration N, `big_rN` the bigger network)
+- `final_endings_{random,greedy}.log`: how the final model's games end

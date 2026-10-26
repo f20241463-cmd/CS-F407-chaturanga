@@ -1,7 +1,7 @@
 # Training and evaluation (ChaturangZero)
 
 How to train a network by self-play, measure it, and plot the results.
-Everything runs from the repo root on CPU. Results and their discussion are in
+Everything runs from the repo root, on the CPU or the Apple GPU (`--device mps`). Results and their discussion are in
 `results/README.md`.
 
 ## The training loop
@@ -71,6 +71,19 @@ To continue a run, pass `--resume checkpoints/final_B/latest.pt` and a larger
 `--iterations` (the total to reach). The model and optimizer are restored;
 the replay buffer starts empty. The `--lr` given on the command line replaces
 the saved one, so a resumed run can continue at a lower learning rate.
+
+The final model came from this command run to iteration 420 (with one restart
+at 220), followed by three resumed stretches with the same options except:
+
+| Iterations | Resume from | `--lr` | `--seed` | `--checkpoint_dir` |
+|---|---|---|---|---|
+| 421 to 460 | `checkpoints/long/iter_0420.pt` | 1e-4 | 1 | `checkpoints/long_lowlr` |
+| 461 to 500 | `checkpoints/long_lowlr/iter_0460.pt` | 1e-4 | 3 | `checkpoints/small_more` |
+| 501 to 560 | `checkpoints/small_more/iter_0500.pt` | 3e-5 | 4 | `checkpoints/small_more2` |
+
+Each resumed stretch used `--min_buffer 150000`, so the first two iterations
+only refill the replay buffer before training starts again. Iteration 560 is
+saved in the repo as `models/chaturangzero_final.pt`.
 
 ### A bigger network, started from an earlier agent's games
 
@@ -148,8 +161,8 @@ the benchmark protocol, on several cores:
 python -m evaluation.parallel_match --a checkpoints/long/latest.pt \
     --b checkpoints/final_B/latest.pt --games 100 --workers 6
 ```
- Keep
-`--avoid_repetition` on: with the defaults (sampling for only 8 plies, then
+
+Keep `--avoid_repetition` on: with the defaults (sampling for only 8 plies, then
 greedy), two deterministic players repeat positions and nearly every game ends
 in a threefold-repetition draw, which says nothing about strength.
 
