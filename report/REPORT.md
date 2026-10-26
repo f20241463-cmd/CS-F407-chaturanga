@@ -10,19 +10,20 @@ We built ChaturangZero, an AlphaZero-style agent for Chaturanga, the ancient
 Indian ancestor of chess. The agent knows only the rules. A residual network
 with a policy head and a value head guides Monte Carlo Tree Search (MCTS) with
 PUCT selection, and the network is trained on the games the agent plays against
-itself. The full system runs on a single CPU: a rules engine checked by unit
-tests, the network, search, a self-play training loop with a replay buffer, and
-an evaluation suite. We trained two final runs of 400 self-play games each
-(50 simulations per move, a 4-block, 64-filter network, about 7 hours per run).
-The policy loss fell from about 5 to 2.2, but the trained agent is not
-measurably stronger than the untrained network. Against an untrained network, a
-random player and a greedy-capture player, every checkpoint scores within its
-95% margin of 0.5. In six games against a human new to chess, the agent lost 3
-and drew 3. We measured why: about 80% of self-play games are drawn, mostly by
-the 100-ply no-progress rule, so the value head is trained almost only on
-targets of 0 and search cannot tell good positions from bad ones. We report
-this negative result in full, along with the diagnosis and what we expect would
-fix it.
+itself. The system has a rules engine checked by unit tests, the network,
+search, a self-play training loop with a replay buffer, and an evaluation
+suite. Our first two runs of 400 self-play games each (50 simulations per move,
+a 4-block, 64-filter network) did not make the agent measurably stronger than
+an untrained network: about 80% of games were drawn and the data was far too
+small. We then made self-play about 11 times faster without changing the rules
+or the search, and trained for 540 more iterations (54,000 games, about 144
+hours on one laptop), lowering the learning rate at the end. Under the same
+course constraints, the final model beats the model it started from 27 wins to
+0 (score 0.657 over 100 games), beats a random player 16 to 0 and an untrained
+network 17 to 4, but still draws almost every game against a greedy-capture
+player. Its main weakness is converting an advantage: most of its games end by
+the 100-ply no-progress rule rather than checkmate. A larger 6-block,
+128-filter network did not catch up in the time we had.
 
 # 1. Introduction
 
@@ -44,6 +45,11 @@ The project had four milestones: (1) a rules engine verified by unit tests,
 (2) MCTS working with an untrained network, (3) a self-play pipeline with the
 loss tracked over at least 50 to 100 games, and (4) benchmarks against earlier
 iterations and baseline players, with learning curves. All four are complete.
+
+The report follows the project in order: the first runs (Section 5.1 and
+6.1 to 6.5) gave a negative result, the diagnosis (Section 7) led to a faster
+pipeline and a much longer run, and that long run produced the final model
+(Sections 5.3 and 6.6 to 6.10).
 
 # 2. The game
 
@@ -111,14 +117,15 @@ explores moves the network does not yet favor.
 
 Each training iteration:
 
-1. **Self-play.** The current network plays 20 games against itself with 50
-   simulations per move. Moves are sampled in proportion to visit counts.
+1. **Self-play.** The current network plays 20 games (100 in the long run)
+   against itself with 50 simulations per move. Moves are sampled in proportion to visit counts.
    Every position becomes an example (state, visit distribution, result from
    the mover's view: +1, -1 or 0 for a draw). Games longer than 800 plies stop
    and count as draws.
-2. **Training.** Examples go into a replay buffer of the latest 20,000
-   positions. The network takes 400 Adam steps (learning rate 1e-3) on random
-   batches of 64.
+2. **Training.** Examples go into a replay buffer of the latest positions
+   (20,000 in the first runs, 250,000 in the long run). The network takes Adam
+   steps on random batches (400 steps of 64 in the first runs, 500 steps of
+   256 in the long run).
 3. **Checkpoint.** The network is saved, so every iteration can be evaluated
    later.
 
@@ -137,13 +144,29 @@ The code is plain Python with NumPy and PyTorch, organized by component:
 | `network/` | the network, loss and checkpoints |
 | `mcts/` | tree nodes, PUCT search, root noise |
 | `training/` | self-play, replay buffer, training loop |
-| `evaluation/` | baseline players, benchmark, game-ending classifier, human-game log |
+| `evaluation/` | baseline players, benchmark, parallel matches, game-ending classifier, human-game log |
 
-97 automated tests cover the rules (36 tests, including check, checkmate,
+108 automated tests cover the rules (36 tests, including check, checkmate,
 stalemate, promotion and the draw rules), the search (including a toy game
 with a known best move), the network, value-target signs, policy targets, a
 complete small training run including resuming from a checkpoint, the
 benchmark scoring and the evaluation tools. All runs are seeded and repeatable.
+
+**Faster self-play.** For the long run we sped up self-play about 11 times on
+the same hardware, without changing what it computes:
+
+| Change | ms per move (50 simulations) |
+|---|---|
+| Original | 259 |
+| Faster rules engine: legal moves cached per position, check detection that looks outward from the king, precomputed move tables | 48 |
+| Network copy for search with batch normalization folded into the convolutions | 19 |
+
+On top of that, 6 worker processes play games in parallel, each with its own
+seed derived from the run seed, the iteration and the game number, so a run
+does not depend on the number of workers. Training steps run on the laptop's
+GPU. A test compares the fast rules engine with a frozen copy of the original
+on every ply of 40 random games and on 3,000 random positions (same legal moves
+in the same order, same check and game results).
 
 # 5. Experiments
 
@@ -172,7 +195,32 @@ $1.96 \sqrt{p(1-p)/n}$. The opponents are:
   plays randomly. Its piece values are used only by this baseline, never by
   our agent.
 
+Head-to-head matches between two checkpoints use the same protocol. In the long
+run every benchmark and match uses 100 games, with margins of about 0.03 to
+0.06.
+
+## 5.3 The long run
+
+The long run continues from final B (iteration 20) with the same official
+settings (4 x 64 network, 50 simulations, root noise, repetition avoidance,
+800-ply cap, draws valued 0). Each iteration plays 100 self-play games and then
+takes 500 Adam steps of batch 256 from a buffer of 250,000 positions.
+
+| Iterations | Learning rate | Notes |
+|---|---|---|
+| 21 to 420 | 1e-3 | |
+| 421 to 500 | 1e-4 | two stretches of 40 iterations |
+| 501 to 560 | 3e-5 | final stretch |
+
+That is 540 iterations, 54,000 games and about 23.7 million positions, in
+about 144 hours. We also tried a larger network (6 blocks, 128 filters, 2.3
+million parameters) for 61 iterations; its first 5 iterations trained on games
+played by our best 4 x 64 checkpoint so it did not start from random play
+(Section 6.10).
+
 # 6. Results
+
+Sections 6.1 to 6.5 are the first runs; 6.6 to 6.10 are the long run.
 
 ## 6.1 Learning curves
 
@@ -246,7 +294,101 @@ protocol:
 | Checkmate | 2 | 1 | 0 |
 | 800-ply cap | 1 | 1 | 0 |
 
-## 6.6 Exploratory runs (outside the course constraints)
+## 6.6 Long run: learning curves
+
+![Long run: policy loss, value loss, share of decisive self-play games and game length per iteration, with the stopped 6 x 128 network.](../results/training_curves_long.png)
+
+The policy loss stays around 2.4, and the share of decisive self-play games
+stays around 15 to 25%. These curves do not show the improvement, because the
+targets move with the network: as the agent improves, so does its opponent.
+Game length fell from about 530 to about 430 plies. Strength has to be
+measured by matches.
+
+## 6.7 Long run: progress against the starting model
+
+Checkpoints of the long run against final B (iteration 20), 100 games each:
+
+| Iteration | Wins | Losses | Draws | Unfinished | Score |
+|---|---|---|---|---|---|
+| 40 | 10 | 3 | 61 | 26 | 0.547 +/- 0.047 |
+| 100 | 18 | 4 | 61 | 17 | 0.584 +/- 0.052 |
+| 140 | 27 | 2 | 57 | 14 | 0.645 +/- 0.053 |
+| 220 | 21 | 5 | 57 | 17 | 0.596 +/- 0.057 |
+| 300 | 27 | 5 | 52 | 16 | 0.631 +/- 0.060 |
+| 380 | 11 | 5 | 63 | 21 | 0.538 +/- 0.049 |
+| 500 | 27 | 3 | 60 | 10 | 0.633 +/- 0.053 |
+| **560 (final)** | **27** | **0** | **59** | **14** | **0.657 +/- 0.049** |
+
+Unlike the first runs, training now clearly helps: every checkpoint beats the
+starting model, and the final one won 27 games and lost none. Most of the gain
+came in the first 100 to 140 iterations. From there to iteration 420 the score
+moved up and down by about its own margin.
+
+## 6.8 Lowering the learning rate
+
+To choose a model, iterations 140, 300, 420 and 460 (the first 40 iterations
+at learning rate 1e-4) played each other, 100 games per pair. The table gives
+the row model's score against the column model.
+
+| | vs 140 | vs 300 | vs 420 | vs 460 |
+|---|---|---|---|---|
+| 140 | | 0.511 | 0.488 | 0.413 |
+| 300 | 0.489 | | 0.500 | 0.463 |
+| 420 | 0.512 | 0.500 | | 0.453 |
+| 460 | **0.587** | **0.537** | **0.547** | |
+
+Iterations 140, 300 and 420 are even with each other, while 460 beats all
+three (41 wins, 9 losses in total). At learning rate 1e-3 the network kept
+moving around one level of play; the lower rate let it settle. Further
+stretches still helped, by smaller steps: iteration 500 scored 0.526 against
+460 (8 wins, 3 losses), and iteration 560 scored 0.524 against 500 over 300
+games (26 wins, 12 losses). Iteration 560 is the final model.
+
+## 6.9 Long run: benchmarks of the final model
+
+![Benchmark score of long-run checkpoints against random, untrained and greedy-capture players, 100 games per point.](../results/benchmark_curve_long.png)
+
+| Iteration | vs random | vs untrained | vs greedy-capture |
+|---|---|---|---|
+| 20 (final B) | 4 W, 6 L: 0.489 | 4 W, 18 L: 0.419 | 0 W, 6 L: 0.469 |
+| 100 | 6 W, 1 L: 0.525 | 7 W, 9 L: 0.487 | 1 W, 2 L: 0.495 |
+| 220 | 15 W, 2 L: 0.566 | 23 W, 13 L: 0.560 | 0 W, 0 L: 0.500 |
+| 420 | 10 W, 2 L: 0.540 | 13 W, 8 L: 0.533 | 1 W, 5 L: 0.480 |
+| **560 (final)** | **16 W, 0 L: 0.581** | **17 W, 4 L: 0.572** | **0 W, 1 L: 0.495** |
+
+The final model beats random play and the untrained network and almost never
+loses to them, where final B lost more than it won. Against greedy capture,
+99 of 100 games were drawn.
+
+How the final model's games end, 30 games each:
+
+| Ending | vs random | vs greedy-capture |
+|---|---|---|
+| Checkmate | 3 | 1 |
+| Stalemate | 0 | 2 |
+| No-progress rule | 12 | 27 |
+| Threefold repetition | 14 | 0 |
+| 800-ply cap | 1 | 0 |
+
+The agent no longer gives material away, but it rarely turns an advantage into
+checkmate. Against random most games end by the no-progress rule or by
+repetitions that the random player causes (our agent avoids them).
+
+## 6.10 A larger network
+
+| Match (100 games) | Wins | Losses | Score |
+|---|---|---|---|
+| 6 x 128 iteration 30 vs 4 x 64 iteration 460 | 4 | 21 | 0.411 +/- 0.048 |
+| 6 x 128 iteration 60 vs 4 x 64 iteration 460 | 3 | 17 | 0.427 +/- 0.043 |
+| 6 x 128 iteration 60 vs 4 x 64 iteration 420 | 8 | 14 | 0.468 +/- 0.049 |
+
+Each iteration of the larger network took about 25 to 30 minutes instead of
+about 9. After 61 iterations (about 31 hours) it was still behind and
+improving slowly, so we stopped it and used the time for the lower learning
+rate instead. With more compute it might overtake the smaller network; we
+could not test that.
+
+## 6.11 Exploratory runs (outside the course constraints)
 
 We ran two short experiments that break the constraints, to test the
 diagnosis below. They are not the final agent.
@@ -264,10 +406,10 @@ diagnosis below. They are not the final agent.
 
 # 7. Discussion
 
-We first checked for a bug. The tests confirm the value targets have the right
-sign for both colors, the policy targets match the visit counts, and the
-encoding and actions agree for Black, so we believe the result reflects the
-method at this scale, not an error. Three causes stand out:
+**The first runs.** We first checked for a bug. The tests confirm the value
+targets have the right sign for both colors, the policy targets match the visit
+counts, and the encoding and actions agree for Black, so we believe the result
+reflected the method at that scale, not an error. Three causes stood out:
 
 1. **Too little data.** 400 games (about 200,000 positions) per run is tiny
    for this method. AlphaZero used millions of games, with far more search per
@@ -285,37 +427,54 @@ method at this scale, not an error. Three causes stand out:
 The human games show the same weakness from the outside: the agent gives away
 material steadily and cannot defend, and a beginner can win.
 
-The exploratory runs suggest that a better value signal alone is not enough at
-this scale: the value head learned material, but 30 to 100 simulations with a
-weak policy still did not produce stronger play in 100 games.
+The exploratory runs suggested that a better value signal alone is not enough
+at that scale: the value head learned material, but 30 to 100 simulations with
+a weak policy still did not produce stronger play in 100 games.
+
+**The long run confirms the first cause.** With 135 times as many games and
+nothing else changed in the method, the agent became clearly stronger than its
+starting point and than random and untrained play (Sections 6.7 and 6.9). Two
+lessons stand out. First, most of the gain came early, and at a fixed learning
+rate of 1e-3 the network then moved around one level of play; lowering the
+learning rate gave the clearest single improvement of the run (Section 6.8).
+Second, the third cause above remains: about 80% of self-play games are still
+drawn, so the agent has learned to keep material and not to lose, but it gets
+few examples of how a won position is finished, and most of its games end by
+the no-progress rule. Greedy capture, which trades whenever it can, is hard to
+beat for an agent that cannot yet force checkmate.
 
 # 8. Limitations and future work
 
-- Every benchmark uses 20 games per checkpoint, so differences smaller than
-  about 0.1 cannot be resolved.
-- The human evaluation is six games by one beginner.
-- Compute was the main limit: about 20 minutes per iteration of 20 games on
-  one CPU core.
+- The first runs' benchmarks use 20 games per checkpoint, so differences
+  smaller than about 0.1 cannot be resolved there. The long run uses 100 games
+  per benchmark, and differences smaller than about 0.03 to 0.06 still cannot.
+- With most games drawn, a match score says little about how often the agent
+  can actually win.
+- The human evaluation is six games by one beginner, against final B, not the
+  final model.
+- Compute was the main limit: even after the speed-up, one iteration of 100
+  games takes about 9 minutes, and the larger network about 25 to 30.
 
 What we expect would help most, in order:
 
-1. Many more self-play games: parallel self-play workers and runs of hundreds
-   of iterations.
-2. A shorter game cap or resignation rule, so results reach the value head
-   more often.
-3. More simulations once the value head is useful, and a larger network.
+1. A way for results to reach the value head more often, within the rules: a
+   shorter game cap during self-play, or resigning hopeless games.
+2. Even longer training, with a lower learning rate earlier in the run.
+3. The larger network, given the days of compute it needs to catch up.
 
 # 9. Conclusion
 
-We implemented every part of an AlphaZero-style system for Chaturanga under
-the course constraints and verified it with 97 tests. Training ran as designed,
-and the network learned to imitate its own search, but in 400 self-play games
-per run the agent did not become measurably stronger than its untrained start,
-and a beginner beat it. The cause is a value signal starved by draws: most
-games end by the no-progress rule, so the value head sees almost only 0. The
-evaluation tools we built (a fixed benchmark protocol, head-to-head matches,
-game-ending counts and human-game logging) made this result measurable and
-explainable, and they are ready for a longer run.
+We implemented every part of an AlphaZero-style system for Chaturanga under the
+course constraints and verified it with 108 tests. With 400 self-play games per
+run the agent did not improve, and we measured why: draws starve the value
+head, and the data was far too small. After making self-play about 11 times
+faster, a run of 54,000 games with the same method produced a clearly stronger
+agent. The final model beats its starting point 27 wins to 0 and beats random
+and untrained play, losing almost no games. It still draws nearly every game
+against greedy capture and rarely checkmates, so learning to convert an
+advantage remains the open problem. The evaluation tools (a fixed benchmark
+protocol, head-to-head matches, game-ending counts and human-game logging) made
+both the negative and the positive result measurable.
 
 # References
 
@@ -343,7 +502,17 @@ OMP_NUM_THREADS=1 python -m training.train --iterations 20 --games_per_iter 20 \
     --checkpoint_dir checkpoints/final_B --log checkpoints/final_B/log.csv
 python -m evaluation.benchmark --checkpoint_dir checkpoints/final_B --opponent untrained --every 4
 python -m evaluation.game_endings --checkpoint checkpoints/final_B/iter_0016.pt --opponent self --games 10
-python play_vs_ai.py --checkpoint checkpoints/final_B/latest.pt --player NAME
+# long run (continues final B; see training/README.md for the later stretches)
+OMP_NUM_THREADS=1 python -m training.train --resume checkpoints/final_B/latest.pt \
+    --iterations 420 --games_per_iter 100 --simulations 50 --avoid_repetition \
+    --temperature_moves 1000 --max_plies 800 --buffer_capacity 250000 \
+    --min_buffer 150000 --batch_size 256 --train_steps 500 --lr 1e-3 \
+    --device mps --workers 6 --seed 1 \
+    --checkpoint_dir checkpoints/long --log checkpoints/long/log.csv
+python -m evaluation.parallel_match --a models/chaturangzero_final.pt \
+    --b checkpoints/final_B/latest.pt --games 100 --workers 6
+python play_vs_ai.py --checkpoint models/chaturangzero_final.pt --player NAME
 ```
 
-Every log, benchmark CSV, match log and plot is in `results/`.
+Every log, benchmark CSV, match log and plot is in `results/`, and the final
+model is `models/chaturangzero_final.pt`.

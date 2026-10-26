@@ -6,7 +6,8 @@ knowledge beyond the rules: a residual network suggests moves and judges
 positions, Monte Carlo Tree Search (MCTS) looks ahead with it, and the network
 is trained on the games it plays.
 
-Everything runs on a CPU. Python 3 with `numpy`, `torch` and `matplotlib`.
+Everything runs on a CPU; training can also use an Apple GPU (`--device mps`).
+Python 3 with `numpy`, `torch` and `matplotlib`.
 
 ## How it fits together
 
@@ -17,6 +18,7 @@ mcts/         guided MCTS with PUCT, root Dirichlet noise, lazy child states
 training/     self-play games, replay buffer, training loop
 evaluation/   baseline players, per-iteration benchmark, game endings, human-game log
 results/      training logs, benchmark CSVs, plots, and the results write-up
+models/       the final trained network (chaturangzero_final.pt)
 tests/        108 automated tests
 ```
 
@@ -33,31 +35,41 @@ tests/        108 automated tests
 ```bash
 python -m pytest -q                                  # run all tests
 python play.py                                       # you vs a random player
-python play_vs_ai.py --checkpoint checkpoints/final_B/latest.pt --player YOUR_NAME
+python play_vs_ai.py --checkpoint models/chaturangzero_final.pt --player YOUR_NAME
 python -m training.train --iterations 2 --games_per_iter 2 --checkpoint_dir checkpoints/demo --log checkpoints/demo/log.csv
 python -m evaluation.benchmark --checkpoint_dir checkpoints/demo --opponent random --games 4 --out checkpoints/demo/bench.csv
 ```
 
 The last two lines are a tiny training run (about 1 minute) and its benchmark
-(about 5 minutes). Checkpoints are not stored in git (`checkpoints/` is ignored). The training
-command for the final run, and every evaluation command, is in
-`training/README.md`.
+(about 5 minutes). Training checkpoints are not stored in git (`checkpoints/` is
+ignored); only the final model is, in `models/`. The training commands and
+every evaluation command are in `training/README.md`.
 
 ## Results in brief
 
-Two final runs of 20 iterations x 20 self-play games each (400 games, about
-7 hours per run on one CPU core), 50 simulations per move, the 4 x 64
-network. The policy loss fell from about 5 to 2.2 and then flattened.
+**First runs.** Two runs of 20 iterations x 20 self-play games (400 games, about
+7 hours each on one CPU core) did not make the agent measurably stronger than
+an untrained network, a random player or a greedy-capture player, and a human
+new to chess beat it. About 80% of games were drawn, and 400 games was far too
+little data.
 
-The trained agent is **not measurably stronger** than where it started. Under
-a fixed 20-game benchmark, every checkpoint scores within its margin of 0.5
-against the untrained network, a random player and a greedy-capture player,
-and the two final runs drew each other. Against a human new to chess it won
-none of six games (3 losses, 3 draws, each draw a stalemate of its lone king). About 80% of games are drawn, mostly by
-the 100-ply no-progress rule, so the value head sees almost only 0 targets and
-search cannot tell good positions from bad ones. 400 games is very little data
-for this method. `results/README.md` has every number, the plots, the
-measured game endings, the human games, two exploratory runs, and this diagnosis in full.
+**Long run (final model).** After making self-play about 11 times faster, we
+continued training for 540 more iterations of 100 games (54,000 games, about
+144 hours on one laptop), lowering the learning rate for the last 140
+iterations. Under the same official settings (4 x 64 network, 50 simulations,
+no domain knowledge), the final model:
+
+- beats the model it started from: 27 wins, 0 losses, 59 draws in 100 games
+  (score 0.657),
+- beats random play (16 wins, 0 losses) and the untrained network (17 wins,
+  4 losses), where the first runs lost more than they won,
+- still draws almost every game against greedy capture (0 wins, 1 loss).
+
+Its main weakness is finishing games: it gets ahead but rarely checkmates, so
+most games end by the 100-ply no-progress rule. A bigger 6 x 128 network was
+also tried and stopped, since it stayed behind after 61 iterations.
+`results/README.md` has every number, the plots, the game endings, the human
+games and the diagnosis in full.
 
 ## Milestones
 
@@ -65,7 +77,7 @@ measured game endings, the human games, two exploratory runs, and this diagnosis
 |---|---|
 | 1. Rules engine verified by unit tests | Done: 36 rules tests |
 | 2. MCTS with an untrained network | Done: search tests plus a run on the real untrained network |
-| 3. Self-play pipeline, loss tracked over 50 to 100+ games | Done: 400 games per final run, loss curves in `results/` |
+| 3. Self-play pipeline, loss tracked over 50 to 100+ games | Done: 54,000 games in the long run, loss curves in `results/` |
 | 4. Benchmark against earlier iterations and baseline players, learning curves | Done: `results/README.md` |
 
 ## Team

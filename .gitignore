@@ -24,3 +24,6 @@ env/
 checkpoints/
 runs/
 wandb/
+
+# the final trained model is kept in the repo
+!models/*.pt

@@ -1,0 +1,13 @@
+iteration,checkpoint,opponent,games,wins,losses,draws,unfinished,score,margin,avg_plies,seconds
+0,untrained,random,100,11,2,83,4,0.5469,0.0356,512.6,258.5
+10,checkpoints/curve/iter_0010.pt,random,100,1,12,78,9,0.4396,0.0368,521.2,281.4
+20,checkpoints/curve/iter_0020.pt,random,100,4,6,84,6,0.4894,0.0329,503.4,270.7
+60,checkpoints/curve/iter_0060.pt,random,100,6,3,85,6,0.516,0.0311,511.0,268.1
+100,checkpoints/curve/iter_0100.pt,random,100,6,1,93,0,0.525,0.0255,489.7,255.9
+140,checkpoints/curve/iter_0140.pt,random,100,19,5,75,1,0.5707,0.0465,393.4,204.4
+220,checkpoints/curve/iter_0220.pt,random,100,15,2,82,1,0.5657,0.0387,415.0,212.5
+300,checkpoints/curve/iter_0300.pt,random,100,13,3,80,4,0.5521,0.0395,435.7,221.7
+420,checkpoints/curve/iter_0420.pt,random,100,10,2,87,1,0.5404,0.0334,414.4,210.7
+460,checkpoints/curve/iter_0460.pt,random,100,18,1,81,0,0.585,0.0393,374.5,192.8
+500,checkpoints/curve/iter_0500.pt,random,100,20,0,80,0,0.6,0.0392,370.8,195.2
+560,checkpoints/curve/iter_0560.pt,random,100,16,0,83,1,0.5808,0.0363,342.3,169.7

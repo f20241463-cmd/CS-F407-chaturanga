@@ -124,6 +124,8 @@ def plot(logs, labels, out_path, title):
                 linewidth=2,
                 marker=SERIES_MARKERS[i],
                 markersize=5,
+                # Long runs: mark only about 25 points, or the markers hide the line.
+                markevery=max(1, len(xs) // 25),
                 markeredgecolor=SURFACE,
                 markeredgewidth=1.5,
                 label=label,
