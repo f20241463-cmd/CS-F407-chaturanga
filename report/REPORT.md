@@ -23,7 +23,9 @@ course constraints, the final model beats the model it started from 27 wins to
 network 17 to 4, but still draws almost every game against a greedy-capture
 player. Its main weakness is converting an advantage: most of its games end by
 the 100-ply no-progress rule rather than checkmate. A larger 6-block,
-128-filter network did not catch up in the time we had.
+128-filter network did not catch up in the time we had. Two later tests, more
+search per move when playing and counting draws as slightly bad in training,
+gave a small gain and a loss of strength respectively.
 
 # 1. Introduction
 
@@ -388,7 +390,28 @@ improving slowly, so we stopped it and used the time for the lower learning
 rate instead. With more compute it might overtake the smaller network; we
 could not test that.
 
-## 6.11 Exploratory runs (outside the course constraints)
+## 6.11 Two more tests on the final model
+
+**More search when playing.** The 30 to 50 simulation limit applies to
+training, so we also measured the final model with more search at play time.
+With 200 simulations per move against itself at 50 (100 games) it scored
+9 wins, 4 losses and 86 draws (0.525 +/- 0.035). Four times the search gives
+only a small edge, since the extra search does not help it finish games.
+
+**Counting draws as slightly bad.** We continued the final model from
+iteration 560 with a value target of -0.2 for both sides in every drawn or
+unfinished self-play game, instead of 0, at learning rate 1e-4. It uses only
+the game result, so it stays within the rules-only constraint. Decisive
+self-play games rose from about 14% to about 19%, but play got weaker:
+
+| Match (100 games) | Wins | Losses | Draws | Unfinished | Score |
+|---|---|---|---|---|---|
+| iteration 600 vs final (560) | 4 | 9 | 85 | 2 | 0.474 +/- 0.036 |
+| iteration 630 vs final (560) | 0 | 9 | 89 | 2 | 0.454 +/- 0.029 |
+
+We stopped it at iteration 631 and kept iteration 560 as the final model.
+
+## 6.12 Exploratory runs (outside the course constraints)
 
 We ran two short experiments that break the constraints, to test the
 diagnosis below. They are not the final agent.
@@ -443,6 +466,15 @@ few examples of how a won position is finished, and most of its games end by
 the no-progress rule. Greedy capture, which trades whenever it can, is hard to
 beat for an agent that cannot yet force checkmate.
 
+**The limit of this setup.** The last tests point the same way. Lowering the
+learning rate further gave only small steps (0.505 and 0.531 against the
+previous checkpoint), four times more search at play time gave 0.525, and
+penalizing draws made the agent play more decisive games against itself but
+lose more against the final model (Section 6.11). Pushing for decisive results
+without a better sense of which positions are won seems to lead to riskier,
+worse play. Within the constraints and our compute, the 4 x 64 network at 50
+simulations appears close to its limit.
+
 # 8. Limitations and future work
 
 - The first runs' benchmarks use 20 games per checkpoint, so differences
@@ -458,7 +490,8 @@ beat for an agent that cannot yet force checkmate.
 What we expect would help most, in order:
 
 1. A way for results to reach the value head more often, within the rules: a
-   shorter game cap during self-play, or resigning hopeless games.
+   shorter game cap during self-play, or resigning hopeless games. Simply
+   counting draws as slightly bad did not work (Section 6.11).
 2. Even longer training, with a lower learning rate earlier in the run.
 3. The larger network, given the days of compute it needs to catch up.
 
@@ -472,7 +505,8 @@ faster, a run of 54,000 games with the same method produced a clearly stronger
 agent. The final model beats its starting point 27 wins to 0 and beats random
 and untrained play, losing almost no games. It still draws nearly every game
 against greedy capture and rarely checkmates, so learning to convert an
-advantage remains the open problem. The evaluation tools (a fixed benchmark
+advantage remains the open problem: neither more search at play time nor
+counting draws as bad in training solved it. The evaluation tools (a fixed benchmark
 protocol, head-to-head matches, game-ending counts and human-game logging) made
 both the negative and the positive result measurable.
 

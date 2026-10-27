@@ -321,6 +321,37 @@ After 61 iterations (about 31 hours) it was still behind the default network and
 improving slowly, so we stopped it and spent the time on the lower learning
 rate instead (`training_log_big_exploratory.csv`).
 
+### Two more tests on the final model
+
+**More search when playing.** Training must use 30 to 50 simulations per move,
+but a game can be played with more. The final model with 200 simulations per
+move played itself at 50 simulations (100 games, `thinking_time/`):
+
+| Match | Wins | Losses | Draws | Unfinished | Score |
+|---|---|---|---|---|---|
+| final, 200 sims vs final, 50 sims | 9 | 4 | 86 | 1 | 0.525 +/- 0.035 |
+
+Four times the search gives only a small edge, because more search does not
+help the model finish games: 86 of 100 were still drawn.
+
+**Counting draws as slightly bad.** We continued the final model from
+iteration 560 with `--draw_value -0.2`, so every position of a drawn or
+unfinished self-play game gets a value target of -0.2 for both sides instead of
+0, at learning rate 1e-4 (seed 5). This uses only the result of the game, so it
+stays within the rules-only plan. The aim was to make the agent prefer
+positions that lead to a decisive result. Decisive self-play games rose from
+about 14% to about 19%, but the agent got weaker (`draw_penalty/`):
+
+| Match (100 games) | Wins | Losses | Draws | Unfinished | Score |
+|---|---|---|---|---|---|
+| iteration 600 vs final (560) | 4 | 9 | 85 | 2 | 0.474 +/- 0.036 |
+| iteration 630 vs final (560) | 0 | 9 | 89 | 2 | 0.454 +/- 0.029 |
+
+We stopped it at iteration 631 and kept iteration 560 as the final model.
+Together with the lower learning rate's small late steps (0.505 to 0.531),
+this suggests the 4 x 64 network at 50 simulations is close to as strong as it
+gets with our compute.
+
 ## Limitations
 
 The stub-network results measure what search depth alone contributes, with no learned signal involved. The simulation-depth sweep's per-depth samples (1 to 4 decided games each) are too small to support a confident claim about how win rate scales with simulation count specifically; the pooled across-depth result is the more defensible number from that data. The benchmarks of the 400-game runs use 20 games per checkpoint, so their margins are about +/- 0.1; the long-run matches and benchmarks use 100 games (200 for the last comparison), with margins of about +/- 0.03 to 0.06. Differences smaller than that cannot be resolved, and with most games drawn a score says little about how often the model can actually win. The human games so far were played against final B, not the final model.
@@ -347,3 +378,5 @@ The stub-network results measure what search depth alone contributes, with no le
 - `benchmark_long_{random,greedy,untrained}.csv`, `benchmark_curve_long.png`: long-run benchmarks, 100 games per checkpoint
 - `long_run_matches/`: every head-to-head match of the long run (`rN` is iteration N, `big_rN` the bigger network)
 - `final_endings_{random,greedy}.log`: how the final model's games end
+- `thinking_time/`: the final model at 200 simulations per move against itself at 50
+- `draw_penalty/`: the draw-penalty continuation (training log and matches against the final model)

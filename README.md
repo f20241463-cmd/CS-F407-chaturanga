@@ -67,7 +67,10 @@ no domain knowledge), the final model:
 
 Its main weakness is finishing games: it gets ahead but rarely checkmates, so
 most games end by the 100-ply no-progress rule. A bigger 6 x 128 network was
-also tried and stopped, since it stayed behind after 61 iterations.
+also tried and stopped, since it stayed behind after 61 iterations. Playing
+with 200 simulations per move instead of 50 helps only a little (0.525), and
+training on with draws counted as slightly bad made it weaker (0.454), so
+iteration 560 stays the final model.
 `results/README.md` has every number, the plots, the game endings, the human
 games and the diagnosis in full.
 
