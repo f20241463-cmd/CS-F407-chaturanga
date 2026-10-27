@@ -155,17 +155,25 @@ def main(argv=None):
     p.add_argument("--games", type=int, default=100)
     p.add_argument("--workers", type=int, default=6)
     p.add_argument("--simulations", type=int, default=50)
+    p.add_argument("--simulations_a", type=int, default=None,
+                   help="simulations per move for A only (default --simulations)")
+    p.add_argument("--simulations_b", type=int, default=None,
+                   help="simulations per move for B only (default --simulations)")
     p.add_argument("--temperature", type=float, default=0.3)
     p.add_argument("--max_plies", type=int, default=800)
     p.add_argument("--seed", type=int, default=0)
     args = p.parse_args(argv)
 
-    def spec(network):
-        return mcts_spec(network, seed=args.seed, simulations=args.simulations,
+    sims_a = args.simulations_a or args.simulations
+    sims_b = args.simulations_b or args.simulations
+
+    def spec(network, simulations):
+        return mcts_spec(network, seed=args.seed, simulations=simulations,
                          temperature=args.temperature)  # fmt: skip
 
+    sims = f"{sims_a} sims" if sims_a == sims_b else f"A {sims_a} sims, B {sims_b} sims"
     print(
-        f"A = {args.a}\nB = {args.b}\n{args.games} games, {args.simulations} sims, "
+        f"A = {args.a}\nB = {args.b}\n{args.games} games, {sims}, "
         f"temperature {args.temperature}, repetition avoidance on, "
         f"max {args.max_plies} plies, {args.workers} workers"
     )
@@ -177,7 +185,7 @@ def main(argv=None):
 
     pool = make_pool(args.workers) if args.workers > 1 else None
     try:
-        c = play_match_parallel(spec(args.a), spec(args.b), args.games, args.seed,
+        c = play_match_parallel(spec(args.a, sims_a), spec(args.b, sims_b), args.games, args.seed,
                                 args.max_plies, pool, show)  # fmt: skip
     finally:
         if pool is not None:

@@ -162,6 +162,10 @@ python -m evaluation.parallel_match --a checkpoints/long/latest.pt \
     --b checkpoints/final_B/latest.pt --games 100 --workers 6
 ```
 
+`--simulations_a` and `--simulations_b` give each side its own number of
+simulations per move, for example the same model with more search against
+itself.
+
 Keep `--avoid_repetition` on: with the defaults (sampling for only 8 plies, then
 greedy), two deterministic players repeat positions and nearly every game ends
 in a threefold-repetition draw, which says nothing about strength.
