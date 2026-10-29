@@ -19,7 +19,7 @@ training/     self-play games, replay buffer, training loop
 evaluation/   baseline players, per-iteration benchmark, game endings, human-game log
 results/      training logs, benchmark CSVs, plots, and the results write-up
 models/       the final trained network (chaturangzero_final.pt)
-tests/        108 automated tests
+tests/        123 automated tests
 ```
 
 | Part | What it does | Details |
@@ -70,7 +70,11 @@ most games end by the 100-ply no-progress rule. A bigger 6 x 128 network was
 also tried and stopped, since it stayed behind after 61 iterations. Playing
 with 200 simulations per move instead of 50 helps only a little (0.525), and
 training on with draws counted as slightly bad made it weaker (0.454), so
-iteration 560 stays the final model.
+iteration 560 stays the final model. Self-play later moved to the GPU (about
+2.2 to 2.4 times faster); with it, the bigger network reached the final
+model's level by learning from its games but did not pass it, and a
+measurement showed that resigning hopeless games cannot work yet, because the
+model does not see a loss coming.
 `results/README.md` has every number, the plots, the game endings, the human
 games and the diagnosis in full.
 

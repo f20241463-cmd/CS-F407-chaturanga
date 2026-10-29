@@ -1,0 +1,41 @@
+160 games: 7 White wins, 14 Black wins, 138 draws, 1 unfinished
+evaluation percentiles 1/5/50/95/99: [-0.219, -0.069, -0.0, 0.07, 0.23]
+
+threshold  moves  would resign  wrong
+      0.3      2            34     32
+      0.3      3            22     21
+      0.4      2            16     14
+      0.4      3             8      7
+      0.5      2             7      6
+      0.5      3             4      3
+      0.6      2             2      2
+      0.6      3             2      2
+      0.7      2             1      1
+      0.7      3             1      1
+      0.8      2             1      1
+      0.8      3             0      0
+      0.9      2             0      0
+      0.9      3             0      0
+
+Losing side's lowest evaluation in each decisive game:
+  black won in 116 plies; loser's lowest -0.11
+  white won in 69 plies; loser's lowest 0.01
+  white won in 229 plies; loser's lowest -0.73
+  black won in 108 plies; loser's lowest -0.25
+  black won in 104 plies; loser's lowest -0.33
+  black won in 150 plies; loser's lowest -0.07
+  black won in 114 plies; loser's lowest -0.25
+  white won in 93 plies; loser's lowest -0.06
+  black won in 202 plies; loser's lowest -0.90
+  black won in 30 plies; loser's lowest -0.06
+  black won in 88 plies; loser's lowest -0.80
+  black won in 94 plies; loser's lowest -0.46
+  white won in 11 plies; loser's lowest -0.07
+  black won in 146 plies; loser's lowest -0.23
+  white won in 93 plies; loser's lowest -0.10
+  black won in 224 plies; loser's lowest -0.21
+  black won in 128 plies; loser's lowest -0.19
+  black won in 78 plies; loser's lowest -0.09
+  white won in 133 plies; loser's lowest -0.04
+  white won in 249 plies; loser's lowest -0.26
+  black won in 62 plies; loser's lowest -0.28

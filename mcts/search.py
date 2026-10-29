@@ -2,6 +2,8 @@
 mcts/search.py -- the search() entry point.
 
 run_mcts(...) and select_action_from_visits(...) are the public API.
+mcts_search(...) is the same search as a generator, for batching many
+searches into one network call (see training/batched_self_play.py).
 Everything else in this file is a private helper.
 
 network_fn must match the frozen contract from the execution-plan doc
@@ -53,28 +55,60 @@ def _softmax_masked(logits, legal_mask):
     return exp / total
 
 
+def _softmax_legal(logits, legal_actions):
+    """
+    The same distribution as _softmax_masked, computed on the legal entries
+    only: returns one probability per action in legal_actions. Cheaper than
+    working on all 4096 entries, since a position has only about 20 legal
+    moves.
+    """
+    if len(legal_actions) == 0:
+        return np.zeros(0)
+    x = np.asarray(logits, dtype=np.float64)[legal_actions]
+    exp = np.exp(x - x.max())
+    total = exp.sum()
+    if not total > 0:
+        return np.full(len(legal_actions), 1.0 / len(legal_actions))
+    return exp / total
+
+
 def _legal_actions_from_mask(legal_mask):
     return np.flatnonzero(legal_mask).tolist()
 
 
 def _evaluate_and_expand(
-    node, network_fn, state_to_tensor_fn, legal_action_mask_fn, action_to_move_fn
+    node, state_to_tensor_fn, legal_action_mask_fn, action_to_move_fn
 ):
     """
-    Run the network/stub on node.state, turn its output into a masked
-    policy distribution, and expand node with one child per legal
-    move. Returns the value estimate for this node's side-to-move, to
-    be backpropagated.
+    Generator step: yield node.state's tensor for the network, receive
+    (policy_logits, value) back, turn the logits into a masked policy
+    distribution and expand node with one child per legal move. Returns
+    the value estimate for this node's side-to-move, to be backpropagated.
     """
     tensor = state_to_tensor_fn(node.state)
-    policy_logits, value = network_fn(tensor)
+    policy_logits, value = yield tensor
 
     legal_mask = legal_action_mask_fn(node.state)
-    legal_actions = _legal_actions_from_mask(legal_mask)
-    policy_probs = _softmax_masked(policy_logits, legal_mask)
+    legal_actions = np.flatnonzero(legal_mask)
+    policy_probs = _softmax_legal(policy_logits, legal_actions)
 
-    node.expand(policy_probs, legal_actions, action_to_move_fn)
+    node.expand_from_priors(legal_actions.tolist(), policy_probs.tolist(),
+                            action_to_move_fn)  # fmt: skip
     return value
+
+
+def drive(steps, network_fn):
+    """
+    Run a search generator (mcts_search, or anything built on it) to the
+    end, answering each state tensor it yields with network_fn(tensor).
+    Returns the generator's return value.
+    """
+    try:
+        request = next(steps)
+        while True:
+            request = steps.send(network_fn(request))
+    except StopIteration as stop:
+        return stop.value
 
 
 def _add_dirichlet_noise(root, alpha, eps, rng):
@@ -159,13 +193,54 @@ def run_mcts(
     and dirichlet_alpha=0.3 (AlphaZero's chess value; Chaturanga has a
     similar number of legal moves per position), plus a seeded
     np.random.Generator as rng so the noisy games are reproducible.
+
+    This is mcts_search driven by network_fn one position at a time.
+    """
+    return drive(
+        mcts_search(
+            root_state,
+            num_simulations,
+            c_puct,
+            state_to_tensor_fn,
+            legal_action_mask_fn,
+            action_to_move_fn,
+            dirichlet_alpha=dirichlet_alpha,
+            dirichlet_eps=dirichlet_eps,
+            rng=rng,
+        ),
+        network_fn,
+    )
+
+
+def mcts_search(
+    root_state,
+    num_simulations,
+    c_puct,
+    state_to_tensor_fn,
+    legal_action_mask_fn,
+    action_to_move_fn,
+    dirichlet_alpha=0.3,
+    dirichlet_eps=0.0,
+    rng=None,
+    stats=None,
+):
+    """
+    The search itself, written as a generator so many searches can share
+    one batched network call: it yields a [13, 8, 8] state tensor whenever
+    it needs the network and expects (policy_logits, value) to be sent
+    back. It returns (visit_counts, best_move), the same as run_mcts.
+    The search does exactly the same steps either way.
+
+    stats: optional dict; after the search, stats["root_value"] is the
+    root's mean value, from the side to move's point of view (used to
+    decide resignations in self-play).
     """
     root = MCTSNode(root_state)
 
     # Root is always expanded immediately, even before the simulation
     # loop starts, so there's something to select among on simulation 1.
-    _evaluate_and_expand(
-        root, network_fn, state_to_tensor_fn, legal_action_mask_fn, action_to_move_fn
+    yield from _evaluate_and_expand(
+        root, state_to_tensor_fn, legal_action_mask_fn, action_to_move_fn
     )
 
     if not root.children:
@@ -185,7 +260,7 @@ def run_mcts(
         path = [node]
 
         # Selection: descend while the node has already been expanded.
-        while node.is_expanded and node.children:
+        while node.is_expanded and node.has_children:
             _, node = node.select_child(c_puct)
             path.append(node)
 
@@ -197,9 +272,8 @@ def run_mcts(
             if value is None:
                 value = 0.0
         else:
-            value = _evaluate_and_expand(
+            value = yield from _evaluate_and_expand(
                 node,
-                network_fn,
                 state_to_tensor_fn,
                 legal_action_mask_fn,
                 action_to_move_fn,
@@ -219,5 +293,7 @@ def run_mcts(
 
     best_action = max(root.children.items(), key=lambda kv: kv[1].visit_count)[0]
     best_move = action_to_move_fn(best_action)
+    if stats is not None:
+        stats["root_value"] = root.value
 
     return visit_counts, best_move

@@ -67,6 +67,41 @@ before. The rules are unchanged: `tests/test_engine_equivalence.py` compares
 the fast engine with a frozen copy of the original (`tests/reference_rules.py`)
 on every ply of 40 random games and on 3000 random positions.
 
+### Self-play on the GPU
+
+```
+OMP_NUM_THREADS=1 python -m training.train ... --workers 3 --selfplay_device mps
+```
+
+With `--selfplay_device mps` (or `cuda`), each worker plays its share of the
+iteration's games side by side. Every game runs until its search needs the
+network, the waiting positions of all its games are evaluated in one batch
+on the GPU, and each game continues with its own answer. The search is
+unchanged: the games use the same per-game seeds as `--workers`, and on the
+CPU (`--selfplay_device cpu`, used in the tests) they are exactly the same
+games. On the GPU a close choice can differ by rounding.
+
+The search code also got faster for both modes, with the moves unchanged:
+move probabilities are computed on the legal moves only, and a search node's
+children are created when the search first visits them instead of all at
+once. Search work per position went from about 111 to 89 microseconds.
+
+Time for one batch of self-play games with 50 simulations (A18 Pro laptop):
+
+| Network | Games | 6 CPU workers | GPU self-play |
+|---|---|---|---|
+| 4 x 64 (the final model) | 120 | 544 s | 246 s (6 workers) |
+| 6 x 128 | 60 | 830 s | 351 s (3 workers) |
+
+Both columns played the same games. `--batch_groups 2` splits each worker's
+games into two groups that take turns, so the CPU searches one group while
+the GPU evaluates the other; it was not faster here, because smaller batches
+cost the GPU more. `--cpu_below` (default 4) sends very small batches, near
+the end of an iteration, to the CPU instead.
+
+Matches and benchmarks take the same option: `--device mps` in
+`evaluation.parallel_match` and `evaluation.benchmark` (with `--workers`).
+
 To continue a run, pass `--resume checkpoints/final_B/latest.pt` and a larger
 `--iterations` (the total to reach). The model and optimizer are restored;
 the replay buffer starts empty. The `--lr` given on the command line replaces
@@ -230,4 +265,22 @@ played by a smaller bootstrap checkpoint. `tests/test_benchmark.py` and
 `tests/test_evaluation.py` cover the baseline players, match scoring, the
 benchmark CSV (also with workers), the game-ending classifier and the
 human-game log. `tests/test_engine_equivalence.py` checks the fast rules
-engine against the original one.
+engine against the original one. `tests/test_batched_self_play.py` checks
+that batched self-play and batched matches play exactly the same games as one
+game at a time, the batch network, resignation and the resign check.
+
+## Resignation and the resign check
+
+`--resign_threshold T` (with `--resign_after N`, default 2) lets a side
+resign when its search rates its position below -T on N of its moves in a
+row; `--resign_check_fraction` (default 0.1) of games are played out anyway
+to count wrong resignations, which the log records. Before using it, check
+how often it would be wrong for a model:
+
+```
+python -m evaluation.resign_check --checkpoint models/chaturangzero_final.pt \
+    --games 160 --workers 4 --device mps
+```
+
+For the final model almost every resignation would have been wrong
+(`results/resign_check.txt`), so it was not used in training.

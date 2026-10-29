@@ -38,7 +38,16 @@ class MCTSNode:
             action_taken  # action_id that led to this node, None for root
         )
 
-        self.children = {}  # action_id -> MCTSNode
+        # After expansion, one entry per legal action in _actions/_priors.
+        # The child node objects themselves are only made when the search
+        # first selects them (_made), since with ~20 legal moves and 50
+        # simulations most of them are never visited. Reading .children
+        # makes them all.
+        self._actions = []
+        self._priors = []
+        self._made = {}  # action_id -> MCTSNode, for the children made so far
+        self._all_made = True
+        self._action_to_move = None
         self.visit_count = 0
         self.value_sum = 0.0
         self.is_expanded = False
@@ -57,26 +66,59 @@ class MCTSNode:
             return 0.0
         return self.value_sum / self.visit_count
 
+    @property
+    def has_children(self):
+        return bool(self._actions)
+
+    @property
+    def children(self):
+        """action_id -> child node for every legal action, in legal-action order."""
+        if not self._all_made:
+            self._made = {
+                action: self._made.get(action) or self._make_child(action, prior)
+                for action, prior in zip(self._actions, self._priors)
+            }
+            self._all_made = True
+        return self._made
+
+    def _make_child(self, action, prior):
+        return MCTSNode(
+            parent=self,
+            prior=prior,
+            action_taken=action,
+            move=self._action_to_move(action),
+        )
+
     def expand(self, policy_probs, legal_actions, action_to_move_fn):
         """
-        Create one child per legal action. Children do not compute their
-        GameState here; they keep the move and build the state lazily on
-        first access of child.state. policy_probs is the full [4096]
+        Record one child per legal action. Children do not compute their
+        GameState; they keep the move and build the state lazily on
+        first access of child.state, and the child nodes themselves are
+        made only when first needed. policy_probs is the full [4096]
         array (only the entries at legal_actions are ever read). action_to_move_fn is
         encoding.action_to_move -- passed in rather than imported so
         this file has zero dependency on the chaturanga package and
         can be unit-tested with any toy state that implements
         .apply_move().
         """
-        for action in legal_actions:
-            if action in self.children:
-                continue
-            self.children[action] = MCTSNode(
-                parent=self,
-                prior=float(policy_probs[action]),
-                action_taken=action,
-                move=action_to_move_fn(action),
-            )
+        actions = list(legal_actions)
+        self.expand_from_priors(
+            actions, [float(policy_probs[a]) for a in actions], action_to_move_fn
+        )
+
+    def expand_from_priors(self, actions, priors, action_to_move_fn):
+        """
+        expand() for when the priors are already one per legal action:
+        actions and priors are equal-length lists. Used by the search, which
+        computes the softmax on the legal moves only.
+        """
+        if self._actions:  # already expanded: keep the existing children
+            self.is_expanded = True
+            return
+        self._actions = list(actions)
+        self._priors = list(priors)
+        self._action_to_move = action_to_move_fn
+        self._all_made = not self._actions
         self.is_expanded = True
 
     def select_child(self, c_puct):
@@ -89,14 +131,43 @@ class MCTSNode:
         The leading minus sign on child.value is the perspective flip
         described at the top of this file: a high value for the child
         (good for the opponent) should look bad from the parent's point
-        of view, not good.
+        of view, not good. A child not made yet has no visits, so its
+        value is 0 and its score is just the prior term.
         """
+        if self._all_made:
+            return self._select_made(c_puct)
+
+        best_score = -math.inf
+        best_action = None
+        best_prior = 0.0
+        sqrt_parent_visits = math.sqrt(self.visit_count)
+        made = self._made
+
+        for action, prior in zip(self._actions, self._priors):
+            child = made.get(action)
+            if child is None:
+                score = c_puct * prior * sqrt_parent_visits
+            else:
+                q = -child.value
+                u = c_puct * child.prior * sqrt_parent_visits / (1 + child.visit_count)
+                score = q + u
+            if score > best_score:
+                best_score = score
+                best_action = action
+                best_prior = prior
+
+        child = made.get(best_action)
+        if child is None:
+            child = made[best_action] = self._make_child(best_action, best_prior)
+        return best_action, child
+
+    def _select_made(self, c_puct):
         best_score = -math.inf
         best_action = None
         best_child = None
         sqrt_parent_visits = math.sqrt(self.visit_count)
 
-        for action, child in self.children.items():
+        for action, child in self._made.items():
             q = -child.value
             u = c_puct * child.prior * sqrt_parent_visits / (1 + child.visit_count)
             score = q + u
