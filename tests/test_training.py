@@ -23,7 +23,12 @@ from chaturanga.game import GameState
 from chaturanga.stub_network import zero_stub_network
 from chaturanga.types import Color, Piece, PieceType, square
 from mcts.node import MCTSNode
-from mcts.search import _add_dirichlet_noise, run_mcts, select_action_from_visits
+from mcts.search import (
+    _add_dirichlet_noise,
+    mcts_search,
+    run_mcts,
+    select_action_from_visits,
+)
 from training import self_play
 from training.replay_buffer import ReplayBuffer
 from training.self_play import (
@@ -216,9 +221,9 @@ class TestSelfPlay(unittest.TestCase):
 
         def recording_run_mcts(root_state, *args, **kwargs):
             roots.append(root_state)
-            return run_mcts(root_state, *args, **kwargs)
+            return mcts_search(root_state, *args, **kwargs)
 
-        with mock.patch.object(self_play, "run_mcts", side_effect=recording_run_mcts):
+        with mock.patch.object(self_play, "mcts_search", side_effect=recording_run_mcts):
             examples, _ = self._game()
 
         self.assertEqual(len(roots), len(examples))
@@ -304,10 +309,10 @@ class TestSelfPlayRepetitionAvoidance(unittest.TestCase):
 
             def recording_run_mcts(root_state, *args, **kwargs):
                 roots.append(root_state)
-                return run_mcts(root_state, *args, **kwargs)
+                return mcts_search(root_state, *args, **kwargs)
 
             with mock.patch.object(
-                self_play, "run_mcts", side_effect=recording_run_mcts
+                self_play, "mcts_search", side_effect=recording_run_mcts
             ):
                 examples, info = play_self_play_game(
                     knight_shuffler,

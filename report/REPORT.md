@@ -25,7 +25,12 @@ player. Its main weakness is converting an advantage: most of its games end by
 the 100-ply no-progress rule rather than checkmate. A larger 6-block,
 128-filter network did not catch up in the time we had. Two later tests, more
 search per move when playing and counting draws as slightly bad in training,
-gave a small gain and a loss of strength respectively.
+gave a small gain and a loss of strength respectively. After moving self-play
+to the laptop's GPU (about 2.2 to 2.4 times faster), a second attempt with the
+larger network, started from the final model's games, reached the final
+model's level but did not pass it. A measurement of the final model's own
+evaluations showed that resigning hopeless games cannot work yet: it does not
+see a loss coming.
 
 # 1. Introduction
 
@@ -51,7 +56,8 @@ iterations and baseline players, with learning curves. All four are complete.
 The report follows the project in order: the first runs (Section 5.1 and
 6.1 to 6.5) gave a negative result, the diagnosis (Section 7) led to a faster
 pipeline and a much longer run, and that long run produced the final model
-(Sections 5.3 and 6.6 to 6.10).
+(Sections 5.3 and 6.6 to 6.10). Sections 6.11 to 6.13 test what else could
+make it stronger.
 
 # 2. The game
 
@@ -148,11 +154,12 @@ The code is plain Python with NumPy and PyTorch, organized by component:
 | `training/` | self-play, replay buffer, training loop |
 | `evaluation/` | baseline players, benchmark, parallel matches, game-ending classifier, human-game log |
 
-108 automated tests cover the rules (36 tests, including check, checkmate,
+123 automated tests cover the rules (36 tests, including check, checkmate,
 stalemate, promotion and the draw rules), the search (including a toy game
 with a known best move), the network, value-target signs, policy targets, a
 complete small training run including resuming from a checkpoint, the
-benchmark scoring and the evaluation tools. All runs are seeded and repeatable.
+benchmark scoring, the evaluation tools and batched GPU self-play. All runs
+are seeded and repeatable.
 
 **Faster self-play.** For the long run we sped up self-play about 11 times on
 the same hardware, without changing what it computes:
@@ -169,6 +176,17 @@ does not depend on the number of workers. Training steps run on the laptop's
 GPU. A test compares the fast rules engine with a frozen copy of the original
 on every ply of 40 random games and on 3,000 random positions (same legal moves
 in the same order, same check and game results).
+
+**Self-play on the GPU.** Later we moved the network evaluations of self-play
+to the laptop's GPU. The search is written as a generator that pauses
+whenever it needs the network, so each worker can run many games side by
+side and send all the positions they are waiting on to the GPU in one batch.
+The moves do not change: on the CPU the batched games are exactly the games
+played one at a time, which tests check. Two changes made the search itself
+about 20% faster with the same moves: move probabilities are computed on the
+legal moves only, and a node's children are created when the search first
+visits them. For 120 games of the 4 x 64 network, self-play went from 544 to
+246 seconds; for 60 games of the 6 x 128 network, from 830 to 351 seconds.
 
 # 5. Experiments
 
@@ -222,7 +240,8 @@ played by our best 4 x 64 checkpoint so it did not start from random play
 
 # 6. Results
 
-Sections 6.1 to 6.5 are the first runs; 6.6 to 6.10 are the long run.
+Sections 6.1 to 6.5 are the first runs; 6.6 to 6.10 are the long run; 6.11
+to 6.13 are later attempts to go further; 6.14 breaks the constraints.
 
 ## 6.1 Learning curves
 
@@ -387,8 +406,7 @@ repetitions that the random player causes (our agent avoids them).
 Each iteration of the larger network took about 25 to 30 minutes instead of
 about 9. After 61 iterations (about 31 hours) it was still behind and
 improving slowly, so we stopped it and used the time for the lower learning
-rate instead. With more compute it might overtake the smaller network; we
-could not test that.
+rate instead. Section 6.12 tries it again with faster self-play.
 
 ## 6.11 Two more tests on the final model
 
@@ -411,7 +429,46 @@ self-play games rose from about 14% to about 19%, but play got weaker:
 
 We stopped it at iteration 631 and kept iteration 560 as the final model.
 
-## 6.12 Exploratory runs (outside the course constraints)
+## 6.12 The larger network, second attempt
+
+With GPU self-play an iteration of the 6 x 128 network takes about 10
+minutes instead of 25 to 30. We trained it again, this time learning for 30
+iterations from games played by the final model before playing its own.
+
+| Run | Iteration | Wins | Losses | Draws | Score vs final (560) |
+|---|---|---|---|---|---|
+| learning rate 1e-3 | 30 (end of learning from 560's games) | 5 | 6 | 89 | 0.495 +/- 0.032 |
+| learning rate 1e-3 | 60 | 2 | 13 | 82 | 0.443 +/- 0.037 |
+| learning rate 1e-3 | 120 | 1 | 16 | 80 | 0.423 +/- 0.039 |
+| learning rate 1e-4, from iteration 30 | 50 | 4 | 6 | 87 | 0.490 +/- 0.032 |
+| learning rate 1e-4, from iteration 30 | 70 | 6 | 7 | 86 | 0.495 +/- 0.036 |
+
+Learning from the final model's games made the larger network as strong as
+the final model. On its own games at 1e-3 it got steadily weaker; at 1e-4 it
+stayed level but did not get stronger, and we stopped it at iteration 90.
+
+## 6.13 Can hopeless games end early?
+
+AlphaZero resigns a game when the search rates the position as clearly lost,
+so lost games give a real result instead of a long draw. Before training with
+it, we recorded the final model's evaluation of every position in 160
+self-play games and counted, for each threshold, how often a resignation
+would have been wrong (the side did not go on to lose):
+
+| Resign when below (2 moves in a row) | Would resign | Wrong |
+|---|---|---|
+| -0.3 | 34 | 32 |
+| -0.4 | 16 | 14 |
+| -0.5 | 7 | 6 |
+| -0.6 | 2 | 2 |
+| -0.8 | 0 | 0 |
+
+Nearly every resignation would have been in a game that ended in a draw. The
+21 decisive games were mostly short (11 to 250 plies), and the losing side's
+evaluation stayed near 0 until just before the mate. Resigning would have
+turned draws into wrong losses, so we did not train with it.
+
+## 6.14 Exploratory runs (outside the course constraints)
 
 We ran two short experiments that break the constraints, to test the
 diagnosis below. They are not the final agent.
@@ -475,6 +532,16 @@ without a better sense of which positions are won seems to lead to riskier,
 worse play. Within the constraints and our compute, the 4 x 64 network at 50
 simulations appears close to its limit.
 
+**Size and what the value head knows.** The larger network learned to play as
+well as the final model from its games, but its own games did not take it
+further, so network size is not what holds the agent back. The resignation
+measurement (Section 6.13) shows what does: the value head does not know when
+a position is won or lost. Decisive games come from sudden mistakes that the
+search punishes, not from advantages built up and converted, and the losing
+side does not see its loss coming. With about 85% of self-play games drawn,
+the value head gets too few clear results to learn from, and that is the
+problem every change we tried ran into.
+
 # 8. Limitations and future work
 
 - The first runs' benchmarks use 20 games per checkpoint, so differences
@@ -484,29 +551,33 @@ simulations appears close to its limit.
   can actually win.
 - The human evaluation is six games by one beginner, against final B, not the
   final model.
-- Compute was the main limit: even after the speed-up, one iteration of 100
-  games takes about 9 minutes, and the larger network about 25 to 30.
+- Compute was the main limit: even with GPU self-play, one iteration of 100
+  games takes about 4 minutes, and the larger network about 10.
 
 What we expect would help most, in order:
 
-1. A way for results to reach the value head more often, within the rules: a
-   shorter game cap during self-play, or resigning hopeless games. Simply
-   counting draws as slightly bad did not work (Section 6.11).
-2. Even longer training, with a lower learning rate earlier in the run.
-3. The larger network, given the days of compute it needs to catch up.
+1. A way for results to reach the value head more often, within the rules,
+   for example a shorter game cap during self-play. Counting draws as
+   slightly bad did not work (Section 6.11), and resigning needs a value head
+   that already recognizes lost positions (Section 6.13).
+2. Far more self-play games with the larger network, which can start from the
+   final model's level (Section 6.12) but needs many more games than we could
+   play to improve on it.
 
 # 9. Conclusion
 
 We implemented every part of an AlphaZero-style system for Chaturanga under the
-course constraints and verified it with 108 tests. With 400 self-play games per
+course constraints and verified it with 123 tests. With 400 self-play games per
 run the agent did not improve, and we measured why: draws starve the value
 head, and the data was far too small. After making self-play about 11 times
 faster, a run of 54,000 games with the same method produced a clearly stronger
 agent. The final model beats its starting point 27 wins to 0 and beats random
 and untrained play, losing almost no games. It still draws nearly every game
 against greedy capture and rarely checkmates, so learning to convert an
-advantage remains the open problem: neither more search at play time nor
-counting draws as bad in training solved it. The evaluation tools (a fixed benchmark
+advantage remains the open problem: neither more search at play time,
+counting draws as bad in training, nor a larger network solved it, and the
+model's own evaluations show why: it does not yet recognize won or lost
+positions until the end is near. The evaluation tools (a fixed benchmark
 protocol, head-to-head matches, game-ending counts and human-game logging) made
 both the negative and the positive result measurable.
 

@@ -122,6 +122,12 @@ def parse_args(argv=None):
         help="play games in this many processes, with per-game seeds (see above)",
     )
     p.add_argument(
+        "--device",
+        default=None,
+        help="with --workers: mps or cuda, to evaluate each worker's games in "
+        "batches on this device (see evaluation/parallel_match.py)",
+    )
+    p.add_argument(
         "--iterations",
         type=int,
         nargs="+",
@@ -236,7 +242,7 @@ def _run(args, out, iterations, mcts, opponent, opponent_spec, pool, start):
                 )  # fmt: skip
                 counts = play_match_parallel(
                     agent_spec, opponent_spec, args.games, args.seed,
-                    args.max_plies, pool, on_game,
+                    args.max_plies, pool, on_game, device=args.device,
                 )  # fmt: skip
             finished = counts["wins"] + counts["losses"] + counts["draws"]
             if finished:

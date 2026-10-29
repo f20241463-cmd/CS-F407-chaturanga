@@ -15,7 +15,9 @@ example:
 
 No torch import: network_fn is any callable honoring the
 tensor -> (policy_logits, value) contract, so this also runs with the
-stub networks.
+stub networks. self_play_game_steps is the same game as a generator that
+yields each position the network must evaluate, so many games can share
+one batched network call (training/batched_self_play.py).
 """
 
 import numpy as np
@@ -23,7 +25,7 @@ import numpy as np
 from chaturanga import encoding
 from chaturanga.game import GameState
 from chaturanga.types import Color, PieceType
-from mcts.search import run_mcts, select_action_from_visits
+from mcts.search import drive, mcts_search, select_action_from_visits
 
 # Rough piece values for material adjudication. Mantri (one step
 # diagonally) and gaja (two-square diagonal jump) are weak short-range
@@ -106,6 +108,10 @@ def play_self_play_game(
     rng=None,
     material_scale=None,
     avoid_repetition=False,
+    resign_threshold=None,
+    resign_after=2,
+    resign_disabled=False,
+    value_trace=None,
 ):
     """
     Returns (examples, info).
@@ -131,6 +137,62 @@ def play_self_play_game(
     the agent actually plays. Most self-play games otherwise end in
     repetition draws, which leaves the value head almost nothing but 0
     targets. This needs only the rules, no game knowledge.
+
+    resign_threshold=None (default): no resignation. If set (for example
+    0.9), a side whose search rates its own position below -resign_threshold
+    on resign_after of its moves in a row resigns, and the game counts as
+    its loss. Hopeless games then end early with a real result instead of
+    dragging on to a draw by the 100-ply rule, so the value head sees more
+    wins and losses. It uses only the agent's own evaluation, no game
+    knowledge (AlphaZero does the same). With resign_disabled=True the game
+    is played out anyway, which measures how often a resignation would have
+    been wrong; info then also says which side would have resigned
+    ("would_resign": "white", "black" or None).
+
+    value_trace: optional list; (side to move, root value) is appended for
+    every move, for analysis.
+    """
+    return drive(
+        self_play_game_steps(
+            num_simulations=num_simulations,
+            c_puct=c_puct,
+            temperature_moves=temperature_moves,
+            dirichlet_alpha=dirichlet_alpha,
+            dirichlet_eps=dirichlet_eps,
+            max_plies=max_plies,
+            draw_value=draw_value,
+            rng=rng,
+            material_scale=material_scale,
+            avoid_repetition=avoid_repetition,
+            resign_threshold=resign_threshold,
+            resign_after=resign_after,
+            resign_disabled=resign_disabled,
+            value_trace=value_trace,
+        ),
+        network_fn,
+    )
+
+
+def self_play_game_steps(
+    num_simulations=30,
+    c_puct=1.5,
+    temperature_moves=30,
+    dirichlet_alpha=0.3,
+    dirichlet_eps=0.25,
+    max_plies=300,
+    draw_value=0.0,
+    rng=None,
+    material_scale=None,
+    avoid_repetition=False,
+    resign_threshold=None,
+    resign_after=2,
+    resign_disabled=False,
+    value_trace=None,
+):
+    """
+    play_self_play_game as a generator: yields a state tensor whenever the
+    search needs the network, expects (policy_logits, value) sent back,
+    and returns (examples, info). Arguments as in play_self_play_game.
     """
     if num_simulations < 1:
         raise ValueError("num_simulations must be at least 1")
@@ -139,11 +201,14 @@ def play_self_play_game(
     state = GameState()
     records = []  # (tensor, policy, side_to_move) per ply
     plies = 0
+    low_streak = {Color.WHITE: 0, Color.BLACK: 0}
+    would_resign = None  # first side whose evaluation crossed the threshold
+    resigned = None
 
     while not state.is_game_over() and plies < max_plies:
-        visit_counts, _ = run_mcts(
+        stats = {}
+        visit_counts, _ = yield from mcts_search(
             state,
-            network_fn,
             num_simulations,
             c_puct,
             encoding.state_to_tensor,
@@ -152,11 +217,26 @@ def play_self_play_game(
             dirichlet_alpha=dirichlet_alpha,
             dirichlet_eps=dirichlet_eps,
             rng=rng,
+            stats=stats,
         )
         if avoid_repetition:
             visit_counts, _ = filter_repeating_moves(state, visit_counts)
         policy = (visit_counts / visit_counts.sum()).astype(np.float32)
-        records.append((encoding.state_to_tensor(state), policy, state.side_to_move))
+        mover = state.side_to_move
+        records.append((encoding.state_to_tensor(state), policy, mover))
+        if value_trace is not None:
+            value_trace.append((mover, stats["root_value"]))
+
+        if resign_threshold is not None:
+            if stats["root_value"] < -resign_threshold:
+                low_streak[mover] += 1
+            else:
+                low_streak[mover] = 0
+            if low_streak[mover] >= resign_after and would_resign is None:
+                would_resign = mover
+                if not resign_disabled:
+                    resigned = mover
+                    break
 
         temperature = 1.0 if plies < temperature_moves else 0.0
         action = select_action_from_visits(visit_counts, temperature, rng)
@@ -165,7 +245,11 @@ def play_self_play_game(
 
     movers = [mover for _, _, mover in records]
     result = state.result() if state.is_game_over() else None
-    if result is None or result == 0:
+    if resigned is not None:
+        # A loss for the side that resigned (it was to move at the end).
+        values = outcome_values(movers, -1.0, resigned)
+        outcome = "white" if resigned.opponent == Color.WHITE else "black"
+    elif result is None or result == 0:
         outcome = "unfinished" if result is None else "draw"
         if material_scale is not None:
             values = material_values(movers, state, material_scale)
@@ -179,4 +263,11 @@ def play_self_play_game(
     examples = [
         (tensor, policy, value) for (tensor, policy, _), value in zip(records, values)
     ]
-    return examples, {"plies": plies, "outcome": outcome}
+    info = {"plies": plies, "outcome": outcome}
+    if resign_threshold is not None:
+        info["resigned"] = resigned is not None
+        info["would_resign"] = (
+            None if would_resign is None
+            else "white" if would_resign == Color.WHITE else "black"
+        )  # fmt: skip
+    return examples, info

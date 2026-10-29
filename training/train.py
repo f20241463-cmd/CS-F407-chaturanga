@@ -28,12 +28,13 @@ import time
 import numpy as np
 import torch
 
-from network.agent import make_network_fn
+from network.agent import make_batch_network_fn, make_network_fn
 from network.checkpoint import load_checkpoint, save_checkpoint
 from network.loss import AlphaZeroLoss
 from network.model import ChaturangaNet
 from training.replay_buffer import ReplayBuffer, compact_example
-from training.self_play import play_self_play_game
+from training.batched_self_play import play_games_batched
+from training.self_play import play_self_play_game, self_play_game_steps
 
 LOG_FIELDS = [
     "iteration",
@@ -51,6 +52,9 @@ LOG_FIELDS = [
     "value_loss",
     "selfplay_seconds",
     "train_seconds",
+    "resigned",
+    "resign_checks",
+    "resign_wrong",
 ]
 
 
@@ -129,6 +133,25 @@ def parse_args(argv=None):
         "Uses only the rules, so it fits the no-domain-knowledge requirement.",
     )
     p.add_argument(
+        "--resign_threshold",
+        type=float,
+        default=None,
+        help="off by default. If set (for example 0.9), a side whose search "
+        "rates its position below -threshold on --resign_after of its moves in a "
+        "row resigns, and the game counts as its loss, so hopeless games end with "
+        "a real result instead of a 100-ply-rule draw. Uses only the agent's own "
+        "evaluation, as AlphaZero does.",
+    )
+    p.add_argument("--resign_after", type=int, default=2,
+                   help="moves in a row below the threshold before resigning")  # fmt: skip
+    p.add_argument(
+        "--resign_check_fraction",
+        type=float,
+        default=0.1,
+        help="with --resign_threshold, this share of games is played out without "
+        "resigning, to count how often a resignation would have been wrong",
+    )
+    p.add_argument(
         "--train_steps", type=int, default=100, help="gradient steps per iteration"
     )
     p.add_argument("--batch_size", type=int, default=64)
@@ -191,6 +214,31 @@ def parse_args(argv=None):
         "its own seed derived from (--seed, iteration, game number), so the games "
         "do not depend on how many workers there are. Use about one per CPU core.",
     )
+    p.add_argument(
+        "--selfplay_device",
+        default=None,
+        help="off by default (self-play runs one game at a time on the CPU). If "
+        "set (mps or cuda), each worker plays its share of the iteration's games "
+        "side by side and evaluates their positions in one batch on this device. "
+        "Games use the same per-game seeds as with --workers; the moves only "
+        "differ where GPU rounding changes a close choice.",
+    )
+    p.add_argument(
+        "--cpu_below",
+        type=int,
+        default=4,
+        help="with --selfplay_device, batches of fewer positions than this run on "
+        "the CPU (near the end of an iteration, when few games are left)",
+    )
+    p.add_argument(
+        "--batch_groups",
+        type=int,
+        default=1,
+        help="with --selfplay_device, split each worker's games into this many "
+        "groups that take turns, so the CPU searches one group while the GPU "
+        "evaluates another. 1 (default) was as fast or faster in our tests, "
+        "since smaller batches cost the GPU more",
+    )
     args = p.parse_args(argv)
     if args.workers < 1:
         p.error("--workers must be at least 1")
@@ -205,11 +253,39 @@ def parse_args(argv=None):
     return args
 
 
+def resign_counts(infos):
+    """
+    How many games ended by resignation, how many check games (played out
+    although a side would have resigned) there were, and in how many of
+    those the side that would have resigned did not lose. Empty without
+    resignation.
+    """
+    if not infos or "resigned" not in infos[0]:
+        return {"resigned": "", "resign_checks": "", "resign_wrong": ""}
+    checks = [i for i in infos if not i["resigned"] and i["would_resign"]]
+    wrong = sum(1 for i in checks if i["outcome"] != _opponent_name(i["would_resign"]))
+    return {
+        "resigned": sum(1 for i in infos if i["resigned"]),
+        "resign_checks": len(checks),
+        "resign_wrong": wrong,
+    }
+
+
+def _opponent_name(color_name):
+    return "black" if color_name == "white" else "white"
+
+
 def append_log_row(path, row):
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     write_header = not os.path.exists(path) or os.path.getsize(path) == 0
+    fields = LOG_FIELDS
+    if not write_header:
+        # Keep an existing log's columns, so a resumed run started by an
+        # older version of this script still lines up.
+        with open(path, newline="") as f:
+            fields = next(csv.reader(f))
     with open(path, "a", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=LOG_FIELDS)
+        writer = csv.DictWriter(f, fieldnames=fields, extrasaction="ignore")
         if write_header:
             writer.writeheader()
         writer.writerow(row)
@@ -225,6 +301,9 @@ _SELF_PLAY_KEYS = (
     "draw_value",
     "material_scale",
     "avoid_repetition",
+    "resign_threshold",
+    "resign_after",
+    "resign_check_fraction",
 )
 
 # Per-process state of a self-play worker: the network it is currently
@@ -270,9 +349,104 @@ def _play_one_game(task):
         rng=np.random.default_rng(seed),
         material_scale=settings["material_scale"],
         avoid_repetition=settings["avoid_repetition"],
+        **_resign_settings(settings, _check_rng(seed)),
     )
     compact = [compact_example(t, p, v) for t, p, v in examples]
     return game_index, compact, info, time.time() - t0
+
+
+def _resign_settings(settings, check_rng):
+    """Resignation arguments for one game; check_rng decides if it is a check game."""
+    if settings["resign_threshold"] is None:
+        return {}
+    return {
+        "resign_threshold": settings["resign_threshold"],
+        "resign_after": settings["resign_after"],
+        "resign_disabled": bool(check_rng.random() < settings["resign_check_fraction"]),
+    }
+
+
+def _check_rng(seed):
+    """A generator for the check-game draw, separate from the game's own."""
+    return np.random.default_rng([*seed, 1])
+
+
+def _game_steps(settings, seed):
+    return self_play_game_steps(
+        num_simulations=settings["simulations"],
+        c_puct=settings["c_puct"],
+        temperature_moves=settings["temperature_moves"],
+        dirichlet_alpha=settings["dirichlet_alpha"],
+        dirichlet_eps=settings["dirichlet_eps"],
+        max_plies=settings["max_plies"],
+        draw_value=settings["draw_value"],
+        rng=np.random.default_rng(seed),
+        material_scale=settings["material_scale"],
+        avoid_repetition=settings["avoid_repetition"],
+        **_resign_settings(settings, _check_rng(seed)),
+    )
+
+
+def _play_game_batch(task):
+    """
+    Worker side of batched self-play: play several games side by side,
+    evaluating their positions together on the given device.
+    """
+    game_indices, seeds, state_dict, config, settings, device, cpu_below, groups, total = task
+    model = ChaturangaNet(**config)
+    model.load_state_dict(state_dict)
+    batch_fn = make_batch_network_fn(model, device=device, cpu_below=cpu_below)
+    t0 = time.time()
+
+    def done(i, result):
+        # Keep a compact copy of each game as soon as it ends: full examples
+        # are about 20 KB each.
+        examples, info = result
+        print(
+            f"  game {game_indices[i] + 1}/{total}: {info['outcome']:10s} "
+            f"{info['plies']:4d} plies  ({time.time() - t0:.1f}s)",
+            flush=True,
+        )
+        return [compact_example(t, p, v) for t, p, v in examples], info
+
+    games = [_game_steps(settings, seed) for seed in seeds]
+    results = play_games_batched(games, batch_fn, groups=groups, on_done=done)
+    return [(g, examples, info) for g, (examples, info) in zip(game_indices, results)]
+
+
+def run_self_play_batched(model, args, pool, iteration, run_seed):
+    """
+    Batched self-play: the iteration's games are dealt out to the workers
+    (or all played here without a pool), and each worker plays its games
+    side by side with one network call per step on --selfplay_device.
+    Uses the same per-game seeds as run_self_play_parallel.
+    """
+    state_dict = {k: v.detach().cpu() for k, v in model.state_dict().items()}
+    settings = {k: getattr(args, k) for k in _SELF_PLAY_KEYS}
+    config = model_config(model)
+    n = args.games_per_iter
+    chunks = [list(range(w, n, max(1, args.workers))) for w in range(max(1, args.workers))]
+    tasks = [
+        (
+            chunk,
+            [game_seed(run_seed, iteration, g) for g in chunk],
+            state_dict,
+            config,
+            settings,
+            args.selfplay_device,
+            args.cpu_below,
+            args.batch_groups,
+            n,
+        )
+        for chunk in chunks
+        if chunk
+    ]
+    results = [None] * n
+    outputs = pool.imap_unordered(_play_game_batch, tasks) if pool else map(_play_game_batch, tasks)
+    for chunk_result in outputs:
+        for g, examples, info in chunk_result:
+            results[g] = (examples, info)
+    return [r[0] for r in results], [r[1] for r in results]
 
 
 def game_seed(run_seed, iteration, game_index):
@@ -308,6 +482,7 @@ def run_self_play_parallel(model, args, pool, iteration, run_seed):
 def run_self_play(model, args, rng):
     model.eval()
     network_fn = make_network_fn(model, device=args.device)
+    settings = {k: getattr(args, k) for k in _SELF_PLAY_KEYS}
     examples_per_game, infos = [], []
     for g in range(args.games_per_iter):
         t0 = time.time()
@@ -323,6 +498,7 @@ def run_self_play(model, args, rng):
             rng=rng,
             material_scale=args.material_scale,
             avoid_repetition=args.avoid_repetition,
+            **_resign_settings(settings, rng),
         )
         examples_per_game.append(examples)
         infos.append(info)
@@ -440,7 +616,14 @@ def _train_loop(model, optimizer, loss_fn, buffer, args, rng, run_seed, start_it
         who = "" if player is model else " (bootstrap model)"
         print(f"\nIteration {iteration}/{args.iterations}: self-play{who}")
         t0 = time.time()
-        if pool is None:
+        if args.selfplay_device:
+            compact_games, infos = run_self_play_batched(
+                player, args, pool, iteration, run_seed
+            )
+            for entries in compact_games:
+                buffer.add_compact_game(entries)
+            del compact_games
+        elif pool is None:
             examples_per_game, infos = run_self_play(player, args, rng)
             for examples in examples_per_game:
                 buffer.add_game(examples)
@@ -487,6 +670,7 @@ def _train_loop(model, optimizer, loss_fn, buffer, args, rng, run_seed, start_it
             **losses,
             "selfplay_seconds": round(selfplay_seconds, 2),
             "train_seconds": round(train_seconds, 2),
+            **resign_counts(infos),
         }
         append_log_row(args.log, row)
 
@@ -525,7 +709,13 @@ def _train_loop(model, optimizer, loss_fn, buffer, args, rng, run_seed, start_it
             f"D {row['draws']} / unfinished {row['unfinished']}, "
             f"avg {row['avg_plies']} plies, decisive {row['decisive_fraction']:.0%}, "
             f"buffer {len(buffer)}, {loss_text}. "
-            f"Self-play {selfplay_seconds:.0f}s, train {train_seconds:.0f}s. "
+            + (
+                f"resigned {row['resigned']} (wrong in {row['resign_wrong']} of "
+                f"{row['resign_checks']} checks). "
+                if row["resigned"] != ""
+                else ""
+            )
+            + f"Self-play {selfplay_seconds:.0f}s, train {train_seconds:.0f}s. "
             f"Saved {iter_path}. Estimated time left: {remaining / 60:.1f} min"
         )
 

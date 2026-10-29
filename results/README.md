@@ -352,6 +352,71 @@ Together with the lower learning rate's small late steps (0.505 to 0.531),
 this suggests the 4 x 64 network at 50 simulations is close to as strong as it
 gets with our compute.
 
+### Faster self-play on the GPU
+
+Self-play can now run on the laptop's GPU (`--selfplay_device mps`, see
+`training/README.md`). Each worker plays its games side by side and sends
+the positions they are waiting on to the GPU in one batch. The moves are
+unchanged: on the CPU the batched games are exactly the same games, checked
+by tests. The search itself also got about 20% faster with the same moves.
+
+| Network | Games | Before (6 CPU workers) | GPU self-play |
+|---|---|---|---|
+| 4 x 64 | 120 | 544 s | 246 s |
+| 6 x 128 | 60 | 830 s | 351 s |
+
+For the 6 x 128 network an iteration of 100 games now takes about 10
+minutes (self-play about 8.5, training 1.5), against 28 to 30 minutes in
+the first attempt.
+
+### The bigger network, second attempt
+
+With the faster self-play we trained the 6 x 128 network again. This time
+iterations 1 to 30 learned from games played by the final model (iteration
+560), instead of 5 iterations from iteration 460, so the network started
+from our best agent's play. From iteration 31 it played its own games.
+
+| Run | Iteration | Wins | Losses | Draws | Score vs final (560) |
+|---|---|---|---|---|---|
+| learning rate 1e-3 | 30 (end of learning from 560's games) | 5 | 6 | 89 | 0.495 +/- 0.032 |
+| learning rate 1e-3 | 60 | 2 | 13 | 82 | 0.443 +/- 0.037 |
+| learning rate 1e-3 | 90 | 3 | 17 | 80 | 0.430 +/- 0.042 |
+| learning rate 1e-3 | 120 | 1 | 16 | 80 | 0.423 +/- 0.039 |
+| learning rate 1e-4, from iteration 30 | 50 | 4 | 6 | 87 | 0.490 +/- 0.032 |
+| learning rate 1e-4, from iteration 30 | 70 | 6 | 7 | 86 | 0.495 +/- 0.036 |
+
+Learning from the final model's games brought the bigger network level with
+it in 30 iterations. On its own games at 1e-3 it then got steadily weaker;
+at 1e-4 it held level but did not pass the final model. That run stopped at
+iteration 90 (the laptop ran out of battery) and we did not continue it.
+Logs and matches are in `bigger_network/`.
+
+### Could hopeless games end early? (resignation)
+
+AlphaZero lets a side resign when its search rates the position as clearly
+lost, so lost games end with a real result instead of a long draw. Training
+supports this now (`--resign_threshold`), but first we measured whether the
+final model's evaluation is good enough to resign safely. It played 160
+self-play games and we recorded its evaluation of every position
+(`python -m evaluation.resign_check`, output in `resign_check.txt`):
+
+| Resign when below | for moves in a row | Would resign | Wrong (did not lose) |
+|---|---|---|---|
+| -0.3 | 2 | 34 | 32 |
+| -0.4 | 2 | 16 | 14 |
+| -0.5 | 2 | 7 | 6 |
+| -0.6 | 2 | 2 | 2 |
+| -0.8 | 3 | 0 | 0 |
+
+There is no safe threshold: almost every resignation would have been in a
+game that ended in a draw. The 21 decisive games were mostly short (11 to
+250 plies), and the losing side's evaluation stayed near 0 until just
+before the mate. The model does not see a loss coming, so resignation would
+mainly turn draws into wrong losses, and we did not train with it. This
+also describes the model's main weakness from the inside: it wins by
+punishing sudden mistakes, and it cannot yet tell when a game is slowly
+being lost or won.
+
 ## Limitations
 
 The stub-network results measure what search depth alone contributes, with no learned signal involved. The simulation-depth sweep's per-depth samples (1 to 4 decided games each) are too small to support a confident claim about how win rate scales with simulation count specifically; the pooled across-depth result is the more defensible number from that data. The benchmarks of the 400-game runs use 20 games per checkpoint, so their margins are about +/- 0.1; the long-run matches and benchmarks use 100 games (200 for the last comparison), with margins of about +/- 0.03 to 0.06. Differences smaller than that cannot be resolved, and with most games drawn a score says little about how often the model can actually win. The human games so far were played against final B, not the final model.
@@ -380,3 +445,5 @@ The stub-network results measure what search depth alone contributes, with no le
 - `final_endings_{random,greedy}.log`: how the final model's games end
 - `thinking_time/`: the final model at 200 simulations per move against itself at 50
 - `draw_penalty/`: the draw-penalty continuation (training log and matches against the final model)
+- `bigger_network/`: the second 6 x 128 attempt (training logs at both learning rates and matches against the final model)
+- `resign_check.txt`: how often resigning would have been right, for each threshold
