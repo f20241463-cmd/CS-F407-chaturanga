@@ -330,9 +330,15 @@ move played itself at 50 simulations (100 games, `thinking_time/`):
 | Match | Wins | Losses | Draws | Unfinished | Score |
 |---|---|---|---|---|---|
 | final, 200 sims vs final, 50 sims | 9 | 4 | 86 | 1 | 0.525 +/- 0.035 |
+| final, 400 sims vs final, 50 sims | 12 | 0 | 88 | 0 | 0.560 +/- 0.032 |
+| final, 800 sims vs final, 50 sims | 23 | 0 | 76 | 1 | 0.616 +/- 0.042 |
 
-Four times the search gives only a small edge, because more search does not
-help the model finish games: 86 of 100 were still drawn.
+Four times the search gives only a small edge, but the gain grows with more:
+at 800 simulations the model won 23 games and lost none. Most games are still
+drawn, so extra search helps the model avoid mistakes and punish the other
+side's, more than it helps it convert a slow advantage. Each move takes about
+1 to 2 seconds at 800 simulations, so this is the setting to use when playing
+against the model (`play_vs_ai.py --simulations 800`).
 
 **Counting draws as slightly bad.** We continued the final model from
 iteration 560 with `--draw_value -0.2`, so every position of a drawn or
@@ -417,6 +423,25 @@ also describes the model's main weakness from the inside: it wins by
 punishing sudden mistakes, and it cannot yet tell when a game is slowly
 being lost or won.
 
+### Even smaller learning steps
+
+We continued the final model from iteration 560 for 140 more iterations at
+learning rate 2e-5 (seed 12, GPU self-play, 3 to 5 minutes per iteration,
+about 10 hours in all). The first iterations only refill the replay buffer,
+so training restarted at iteration 564 (`smaller_lr/`):
+
+| Match against the final (560) | Games | Wins | Losses | Draws | Unfinished | Score |
+|---|---|---|---|---|---|---|
+| iteration 620 | 100 | 3 | 1 | 96 | 0 | 0.510 +/- 0.020 |
+| iteration 660 | 100 | 7 | 7 | 84 | 2 | 0.500 +/- 0.037 |
+| iteration 700 | 200 | 15 | 9 | 173 | 3 | 0.515 +/- 0.024 |
+
+None of these is clearly stronger than the final model, so we kept
+iteration 560 and stopped the run at iteration 702. Earlier stretches at
+1e-4 and 3e-5 still gained about 0.52 to 0.53 per stretch; at 2e-5 the gain
+is within the margin. With the 4 x 64 network at 50 simulations, more
+training on our laptop no longer makes the model measurably stronger.
+
 ## Limitations
 
 The stub-network results measure what search depth alone contributes, with no learned signal involved. The simulation-depth sweep's per-depth samples (1 to 4 decided games each) are too small to support a confident claim about how win rate scales with simulation count specifically; the pooled across-depth result is the more defensible number from that data. The benchmarks of the 400-game runs use 20 games per checkpoint, so their margins are about +/- 0.1; the long-run matches and benchmarks use 100 games (200 for the last comparison), with margins of about +/- 0.03 to 0.06. Differences smaller than that cannot be resolved, and with most games drawn a score says little about how often the model can actually win. The human games so far were played against final B, not the final model.
@@ -443,7 +468,8 @@ The stub-network results measure what search depth alone contributes, with no le
 - `benchmark_long_{random,greedy,untrained}.csv`, `benchmark_curve_long.png`: long-run benchmarks, 100 games per checkpoint
 - `long_run_matches/`: every head-to-head match of the long run (`rN` is iteration N, `big_rN` the bigger network)
 - `final_endings_{random,greedy}.log`: how the final model's games end
-- `thinking_time/`: the final model at 200 simulations per move against itself at 50
+- `thinking_time/`: the final model at 200, 400 and 800 simulations per move against itself at 50
 - `draw_penalty/`: the draw-penalty continuation (training log and matches against the final model)
 - `bigger_network/`: the second 6 x 128 attempt (training logs at both learning rates and matches against the final model)
 - `resign_check.txt`: how often resigning would have been right, for each threshold
+- `smaller_lr/`: the continuation at learning rate 2e-5 (training log and matches against the final model)
