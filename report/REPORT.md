@@ -25,7 +25,9 @@ player. Its main weakness is converting an advantage: most of its games end by
 the 100-ply no-progress rule rather than checkmate. A larger 6-block,
 128-filter network did not catch up in the time we had. Two later tests, more
 search per move when playing and counting draws as slightly bad in training,
-gave a small gain and a loss of strength respectively. After moving self-play
+gave a gain and a loss of strength respectively: with 800 simulations per
+move the final model beats itself at 50 by 23 wins to 0. 140 more iterations
+at an even smaller learning rate gave no measurable gain. After moving self-play
 to the laptop's GPU (about 2.2 to 2.4 times faster), a second attempt with the
 larger network, started from the final model's games, reached the final
 model's level but did not pass it. A measurement of the final model's own
@@ -56,7 +58,7 @@ iterations and baseline players, with learning curves. All four are complete.
 The report follows the project in order: the first runs (Section 5.1 and
 6.1 to 6.5) gave a negative result, the diagnosis (Section 7) led to a faster
 pipeline and a much longer run, and that long run produced the final model
-(Sections 5.3 and 6.6 to 6.10). Sections 6.11 to 6.13 test what else could
+(Sections 5.3 and 6.6 to 6.10). Sections 6.11 to 6.14 test what else could
 make it stronger.
 
 # 2. The game
@@ -241,7 +243,7 @@ played by our best 4 x 64 checkpoint so it did not start from random play
 # 6. Results
 
 Sections 6.1 to 6.5 are the first runs; 6.6 to 6.10 are the long run; 6.11
-to 6.13 are later attempts to go further; 6.14 breaks the constraints.
+to 6.14 are later attempts to go further; 6.15 breaks the constraints.
 
 ## 6.1 Learning curves
 
@@ -413,8 +415,20 @@ rate instead. Section 6.12 tries it again with faster self-play.
 **More search when playing.** The 30 to 50 simulation limit applies to
 training, so we also measured the final model with more search at play time.
 With 200 simulations per move against itself at 50 (100 games) it scored
-9 wins, 4 losses and 86 draws (0.525 +/- 0.035). Four times the search gives
-only a small edge, since the extra search does not help it finish games.
+9 wins, 4 losses and 86 draws (0.525 +/- 0.035). More search helps more:
+
+| Final model, simulations per move (vs itself at 50, 100 games) | Wins | Losses | Draws | Unfinished | Score |
+|---|---|---|---|---|---|
+| 200 | 9 | 4 | 86 | 1 | 0.525 +/- 0.035 |
+| 400 | 12 | 0 | 88 | 0 | 0.560 +/- 0.032 |
+| 800 | 23 | 0 | 76 | 1 | 0.616 +/- 0.042 |
+
+At 800 simulations the model won 23 games and lost none, a larger gain than
+the last 100 iterations of training gave. Most games are still drawn, so the
+extra search mainly avoids mistakes and punishes the opponent's, rather than
+converting slow advantages. A move then takes about 1 to 2 seconds, which is
+fine for play against a person, so this is the setting we recommend for
+games against the final model.
 
 **Counting draws as slightly bad.** We continued the final model from
 iteration 560 with a value target of -0.2 for both sides in every drawn or
@@ -468,7 +482,22 @@ Nearly every resignation would have been in a game that ended in a draw. The
 evaluation stayed near 0 until just before the mate. Resigning would have
 turned draws into wrong losses, so we did not train with it.
 
-## 6.14 Exploratory runs (outside the course constraints)
+## 6.14 Even smaller learning steps
+
+The lower learning rates of Section 6.8 still gave small gains, so we
+continued the final model from iteration 560 for 140 more iterations at
+learning rate 2e-5 (about 10 hours with GPU self-play):
+
+| Match vs final (560) | Games | Wins | Losses | Draws | Score |
+|---|---|---|---|---|---|
+| iteration 620 | 100 | 3 | 1 | 96 | 0.510 +/- 0.020 |
+| iteration 660 | 100 | 7 | 7 | 84 | 0.500 +/- 0.037 |
+| iteration 700 | 200 | 15 | 9 | 173 | 0.515 +/- 0.024 |
+
+No checkpoint is clearly stronger than the final model, so we kept
+iteration 560 and stopped the run at iteration 702.
+
+## 6.15 Exploratory runs (outside the course constraints)
 
 We ran two short experiments that break the constraints, to test the
 diagnosis below. They are not the final agent.
@@ -525,12 +554,14 @@ beat for an agent that cannot yet force checkmate.
 
 **The limit of this setup.** The last tests point the same way. Lowering the
 learning rate further gave only small steps (0.505 and 0.531 against the
-previous checkpoint), four times more search at play time gave 0.525, and
-penalizing draws made the agent play more decisive games against itself but
-lose more against the final model (Section 6.11). Pushing for decisive results
+previous checkpoint) and then none at all (0.515 after 140 iterations at
+2e-5, Section 6.14), and penalizing draws made the agent play more decisive
+games against itself but lose more against the final model (Section 6.11). Pushing for decisive results
 without a better sense of which positions are won seems to lead to riskier,
 worse play. Within the constraints and our compute, the 4 x 64 network at 50
-simulations appears close to its limit.
+simulations appears close to its limit. The one clear gain left is outside
+training: 800 simulations per move at play time beat the final model at 50
+by 23 wins to 0 (Section 6.11).
 
 **Size and what the value head knows.** The larger network learned to play as
 well as the final model from its games, but its own games did not take it
@@ -574,8 +605,10 @@ faster, a run of 54,000 games with the same method produced a clearly stronger
 agent. The final model beats its starting point 27 wins to 0 and beats random
 and untrained play, losing almost no games. It still draws nearly every game
 against greedy capture and rarely checkmates, so learning to convert an
-advantage remains the open problem: neither more search at play time,
-counting draws as bad in training, nor a larger network solved it, and the
+advantage remains the open problem. More search at play time makes it
+clearly stronger (23 wins to 0 at 800 simulations against 50), but neither
+that, longer training at smaller learning rates, counting draws as bad, nor a
+larger network solved it, and the
 model's own evaluations show why: it does not yet recognize won or lost
 positions until the end is near. The evaluation tools (a fixed benchmark
 protocol, head-to-head matches, game-ending counts and human-game logging) made
@@ -616,7 +649,7 @@ OMP_NUM_THREADS=1 python -m training.train --resume checkpoints/final_B/latest.p
     --checkpoint_dir checkpoints/long --log checkpoints/long/log.csv
 python -m evaluation.parallel_match --a models/chaturangzero_final.pt \
     --b checkpoints/final_B/latest.pt --games 100 --workers 6
-python play_vs_ai.py --checkpoint models/chaturangzero_final.pt --player NAME
+python play_vs_ai.py --checkpoint models/chaturangzero_final.pt --player NAME --simulations 800
 ```
 
 Every log, benchmark CSV, match log and plot is in `results/`, and the final

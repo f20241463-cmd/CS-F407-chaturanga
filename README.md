@@ -35,7 +35,7 @@ tests/        123 automated tests
 ```bash
 python -m pytest -q                                  # run all tests
 python play.py                                       # you vs a random player
-python play_vs_ai.py --checkpoint models/chaturangzero_final.pt --player YOUR_NAME
+python play_vs_ai.py --checkpoint models/chaturangzero_final.pt --player YOUR_NAME --simulations 800
 python -m training.train --iterations 2 --games_per_iter 2 --checkpoint_dir checkpoints/demo --log checkpoints/demo/log.csv
 python -m evaluation.benchmark --checkpoint_dir checkpoints/demo --opponent random --games 4 --out checkpoints/demo/bench.csv
 ```
@@ -67,10 +67,12 @@ no domain knowledge), the final model:
 
 Its main weakness is finishing games: it gets ahead but rarely checkmates, so
 most games end by the 100-ply no-progress rule. A bigger 6 x 128 network was
-also tried and stopped, since it stayed behind after 61 iterations. Playing
-with 200 simulations per move instead of 50 helps only a little (0.525), and
-training on with draws counted as slightly bad made it weaker (0.454), so
-iteration 560 stays the final model. Self-play later moved to the GPU (about
+also tried and stopped, since it stayed behind after 61 iterations. Thinking
+longer when playing helps: with 800 simulations per move the final model beats
+itself at 50 by 23 wins to 0 (0.616). Training on with draws counted as
+slightly bad made it weaker (0.454), and 140 more iterations at a smaller
+learning rate gave no measurable gain (0.515), so iteration 560 stays the
+final model. Self-play later moved to the GPU (about
 2.2 to 2.4 times faster); with it, the bigger network reached the final
 model's level by learning from its games but did not pass it, and a
 measurement showed that resigning hopeless games cannot work yet, because the

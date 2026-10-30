@@ -118,7 +118,10 @@ at 220), followed by three resumed stretches with the same options except:
 
 Each resumed stretch used `--min_buffer 150000`, so the first two iterations
 only refill the replay buffer before training starts again. Iteration 560 is
-saved in the repo as `models/chaturangzero_final.pt`.
+saved in the repo as `models/chaturangzero_final.pt`. A later stretch from
+iteration 560 at `--lr 2e-5` (seed 12, `--selfplay_device mps`, iterations
+561 to 702) was not measurably stronger and was not kept
+(`results/smaller_lr/`).
 
 ### A bigger network, started from an earlier agent's games
 
