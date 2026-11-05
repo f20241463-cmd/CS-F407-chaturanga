@@ -156,11 +156,11 @@ The code is plain Python with NumPy and PyTorch, organized by component:
 | `training/` | self-play, replay buffer, training loop |
 | `evaluation/` | baseline players, benchmark, parallel matches, game-ending classifier, human-game log |
 
-123 automated tests cover the rules (36 tests, including check, checkmate,
+127 automated tests cover the rules (36 tests, including check, checkmate,
 stalemate, promotion and the draw rules), the search (including a toy game
 with a known best move), the network, value-target signs, policy targets, a
 complete small training run including resuming from a checkpoint, the
-benchmark scoring, the evaluation tools and batched GPU self-play. All runs
+benchmark scoring, the evaluation tools, batched GPU self-play and the browser game. All runs
 are seeded and repeatable.
 
 **Faster self-play.** For the long run we sped up self-play about 11 times on
@@ -598,7 +598,7 @@ What we expect would help most, in order:
 # 9. Conclusion
 
 We implemented every part of an AlphaZero-style system for Chaturanga under the
-course constraints and verified it with 123 tests. With 400 self-play games per
+course constraints and verified it with 127 tests. With 400 self-play games per
 run the agent did not improve, and we measured why: draws starve the value
 head, and the data was far too small. After making self-play about 11 times
 faster, a run of 54,000 games with the same method produced a clearly stronger
@@ -650,6 +650,7 @@ OMP_NUM_THREADS=1 python -m training.train --resume checkpoints/final_B/latest.p
 python -m evaluation.parallel_match --a models/chaturangzero_final.pt \
     --b checkpoints/final_B/latest.pt --games 100 --workers 6
 python play_vs_ai.py --checkpoint models/chaturangzero_final.pt --player NAME --simulations 800
+python play_web.py --player NAME    # the same game in the browser
 ```
 
 Every log, benchmark CSV, match log and plot is in `results/`, and the final
