@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ChaturangZero</title>
+<style>
+  :root {
+    --bg: #f6f4ef;
+    --panel: #ffffff;
+    --ink: #1f1d1a;
+    --muted: #6b665e;
+    --line: #e2ddd3;
+    --light-sq: #efe3c8;
+    --dark-sq: #b9895a;
+    --accent: #2f6f5e;
+    --accent-soft: rgba(47, 111, 94, 0.18);
+    --last: rgba(232, 190, 70, 0.55);
+    --check: rgba(200, 60, 50, 0.65);
+    --white-piece: #fffdf8;
+    --black-piece: #23201c;
+    --shadow: 0 1px 2px rgba(0,0,0,.06), 0 8px 24px rgba(0,0,0,.06);
+    --on-accent: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #171614;
+      --panel: #211f1c;
+      --ink: #f0ece4;
+      --muted: #a39d92;
+      --line: #35322d;
+      --light-sq: #d9c7a3;
+      --dark-sq: #8f6643;
+      --accent: #6cc3a8;
+      --accent-soft: rgba(108, 195, 168, 0.22);
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.3);
+      --on-accent: #10201b;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  header {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 24px 16px 8px;
+  }
+  h1 { margin: 0; font-size: 26px; letter-spacing: -0.01em; }
+  header p { margin: 4px 0 0; color: var(--muted); }
+  main {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 16px;
+    display: grid;
+    grid-template-columns: minmax(0, 600px) minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+  }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+
+  .board-wrap { display: grid; grid-template-columns: 18px 1fr; grid-template-rows: 1fr 18px; gap: 4px; }
+  .ranks, .files { display: grid; color: var(--muted); font-size: 12px; }
+  .ranks { grid-template-rows: repeat(8, 1fr); align-items: center; justify-items: center; }
+  .files { grid-template-columns: repeat(8, 1fr); justify-items: center; grid-column: 2; }
+  .board {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    aspect-ratio: 1;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    user-select: none;
+  }
+  .sq {
+    position: relative;
+    aspect-ratio: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+  }
+  .sq.light { background: var(--light-sq); }
+  .sq.dark { background: var(--dark-sq); }
+  .sq.last::before, .sq.sel::before, .sq.check::before {
+    content: ""; position: absolute; inset: 0;
+  }
+  .sq.last::before { background: var(--last); }
+  .sq.sel::before { background: var(--accent-soft); box-shadow: inset 0 0 0 3px var(--accent); }
+  .sq.check::before { background: radial-gradient(circle, var(--check) 30%, transparent 75%); }
+  .sq.mine, .sq.target { cursor: pointer; }
+  .sq.target::after {
+    content: ""; position: absolute;
+    width: 28%; height: 28%; border-radius: 50%;
+    background: rgba(30, 30, 30, 0.28);
+  }
+  .sq.target.capture::after {
+    width: 86%; height: 86%; background: transparent;
+    box-shadow: inset 0 0 0 5px rgba(30, 30, 30, 0.28);
+  }
+  .piece {
+    position: relative;
+    z-index: 1;
+    font-size: min(9vw, 54px);
+    line-height: 1;
+    font-family: "Apple Symbols", "Segoe UI Symbol", "DejaVu Sans", "Noto Sans Symbols 2", serif;
+  }
+  .piece.white { color: var(--white-piece); -webkit-text-stroke: 1.2px #2a2622; text-shadow: 0 1px 1px rgba(0,0,0,.25); }
+  .piece.black { color: var(--black-piece); text-shadow: 0 1px 0 rgba(255,255,255,.25); }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px;
+    box-shadow: var(--shadow);
+  }
+  .side { display: grid; gap: 16px; }
+  .status { font-size: 18px; font-weight: 600; min-height: 26px; }
+  .status.done { color: var(--accent); }
+  .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  button {
+    font: inherit; font-size: 14px;
+    padding: 8px 12px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+    cursor: pointer;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+  button:disabled { opacity: .5; cursor: default; }
+  h2 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .meter { height: 10px; border-radius: 5px; background: var(--line); overflow: hidden; margin: 6px 0 4px; }
+  .meter > div { height: 100%; background: var(--accent); width: 50%; transition: width .3s; }
+  .tops { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .chip { font: 13px ui-monospace, Menlo, monospace; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); }
+  .moves {
+    font: 13px/1.6 ui-monospace, Menlo, monospace;
+    max-height: 180px; overflow-y: auto;
+    display: grid; grid-template-columns: 36px 1fr 1fr; column-gap: 8px;
+  }
+  .moves .n { color: var(--muted); }
+  .guide { display: grid; grid-template-columns: 32px 1fr; gap: 6px 8px; align-items: center; font-size: 13px; }
+  .guide .piece { font-size: 26px; }
+  .guide b { font-weight: 600; }
+  .spinner {
+    display: inline-block; width: 14px; height: 14px; margin-right: 6px; vertical-align: -2px;
+    border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error { color: #c0392b; font-size: 13px; min-height: 18px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>ChaturangZero</h1>
+  <p id="about">An AlphaZero-style agent for Chaturanga that learned from self-play, knowing only the rules.</p>
+</header>
+<main>
+  <section>
+    <div class="board-wrap">
+      <div class="ranks" id="ranks"></div>
+      <div class="board" id="board" aria-label="Chaturanga board"></div>
+      <div class="files" id="files"></div>
+    </div>
+  </section>
+  <aside class="side">
+    <div class="panel">
+      <div class="status" id="status">Loading</div>
+      <div class="sub" id="substatus"></div>
+      <div class="controls">
+        <button class="primary" id="newWhite">New game as White</button>
+        <button id="newBlack">New game as Black</button>
+        <button id="resign">Resign</button>
+      </div>
+      <div class="error" id="error"></div>
+    </div>
+    <div class="panel">
+      <h2>What the agent thinks</h2>
+      <div id="thinkText" class="sub">It has not moved yet.</div>
+      <div class="meter" aria-hidden="true"><div id="meter"></div></div>
+      <div class="sub" style="display:flex;justify-content:space-between"><span>you are better</span><span>agent is better</span></div>
+      <div class="tops" id="tops"></div>
+    </div>
+    <div class="panel">
+      <h2>Moves</h2>
+      <div class="moves" id="moves"></div>
+    </div>
+    <div class="panel">
+      <h2>Pieces</h2>
+      <div class="guide">
+        <span class="piece white">&#9818;&#xFE0E;</span><span><b>Raja</b> (king): one square in any direction</span>
+        <span class="piece white">&#9819;&#xFE0E;</span><span><b>Mantri</b> (counselor): one square diagonally</span>
+        <span class="piece white">&#9820;&#xFE0E;</span><span><b>Ratha</b> (chariot): any distance in a straight line, like a rook</span>
+        <span class="piece white">&#9821;&#xFE0E;</span><span><b>Gaja</b> (elephant): jumps exactly two squares diagonally</span>
+        <span class="piece white">&#9822;&#xFE0E;</span><span><b>Ashva</b> (horse): an L-shaped jump, like a knight</span>
+        <span class="piece white">&#9823;&#xFE0E;</span><span><b>Padati</b> (foot soldier): one step forward, captures diagonally, becomes a Mantri on the last rank</span>
+      </div>
+      <p class="sub">Checkmate wins. Stalemate, threefold repetition and 100 moves without a capture or soldier move are draws.</p>
+    </div>
+  </aside>
+</main>
+<script>
+const GLYPH = { raja: "♚", mantri: "♛", ratha: "♜", gaja: "♝", ashva: "♞", padati: "♟" };
+const FILES = "abcdefgh";
+let view = null;
+let selected = null;
+let busy = false;
+
+const $ = (id) => document.getElementById(id);
+const alg = (sq) => FILES[sq % 8] + (Math.floor(sq / 8) + 1);
+
+async function api(path, body) {
+  const res = await fetch(path, body === undefined ? {} : {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw Object.assign(new Error(data.error || "request failed"), { data });
+  return data;
+}
+
+function order() {
+  // Squares from the top-left corner as the person sees the board.
+  const rows = view.human_color === "white" ? [7,6,5,4,3,2,1,0] : [0,1,2,3,4,5,6,7];
+  const cols = view.human_color === "white" ? [0,1,2,3,4,5,6,7] : [7,6,5,4,3,2,1,0];
+  return { rows, cols };
+}
+
+function render() {
+  const { rows, cols } = order();
+  $("ranks").innerHTML = rows.map((r) => `<span>${r + 1}</span>`).join("");
+  $("files").innerHTML = cols.map((c) => `<span>${FILES[c]}</span>`).join("");
+
+  const last = view.last_move ? [view.last_move.slice(0, 2), view.last_move.slice(2, 4)] : [];
+  const targets = selected ? (view.legal[selected] || []) : [];
+  const board = $("board");
+  board.innerHTML = "";
+  for (const r of rows) {
+    for (const c of cols) {
+      const sq = r * 8 + c;
+      const name = alg(sq);
+      const piece = view.board[sq];
+      const el = document.createElement("div");
+      el.className = "sq " + ((r + c) % 2 === 0 ? "dark" : "light");
+      if (last.includes(name)) el.classList.add("last");
+      if (name === selected) el.classList.add("sel");
+      if (view.legal[name]) el.classList.add("mine");
+      if (targets.includes(name)) el.classList.add("target", ...(piece ? ["capture"] : []));
+      if (piece && piece[0] === "raja" && piece[1] === view.side_to_move && view.in_check) el.classList.add("check");
+      if (piece) {
+        const p = document.createElement("span");
+        p.className = "piece " + piece[1];
+        p.textContent = GLYPH[piece[0]] + "︎";
+        p.title = `${piece[1]} ${piece[0]}`;
+        el.appendChild(p);
+      }
+      el.title = name;
+      el.addEventListener("click", () => onSquare(name));
+      board.appendChild(el);
+    }
+  }
+
+  // Status
+  const status = $("status"), sub = $("substatus");
+  status.classList.toggle("done", !!view.finished);
+  if (view.finished) {
+    const f = view.finished;
+    status.textContent = f.result === "human_win" ? "You win!" : f.result === "agent_win" ? "ChaturangZero wins" : "Draw";
+    sub.textContent = `Game over by ${f.ending}. ` + (view.summary ? `All games so far: ${view.summary}` : "");
+  } else if (busy) {
+    status.innerHTML = '<span class="spinner"></span>ChaturangZero is thinking';
+    sub.textContent = `${view.simulations} search steps per move`;
+  } else {
+    const yours = view.side_to_move === view.human_color;
+    status.textContent = yours ? (view.in_check ? "Your move: you are in check" : "Your move") : "Agent to move";
+    sub.textContent = `You play ${view.human_color}. ${view.no_progress} of 100 moves without a capture or soldier move.`;
+  }
+  $("resign").disabled = !!view.finished || busy;
+  $("newWhite").disabled = busy;
+  $("newBlack").disabled = busy;
+  $("about").textContent = `Playing against ${view.checkpoint} at ${view.simulations} search steps per move` +
+    (view.player && view.player !== "human" ? `, as ${view.player}.` : ".");
+
+  // What the agent thinks
+  const t = view.thinking;
+  if (t) {
+    const pct = Math.round((t.value + 1) * 50);
+    $("meter").style.width = pct + "%";
+    const word = t.value > 0.3 ? "it is winning" : t.value > 0.1 ? "it is slightly better" :
+                 t.value < -0.3 ? "it is losing" : t.value < -0.1 ? "you are slightly better" : "the game is even";
+    $("thinkText").textContent = `After its last search, it thinks ${word} (value ${t.value >= 0 ? "+" : ""}${t.value.toFixed(2)} on a scale from -1 to +1).`;
+    $("tops").innerHTML = t.top.map((m) => `<span class="chip">${m.move} ${Math.round(m.share * 100)}%</span>`).join("") +
+      '<span class="sub" style="align-self:center">moves it considered most</span>';
+  } else {
+    $("meter").style.width = "50%";
+    $("thinkText").textContent = "It has not moved yet.";
+    $("tops").innerHTML = "";
+  }
+
+  // Move list
+  const ms = view.moves;
+  let html = "";
+  for (let i = 0; i < ms.length; i += 2) {
+    html += `<span class="n">${i / 2 + 1}.</span><span>${ms[i]}</span><span>${ms[i + 1] || ""}</span>`;
+  }
+  const box = $("moves");
+  box.innerHTML = html || '<span class="sub" style="grid-column:1/-1">No moves yet.</span>';
+  box.scrollTop = box.scrollHeight;
+}
+
+async function onSquare(name) {
+  if (busy || !view || view.finished || view.side_to_move !== view.human_color) return;
+  $("error").textContent = "";
+  if (selected && (view.legal[selected] || []).includes(name)) {
+    const move = selected + name;
+    selected = null;
+    try {
+      view = await api("/api/move", { move });
+    } catch (e) {
+      $("error").textContent = e.message;
+      if (e.data) view = e.data;
+    }
+    render();
+    await agentTurn();
+    return;
+  }
+  selected = view.legal[name] ? (selected === name ? null : name) : null;
+  render();
+}
+
+async function agentTurn() {
+  if (!view || view.finished || view.side_to_move === view.human_color) return;
+  busy = true;
+  render();
+  try {
+    view = await api("/api/ai", {});
+  } catch (e) {
+    $("error").textContent = e.message;
+    if (e.data) view = e.data;
+  }
+  busy = false;
+  render();
+}
+
+async function newGame(color) {
+  if (busy) return;
+  if (view && view.moves.length && !view.finished &&
+      !confirmInline(`Start a new game? The current one will be recorded as unfinished.`)) return;
+  selected = null;
+  $("error").textContent = "";
+  view = await api("/api/new", { color });
+  render();
+  await agentTurn();
+}
+
+// A second click within a few seconds confirms, so no browser dialog is needed.
+let pending = null;
+function confirmInline(message) {
+  if (pending && Date.now() - pending < 4000) { pending = null; return true; }
+  pending = Date.now();
+  $("error").textContent = message + " Click again to confirm.";
+  return false;
+}
+
+$("newWhite").addEventListener("click", () => newGame("white"));
+$("newBlack").addEventListener("click", () => newGame("black"));
+$("resign").addEventListener("click", async () => {
+  if (busy || !view || view.finished) return;
+  if (!confirmInline("Resign this game?")) return;
+  $("error").textContent = "";
+  view = await api("/api/resign", {});
+  render();
+});
+
+(async () => {
+  view = await api("/api/state");
+  render();
+  await agentTurn();
+})();
+</script>
+</body>
+</html>

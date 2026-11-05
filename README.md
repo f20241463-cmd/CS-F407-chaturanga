@@ -19,7 +19,8 @@ training/     self-play games, replay buffer, training loop
 evaluation/   baseline players, per-iteration benchmark, game endings, human-game log
 results/      training logs, benchmark CSVs, plots, and the results write-up
 models/       the final trained network (chaturangzero_final.pt)
-tests/        123 automated tests
+web/          the board page for play_web.py (play the final model in the browser)
+tests/        127 automated tests
 ```
 
 | Part | What it does | Details |
@@ -35,6 +36,7 @@ tests/        123 automated tests
 ```bash
 python -m pytest -q                                  # run all tests
 python play.py                                       # you vs a random player
+python play_web.py --player YOUR_NAME                # you vs the final model, in the browser
 python play_vs_ai.py --checkpoint models/chaturangzero_final.pt --player YOUR_NAME --simulations 800
 python -m training.train --iterations 2 --games_per_iter 2 --checkpoint_dir checkpoints/demo --log checkpoints/demo/log.csv
 python -m evaluation.benchmark --checkpoint_dir checkpoints/demo --opponent random --games 4 --out checkpoints/demo/bench.csv
