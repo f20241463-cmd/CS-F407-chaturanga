@@ -135,10 +135,10 @@ stalemated while trying to checkmate it. This matches the benchmark: the agent
 gives material away and cannot tell a lost position from a quiet one, so even a
 beginner beats it.
 
-**Against the final model.** The same player later played six games against
-the final model (`models/chaturangzero_final.pt`, 800 simulations per move)
-on the browser board (`python play_web.py`). A seventh game, stopped after
-4 plies, is recorded as unfinished and left out.
+**Against the final model.** The same player later played ten games against
+the final model (`models/chaturangzero_final.pt`, 800 simulations per move),
+five with each color, on the browser board (`python play_web.py`). An
+eleventh game, stopped after 4 plies, is recorded as unfinished and left out.
 
 | Game | Human plays | Result | Ending | Plies | Pieces left (human / agent) |
 |---|---|---|---|---|---|
@@ -148,14 +148,19 @@ on the browser board (`python play_web.py`). A seventh game, stopped after
 | 4 | White | Human win | Checkmate | 87 | 12 / 5 |
 | 5 | Black | Human win | Checkmate | 74 | 11 / 4 |
 | 6 | Black | Agent win | Human resigned | 295 | 6 / 1 |
+| 7 | Black | Agent win | Checkmate | 207 | 5 / 3 |
+| 8 | White | Draw | Stalemate | 137 | 8 / 1 |
+| 9 | White | Draw | Stalemate | 183 | 3 / 1 |
+| 10 | Black | Human win | Checkmate | 66 | 13 / 7 |
 
-The human won four and the agent scored 0.250 again (95% Wilson range 0.060
-to 0.635). The final model kept more material than final B (two to five
-pieces in the games it lost), but it was still checkmated, three times in
-under 110 plies. Its one win was a resignation by the human in a position
-where the agent had only its king left. The final model beats random,
-untrained and earlier agents, but a person who attacks its king directly
-still wins, an attack it has rarely faced in self-play.
+The human won five and the agent two (one checkmate, and one resignation by
+the human in a position where the agent had only its king left), with three
+draws: an agent score of 0.350 (95% Wilson range 0.137 to 0.646), against
+0.250 for final B. The final model kept more material (two to seven pieces in
+the games it lost) and did better when the human played Black (2 wins, 1 draw,
+2 losses) than White (0 wins, 2 draws, 3 losses). It beats random, untrained
+and earlier agents, but a person who attacks its king directly still usually
+wins, an attack it has rarely faced in self-play.
 
 ### Why most games are draws (measured)
 
@@ -466,7 +471,7 @@ training on our laptop no longer makes the model measurably stronger.
 
 ## Limitations
 
-The stub-network results measure what search depth alone contributes, with no learned signal involved. The simulation-depth sweep's per-depth samples (1 to 4 decided games each) are too small to support a confident claim about how win rate scales with simulation count specifically; the pooled across-depth result is the more defensible number from that data. The benchmarks of the 400-game runs use 20 games per checkpoint, so their margins are about +/- 0.1; the long-run matches and benchmarks use 100 games (200 for the last comparison), with margins of about +/- 0.03 to 0.06. Differences smaller than that cannot be resolved, and with most games drawn a score says little about how often the model can actually win. The human games are twelve games by one beginner, six against final B and six against the final model.
+The stub-network results measure what search depth alone contributes, with no learned signal involved. The simulation-depth sweep's per-depth samples (1 to 4 decided games each) are too small to support a confident claim about how win rate scales with simulation count specifically; the pooled across-depth result is the more defensible number from that data. The benchmarks of the 400-game runs use 20 games per checkpoint, so their margins are about +/- 0.1; the long-run matches and benchmarks use 100 games (200 for the last comparison), with margins of about +/- 0.03 to 0.06. Differences smaller than that cannot be resolved, and with most games drawn a score says little about how often the model can actually win. The human games are sixteen games by one beginner, six against final B and ten against the final model.
 
 ## Files in this folder
 
