@@ -24,22 +24,28 @@ material at the end:
 - **The basics, from zero**: what machine learning, neural networks, GPUs,
   Git and tests are, and how we measure strength. Start here if the project
   is new to you.
-- **Background**: the game of Chaturanga and how AlphaZero works.
+- **The math, made simple**: every formula in the project, with small worked
+  examples.
+- **A short history of Chaturanga**, and the **background**: the game's rules
+  and how AlphaZero works.
 - **The course rules, milestones and team**, and the **timeline** of every
   pull request.
 - **Building the system**: how every part was built.
 - **Walkthroughs with real examples**: real numbers followed through the
   system, from the board encoding to one training step.
 - **The first training runs**, which did not work, and why.
-- **Making training about 11 times faster.**
+- **Making training about 11 times faster**, and **the speed-ups in depth**.
 - **The long run and the final model.**
 - **Trying to make it even stronger**: every later experiment.
 - **Playing against the AI, and the human games.**
 - **The decision log**, **every training option**, a **tour of the code**,
-  and a guide to **presenting the project**.
+  **real code snippets explained line by line**, **every one of the 127
+  tests in plain words**, and a guide to **presenting the project**.
+- **Our project compared with the original AlphaZero.**
 - **What it all means**, **limitations**, and the **key numbers**.
-- **Reference**: the repository file by file, how to run everything,
-  questions the professors may ask, and a glossary.
+- **Reference**: how to read every graph and data file, the repository file
+  by file, how to set up and run everything from nothing (with common
+  problems and fixes), questions the professors may ask, and a glossary.
 
 A note on words used throughout: a **ply** is one move by one player (so 100
 plies is 50 moves by each side). An **iteration** (also called a round) is one
@@ -325,6 +331,180 @@ how uncertain a 10-game result is.
 **Why draws make this hard.** When 85% of games are draws, wins and losses
 are rare, so you need many games to see a difference. That is why we moved
 from 20-game to 100-game and 200-game matches.
+
+# The math, made simple
+
+The project uses a handful of mathematical ideas. None of them needs advanced
+math to understand. Each is explained here with a small worked example.
+
+## ReLU
+
+ReLU(x) = x if x is positive, otherwise 0.
+
+Examples: ReLU(3) = 3, ReLU(-2) = 0, ReLU(0.5) = 0.5. It is used after most
+layers. It lets the network represent complicated, bent shapes instead of
+only straight lines.
+
+## Tanh
+
+tanh squashes any number into the range -1 to +1. Large positive numbers
+become close to +1, large negative numbers close to -1, and 0 stays 0.
+
+Examples: tanh(0) = 0, tanh(1) is about 0.76, tanh(3) is about 0.995,
+tanh(-1) is about -0.76. The value head ends with tanh so its output is a
+valid value between "sure loss" (-1) and "sure win" (+1).
+
+## Softmax
+
+Softmax turns a list of scores into probabilities that are all positive and
+add up to 1. For each score s, compute e to the power s (e is about 2.718),
+then divide each by the total.
+
+Example with scores 2, 1 and 0:
+
+- e^2 is about 7.39, e^1 is about 2.72, e^0 = 1;
+- the total is about 11.11;
+- the probabilities are 7.39 / 11.11 = 0.67, 2.72 / 11.11 = 0.24 and
+  1 / 11.11 = 0.09.
+
+Higher scores get more probability, but every move keeps some. In our code,
+softmax is applied **only to the legal moves**, so illegal moves get exactly
+0.
+
+## Mean squared error (the value loss)
+
+For each position: take the predicted value minus the actual result, and
+square it. Then average over the batch.
+
+Example: the network predicts +0.2 for a position, and the side to move
+actually lost (-1). The error is 0.2 - (-1) = 1.2, squared is 1.44: a big
+mistake. If the game was a draw (0), the error is 0.2, squared 0.04: a small
+mistake. Squaring makes big mistakes count much more than small ones.
+
+Note what happens when almost every target is 0: the network can get a very
+low value loss just by always predicting about 0. That is exactly what our
+value head did in the first runs, which is why the value loss looked small
+even though the value head had learned almost nothing.
+
+## Cross-entropy (the policy loss)
+
+Cross-entropy measures how well the network's move probabilities match the
+search's visit distribution. For each move, multiply the target probability
+by the logarithm of the network's probability, add these up, and flip the
+sign.
+
+Example with two moves: the search visited move A 80% of the time and move B
+20%. If the network said A 0.8, B 0.2, the cross-entropy is
+-(0.8 x ln 0.8 + 0.2 x ln 0.2), about 0.50, which is the lowest possible for
+this target. If the network said A 0.2, B 0.8, it is
+-(0.8 x ln 0.2 + 0.2 x ln 0.8), about 1.33: much worse. Training pushes the
+network toward the search's choices.
+
+Our policy loss settled around 2.2 to 2.4. It cannot reach 0, because the
+search's visits are spread over several moves, and the targets change as the
+search improves.
+
+## The PUCT formula, term by term
+
+score(move) = Q(move) + c_puct x P(move) x sqrt(N_parent) / (1 + N(move))
+
+- **Q(move)**: the average value of the positions found below this move,
+  from the point of view of the side choosing. It starts at 0. This is the
+  "how good has this move looked so far" part.
+- **P(move)**: the network's prior probability for the move.
+- **N_parent**: how many times the current position has been visited.
+- **N(move)**: how many times this move has been explored.
+- **c_puct = 1.5**: how much weight exploration gets.
+
+The second part, c_puct x P x sqrt(N_parent) / (1 + N(move)), is the
+**exploration bonus**. It is large for moves the network likes but that have
+not been explored much, and it shrinks as a move gets explored. As the parent
+gets more visits, the square root slowly grows, so even low-prior moves
+eventually get a look.
+
+Small worked example: the parent has 16 visits (sqrt = 4). Move A has prior
+0.5, 10 visits and Q = 0.1. Move B has prior 0.3, 2 visits and Q = 0.0.
+
+- A: 0.1 + 1.5 x 0.5 x 4 / 11 = 0.1 + 0.27 = 0.37
+- B: 0.0 + 1.5 x 0.3 x 4 / 3 = 0.0 + 0.60 = 0.60
+
+So B is explored next, even though A has the better result so far, because B
+has been explored much less.
+
+## Dirichlet noise
+
+A **Dirichlet distribution** produces a random list of positive numbers that
+add up to 1, one per legal move. With alpha = 0.3 (small), the numbers tend
+to be uneven: a few moves get most of the weight. At the root during
+self-play, each prior is replaced by 0.75 x prior + 0.25 x noise. So every
+game, a few random moves get an extra push and are explored more than the
+network alone would explore them.
+
+## Temperature
+
+After the search, the move is chosen from the visit counts:
+
+- **Temperature 1** (used in self-play): pick each move with probability
+  proportional to its visits. With visits A 34, B 12, C 4, A is picked 68% of
+  the time, B 24% and C 8%.
+- **Temperature 0**: always pick the most visited move (A).
+- **Temperature 0.3** (used in benchmarks): in between; the visit counts are
+  raised to the power 1/0.3 before choosing, which strongly favors the most
+  visited move but still allows variety.
+
+## The score margin
+
+For n finished games with game scores x (1 for a win, 0.5 for a draw, 0 for a
+loss), the score is the average of x, and the margin is
+
+margin = 1.96 x sd(x) / sqrt(n)
+
+where sd is the standard deviation (how spread out the game scores are).
+
+Worked example (the final model against the starting model): 27 wins, 59
+draws, 0 losses, so n = 86.
+
+- The average is (27 x 1 + 59 x 0.5) / 86 = 0.657.
+- The average of x squared is (27 x 1 + 59 x 0.25) / 86 = 0.486.
+- The variance is 0.486 - 0.657 x 0.657 = 0.054, so sd is about 0.232.
+- The margin is 1.96 x 0.232 / sqrt(86) = 1.96 x 0.232 / 9.27, about 0.049.
+
+The number 1.96 comes from statistics: about 95% of the time, the true value
+lies within 1.96 standard errors of the measured average.
+
+Notice that with all draws, sd is 0 and the margin is 0: a match of only
+draws says "even" with full confidence, which is why draws were left in the
+score and why we always looked at wins and losses too.
+
+## The Wilson range
+
+The simple margin above is unreliable for very few games (it can even go
+below 0 or above 1). The **Wilson score interval** is a formula designed for
+small samples that always stays between 0 and 1. For the 10 human games
+against the final model (AI score 0.35), it gives 0.137 to 0.646: wide,
+because 10 games cannot pin down a score precisely.
+
+# A short history of Chaturanga
+
+Chaturanga is generally considered the oldest known ancestor of chess. It
+appears in India around the 6th century CE, during the Gupta period. The
+name comes from Sanskrit and means "four limbs" or "four divisions", referring
+to the four divisions of an ancient Indian army: infantry (Padati), cavalry
+(Ashva), elephants (Gaja) and chariots (Ratha). These are exactly the piece
+types of the game, along with the king (Raja) and his counselor (Mantri).
+
+From India the game spread to Persia, where it became **chatrang** and later
+**shatranj**, and from there to the Arab world and Europe, where it slowly
+turned into modern chess. In the other direction it gave rise to xiangqi
+(Chinese chess), shogi (Japanese chess) and makruk (Thai chess).
+
+Because the game is so old, nobody knows its exact rules for certain.
+Historians reconstruct them from later descriptions, and details differ
+between sources, such as where the kings start, exactly how the elephant
+moves, and how the game ends. For this project we fixed one clear set of
+rules (described in the Background chapter), wrote them down in the code,
+and tested them. What matters for the project is that the rules are fixed
+and consistent, so the AI learns a well-defined game.
 
 # Background
 
@@ -629,6 +809,8 @@ random outputs), MCTS played against a random-move player:
 | 60 games | MCTS won 5 of 8 decided games (62.5%) |
 | 200 games | MCTS won 14 of 19 decided games (73.7%) |
 | Sweep at 5, 15, 30 and 50 simulations, 20 games each | MCTS won 8 of 9 decided games |
+
+![The early search-depth sweep with the stub network: win rate against random at 5, 15, 30 and 50 simulations (only 1 to 4 decided games per depth).](../results/sweep_win_rate_vs_sims.png)
 
 Pooled, MCTS won 19 of 27 decided games, about 70%. So the search itself
 works and adds strength even with a network that knows nothing. Most games
@@ -971,6 +1153,8 @@ iterations 4, 8, 12, 16 and 20.
 
 ![Final B benchmark scores per iteration.](../results/benchmark_curve_finalB.png)
 
+![Final A and final B against the untrained network.](../results/benchmark_curve_final_vs_untrained.png)
+
 **Every score was within its margin of 0.5.** In head-to-head matches, final
 B at iteration 20 against final A at iteration 20 scored 0.500 (1 win each,
 15 draws, 3 unfinished), and final B at iteration 20 against its own
@@ -1099,6 +1283,70 @@ The laptop is an Apple machine with an A18 Pro chip (2 performance cores and
 4 efficiency cores, 8 GB of memory). Overall, an iteration of 100 games went
 from hours to about 9 minutes, and later, with GPU self-play, to about 4
 minutes.
+
+# The speed-ups in depth
+
+This chapter explains, in more detail, how self-play went from 259
+milliseconds per move to 19, and then got faster again on the GPU.
+
+## Why the original was slow
+
+Each move needs 50 simulations. Each simulation may create a new position,
+ask for its legal moves, check whether the game is over, and call the
+network. So one move involves hundreds of legal-move generations and dozens
+of network calls. Originally:
+
+- Legal moves were recomputed every time they were asked for, even for the
+  same position.
+- Checking whether a king was in check meant generating every move of every
+  enemy piece and seeing if any landed on the king.
+- Each network call went through the full network, including batch
+  normalization layers, for a single position.
+
+## The three engine improvements
+
+1. **Caching legal moves.** A position remembers its legal moves after the
+   first time they are computed. Since positions never change, the cached
+   answer is always right.
+2. **Looking outward from the king.** To know whether the king is attacked,
+   look from the king's square along each straight line (for an enemy
+   Ratha), at the two-square diagonal jumps (for a Gaja), at the knight
+   jumps (for an Ashva), at the neighboring squares (for a Raja or Mantri),
+   and at the two squares a soldier could attack from. That is a handful of
+   squares, instead of every enemy move.
+3. **Precomputed move tables.** For every square, the squares a horse,
+   elephant, king or counselor could jump to are computed once at the start,
+   instead of being recalculated each time.
+
+Together these brought the time from 259 to 48 milliseconds per move.
+
+## The network improvement
+
+Folding batch normalization into the convolutions (explained in the code
+chapter) brought it from 48 to 19 milliseconds per move.
+
+## Parallel workers
+
+With 6 worker processes, 6 games are played at once, one per CPU core. The
+seeds depend only on the run seed, the iteration and the game number, so the
+same games are produced whether there are 1 or 6 workers.
+
+## GPU self-play
+
+Even at 19 milliseconds per move, each network call evaluated just one
+position. The final step was to let many games share the GPU:
+
+- Each worker runs many games at once, each as a paused search (a generator).
+- When all of them are waiting for the network, their positions are stacked
+  into one batch (for example 20 positions), sent to the GPU, and the
+  answers are handed back.
+- The GPU work and the CPU work are overlapped where possible, and very small
+  batches go to the CPU, where they are faster.
+
+The tree search itself was also tightened: probabilities are computed only
+over legal moves, and children are created lazily, cutting tree work from
+about 111 to 89 microseconds per position. The result was about 2.2 to 2.4
+times faster self-play, with exactly the same games.
 
 # The long run and the final model
 
@@ -1596,6 +1844,298 @@ file, without needing to read the code itself.
 - **`web/play.html`**: the page itself: the board, the panels and the click
   handling, written in plain HTML, CSS and JavaScript.
 
+# Inside the code, with real snippets
+
+This chapter shows a few short pieces of the actual code and explains them
+line by line. You do not need to know Python: read the explanation under
+each snippet.
+
+## Turning a move into a number (`chaturanga/encoding.py`)
+
+```python
+def move_to_action(move) -> int:
+    from_sq, to_sq = move
+    if not (0 <= from_sq < 64 and 0 <= to_sq < 64):
+        raise ValueError(f"Square out of range in move {move}")
+    return from_sq * 64 + to_sq
+
+def action_to_move(action_id: int):
+    return (action_id // 64, action_id % 64)
+```
+
+- A move is a pair of squares: where the piece starts and where it goes.
+- The function first checks both squares are between 0 and 63, and stops
+  with an error otherwise.
+- It returns `from x 64 + to`. For e2-e3 that is 12 x 64 + 20 = 788.
+- `action_to_move` reverses it: `//` is whole-number division (788 // 64 =
+  12) and `%` is the remainder (788 % 64 = 20).
+
+## Choosing which move to explore (`mcts/node.py`)
+
+```python
+for action, child in self._made.items():
+    q = -child.value
+    u = c_puct * child.prior * sqrt_parent_visits / (1 + child.visit_count)
+    score = q + u
+    if score > best_score:
+        best_score = score
+        best_action = action
+        best_child = child
+```
+
+- The loop goes through every explored move of the current position.
+- `q = -child.value`: the child's value is from the opponent's point of view
+  (it is the opponent's turn there), so the minus sign turns it into our
+  point of view.
+- `u` is the exploration bonus from the PUCT formula.
+- The move with the highest `q + u` is remembered and chosen.
+- Moves that were never explored have no child yet; their score is just the
+  exploration bonus (their value counts as 0).
+
+## Running a search that can pause (`mcts/search.py`)
+
+```python
+def drive(steps, network_fn):
+    try:
+        request = next(steps)
+        while True:
+            request = steps.send(network_fn(request))
+    except StopIteration as stop:
+        return stop.value
+```
+
+- `steps` is the search written as a **generator**: a function that can
+  pause in the middle and hand something out.
+- `next(steps)` runs the search until it first needs the network. It pauses
+  and hands out the position it wants evaluated (`request`).
+- `network_fn(request)` evaluates that position, and `steps.send(...)` gives
+  the answer back to the search, which continues until it needs the network
+  again.
+- When the search finishes, Python signals `StopIteration`, which carries
+  the search's final answer (the visit counts and the chosen move).
+
+The point of this design: `drive` feeds one search one position at a time,
+but another function (`play_games_batched`) can run **many** paused searches
+side by side, collect all their requests, evaluate them together in one GPU
+batch, and send each search its own answer. The search code itself is the
+same either way, which is why the games are identical.
+
+## Giving every position its value target (`training/self_play.py`)
+
+```python
+def outcome_values(movers, result, final_side_to_move):
+    return [
+        float(result) if mover == final_side_to_move else -float(result)
+        for mover in movers
+    ]
+```
+
+- `movers` lists who was to move in each recorded position of the game.
+- `result` is the final result from the point of view of the side to move at
+  the end (+1 win, -1 loss, 0 draw).
+- For each recorded position: if the same side was to move, it gets
+  `result`; otherwise it gets the opposite. So the winner's positions get +1
+  and the loser's get -1.
+- For draws, the code instead gives every position the draw value (0
+  normally).
+
+## Never causing a repetition (`training/self_play.py`)
+
+```python
+filtered = np.array(visit_counts, dtype=np.float32)
+for action in np.flatnonzero(filtered):
+    child = state.apply_move(encoding.action_to_move(int(action)))
+    if child._is_threefold_repetition():
+        filtered[action] = 0.0
+```
+
+- Start from a copy of the search's visit counts.
+- For every move the search visited, play it on a copy of the position.
+- If that would create a threefold repetition, set that move's count to 0 so
+  it cannot be chosen.
+- (If every visited move would repeat, the original counts are used, so a
+  move can always be played.)
+
+## One training step (`training/train.py`)
+
+```python
+model.train()
+optimizer.zero_grad()
+pred_logits, pred_values = model(x)
+loss, metrics = loss_fn(pred_logits, pred_values, target_p, target_v)
+loss.backward()
+optimizer.step()
+```
+
+- `model.train()` puts the network in training mode (this matters for batch
+  normalization).
+- `optimizer.zero_grad()` clears the corrections from the previous step.
+- `model(x)` runs the batch of positions through the network to get move
+  scores and values.
+- `loss_fn(...)` compares them with the targets and computes the loss.
+- `loss.backward()` is backpropagation: it computes the gradient for every
+  weight.
+- `optimizer.step()` lets Adam update all the weights.
+
+## Folding batch normalization for speed (`network/agent.py`)
+
+```python
+for conv_name, bn_name in _CONV_BN_PAIRS:
+    conv = getattr(module, conv_name, None)
+    bn = getattr(module, bn_name, None)
+    if isinstance(conv, torch.nn.Conv2d) and isinstance(bn, torch.nn.BatchNorm2d):
+        setattr(module, conv_name, fuse_conv_bn_eval(conv, bn))
+        setattr(module, bn_name, torch.nn.Identity())
+```
+
+- When the network is only used for predictions (not training), batch
+  normalization is just a fixed "multiply by a number and add a number" for
+  each filter.
+- A convolution is also "multiply and add". Two multiply-and-adds in a row
+  can be combined into one with adjusted numbers.
+- This code finds every convolution followed by a batch normalization,
+  replaces the convolution with the combined version, and replaces the batch
+  normalization with `Identity` (a layer that does nothing). The outputs are
+  the same, but the network does less work.
+
+# Every test, explained
+
+There are 127 automated tests in 10 files. Each test name describes what it
+checks. Here they are, translated into plain words.
+
+## Rules engine: `test_chaturanga.py` (36 tests)
+
+- **Starting position**: the right number of each piece; the kings on their
+  expected squares; White moves first.
+- **Move numbering**: the example from the team's contract works; every one of
+  the 4096 actions converts to a move and back; the corner squares are right;
+  out-of-range squares are rejected.
+- **Encoding**: the tensor has shape [13, 8, 8] and the right number type;
+  the turn plane is all 0 for White and all 1 for Black; the king plane has
+  exactly one 1; the soldier plane has eight 1s at the start.
+- **Raja**: moves one square in any direction; cannot move into check.
+- **Mantri**: moves diagonally only.
+- **Ratha**: slides in straight lines and stops at a blocking piece.
+- **Gaja**: jumps two squares diagonally, even over an occupied square.
+- **Ashva**: knight jumps.
+- **Padati**: moves forward only onto an empty square; no double step;
+  captures diagonally only when an enemy is there; promotes to Mantri.
+- **Game state**: applying a move leaves the original state unchanged; the
+  no-progress counter resets on a capture or soldier move.
+- **Game end**: checkmate is a loss for the mated side; stalemate is a draw;
+  the no-progress limit forces a draw; an ongoing game returns no result.
+- **Legal move mask**: it matches the legal moves exactly, and is all false
+  when there are none.
+- **Check rules**: a pinned piece can only move along the pin line; double
+  check forces a king move; capturing the checking piece resolves check;
+  blocking the check resolves it.
+- **Stub network**: the fake networks return outputs of the right shape, a
+  value between -1 and 1, and reject wrongly shaped input.
+
+## Fast engine: `test_engine_equivalence.py` (5 tests)
+
+- In random games, the fast engine and a frozen copy of the original agree at
+  every ply (same legal moves in the same order, same check and result).
+- They agree on thousands of random positions.
+- The cached legal moves update correctly when the board changes.
+- Changing the returned list of moves cannot corrupt the cache.
+- Threefold repetition is detected the same way.
+
+## Search: `test_mcts.py` (13 tests)
+
+- The legal-only softmax gives exactly 0 to illegal moves, and all
+  probability to the only legal move when there is just one.
+- A node's value is 0 before any visits; expanding creates one child per
+  legal move; selection prefers unvisited moves over already explored ones
+  when appropriate.
+- The search finds the correct move from a winning position in a toy game.
+- The root's visit counts add up to the number of simulations.
+- A search started from a finished game is handled gracefully.
+- Root noise: priors still add up to 1 but change; weight 0 leaves them
+  unchanged; noise is off by default; the same seed gives the same noisy
+  search; noise does not stop the search from finding the winning move.
+
+## Network: `test_network.py` (7 tests)
+
+- One position and a batch of positions both pass through the network with
+  the right output shapes.
+- Gradients flow backwards through every layer.
+- The loss is computed correctly.
+- Saving and loading a checkpoint gives the same network.
+- The network function follows the team's contract.
+- A move chosen directly from the network is always legal.
+
+## Training: `test_training.py` (26 tests)
+
+- **Replay buffer**: batches have the right shapes and the policy survives
+  compact storage; sampling does not repeat examples when the buffer is
+  large enough; the oldest examples are removed first; sampling an empty
+  buffer gives an error.
+- **Value targets**: a loss is assigned to the right side; a draw gives 0
+  everywhere; the draw value applies to unfinished games.
+- **Move choice**: greedy picks the most visited move; sampling only picks
+  visited moves; zero visits is an error.
+- **Noise in training**: priors still add up to 1; a noisy search still finds
+  the winning move in the toy game (Nim).
+- **Lazy children**: moves are not applied until a child's position is
+  actually needed.
+- **Self-play games**: a short game returns well-formed examples; policy
+  targets are 0 on illegal moves.
+- **Material targets (exploratory)**: material balance is computed correctly
+  and from each mover's point of view, and used for unfinished games only
+  when switched on.
+- **Repetition avoidance**: the filter removes a repeating move, and self-play
+  avoids repetition draws when it is on.
+- **Training**: one training step reduces the loss on a fixed batch; a tiny
+  full run writes its log and checkpoints and then resumes correctly;
+  parallel self-play gives the same games for any number of workers; the
+  number of workers must be positive.
+- **Bigger network**: a bigger network can be bootstrapped from a smaller
+  one's games; network size and bootstrap options are checked.
+
+## Evaluation and benchmark: `test_benchmark.py` (13) and `test_evaluation.py` (8)
+
+- Greedy capture takes the most valuable piece, and plays a legal move when
+  there is no capture; the random and MCTS players play legal moves.
+- In a benchmark, colors alternate and win, loss and draw counts add up;
+  checkpoints are found and sorted by iteration; every game-ending rule is
+  named; the ply cap is respected.
+- The human log appends and summarizes games; the Wilson range stays wide
+  when one side wins everything; unknown results are rejected; resign and
+  quit are recorded.
+- Results are identical with or without parallel workers.
+- The same seed gives the same untrained network, and different seeds give
+  different networks; a checkpoint loads its saved weights.
+- Draws count as half; an all-draw match is even with no spread.
+- The repetition filter removes a repeating move when there are
+  alternatives, and keeps it when it is the only visited move.
+
+## GPU batching and resignation: `test_batched_self_play.py` (15 tests)
+
+- The generator version of the search gives exactly the same result as the
+  original search.
+- Games played side by side in batches are exactly the games played alone,
+  including when games are split into groups and when games have different
+  lengths.
+- The batch network gives the same outputs as the single-position network
+  and rejects wrongly shaped input.
+- Batched self-play plays the same games as parallel self-play; batched
+  matches play the same games; the MCTS player works one position at a time
+  and batched.
+- Resignation: a side that rates itself lost resigns; check games play on
+  and record who would have resigned; nothing about resignation is recorded
+  when it is off; resignation counts are right; training with resignation
+  works with an old log file; the resign-check summary counts right and
+  wrong resignations.
+
+## Browser game: `test_play_web.py` (4 tests)
+
+- Moves alternate between the human and the AI, and illegal moves are
+  rejected.
+- When the human plays Black, the AI moves first.
+- Games are logged, including resigned and unfinished games.
+- The web server serves the page and answers move requests correctly.
+
 # Presenting the project
 
 ## The project in two minutes
@@ -1661,6 +2201,28 @@ draws."
 - The final model follows **every course constraint**.
 - The weakness (converting advantages) is **measured and explained**, not
   hidden.
+
+# Our project compared with the original AlphaZero
+
+The method is the same; the scale is very different. These AlphaZero figures
+are approximate, as reported in DeepMind's 2018 paper for chess.
+
+| | AlphaZero (chess) | ChaturangZero |
+|---|---|---|
+| Network | About 20 residual blocks of 256 filters | 4 residual blocks of 64 filters |
+| Simulations per move in training | 800 | 50 |
+| Self-play games | About 44 million | 54,000 (final model) |
+| Hardware | Thousands of specialized TPU chips for self-play | One laptop |
+| Training time | Hours, on that hardware | About 144 hours for the long run |
+| Knowledge given | Rules only | Rules only |
+| Action space | Encoded moves of chess | 4096 from-to pairs |
+| Result | Superhuman | Beats random, untrained and earlier versions; a beginner can still win |
+
+In other words, our project had roughly **800 times fewer games**, **16 times
+fewer simulations per move**, and a far smaller network than AlphaZero,
+running on a laptop instead of a data center.
+Given that, the fact that training clearly worked in the long run, and that
+its limits could be measured and explained, is the main achievement.
 
 # What it all means
 
@@ -1740,6 +2302,83 @@ one clear gain left is outside training: more search at play time.
 | Human vs final model | 5 human wins, 2 AI wins, 3 draws (AI score 0.350) |
 | Human vs final B | 3 human wins, 0 AI wins, 3 draws (AI score 0.250) |
 
+# How to read every graph and data file
+
+## The graphs (`results/*.png`)
+
+- **`training_curves.png`** (first runs): four small graphs, each with the
+  iteration number along the bottom.
+  - *Policy loss*: goes down fast at first, then flattens. Lower means the
+    network predicts its own search better.
+  - *Value loss*: stays tiny and noisy because nearly all targets are 0.
+  - *Decisive share*: the fraction of self-play games that were not draws.
+    Higher would mean more learning signal; it did not rise.
+  - *Game length*: average plies per game; it stayed at 400 to 600.
+- **`benchmark_curve_finalB.png`** and
+  **`benchmark_curve_final_vs_untrained.png`**: the score of each checkpoint
+  against a fixed opponent, with error bars showing the margin. The dashed
+  line at 0.5 means "even". In the first runs, every point's error bar
+  crosses 0.5: no measurable improvement.
+- **`training_curves_long.png`**: the same four curves for the long run, plus
+  the stopped bigger network. The flat policy loss does not mean no
+  progress: the targets improve along with the network.
+- **`benchmark_curve_long.png`**: long-run checkpoints against random,
+  untrained and greedy capture, 100 games per point. The random and
+  untrained curves rise above 0.5; greedy capture stays at about 0.5 because
+  almost all games are drawn.
+- **`training_curves_exploratory.png`**: the two exploratory runs that break
+  the rules.
+- **`sweep_win_rate_vs_sims.png`**: the early search-depth sweep with the stub
+  network (win rate against random at 5, 15, 30 and 50 simulations). Each
+  depth has only 1 to 4 decided games, so it is only a rough picture.
+
+## The training log (`results/training_log_*.csv`)
+
+Each row is one iteration. The columns are:
+
+| Column | Meaning |
+|---|---|
+| iteration | Iteration number |
+| games | Self-play games played |
+| white_wins, black_wins, draws, unfinished | How the games ended |
+| avg_plies | Average game length |
+| decisive_fraction | Share of games that were won or lost |
+| buffer_size | Positions in the replay buffer |
+| train_steps | Training steps taken (0 while the buffer refills) |
+| loss, policy_loss, value_loss | Average losses of the training steps |
+| selfplay_seconds, train_seconds | Time spent on each part |
+| resigned, resign_checks, resign_wrong | Resignation counts (empty when off) |
+
+## The benchmark files (`results/benchmark_*.csv`)
+
+Each row is one checkpoint against one opponent: iteration, checkpoint,
+opponent, games, wins, losses, draws, unfinished, score, margin, average
+plies and seconds taken.
+
+## The match files (`results/long_run_matches/`, `bigger_network/`, `draw_penalty/`, `thinking_time/`, `smaller_lr/`)
+
+Each match file starts with the two models (A and B) and the settings (games,
+simulations, temperature, repetition avoidance, ply cap, workers), then one
+line per game (which color A played, the result and the length), and ends
+with a summary line, for example:
+
+"A: 27 wins, 0 losses, 59 draws, 14 unfinished. A scores 0.657 +/- 0.049."
+
+## The human games (`results/human_games.csv`)
+
+One row per game: date, player, the model played against, simulations per
+move, the human's color, the result (agent_win, human_win, draw or
+unfinished), how it ended (checkmate, stalemate, resigned, quit, and so on),
+the number of plies, and the full move list (like "e2e3 f7f6 ..."), so every
+game can be replayed.
+
+## The resignation measurement (`results/resign_check.txt`)
+
+How the 160 self-play games ended, percentiles of the model's evaluations,
+the table of how many resignations would have happened and how many would
+have been wrong at each threshold, and, for every decisive game, the losing
+side's lowest evaluation.
+
 # The repository, file by file
 
 ```
@@ -1786,6 +2425,86 @@ the plots, the match logs (`long_run_matches/`, `bigger_network/`,
 `draw_penalty/`, `thinking_time/`, `smaller_lr/`), the resignation measurement
 (`resign_check.txt`), the human games (`human_games.csv`), and
 `results/README.md`, which explains all of it.
+
+# Getting started on your own computer, step by step
+
+This chapter is for anyone who wants to run the project themselves, starting
+with nothing installed.
+
+## Step 1: install Python
+
+The project needs **Python 3** (version 3.10 or newer works). On a Mac,
+Python can be installed from python.org or through Anaconda (the project
+laptop uses Anaconda). To check whether Python is installed, open the
+**Terminal** app and type:
+
+```
+python --version
+```
+
+It should print something like `Python 3.12.4`. If it says the command is not
+found, install Python first. (On some computers the command is `python3`
+instead of `python`.)
+
+## Step 2: install the libraries
+
+The project needs three libraries: NumPy, PyTorch and Matplotlib, plus
+pytest to run the tests. Install them with:
+
+```
+pip install numpy torch matplotlib pytest
+```
+
+This downloads them from the internet once. PyTorch is the largest (a few
+hundred megabytes).
+
+## Step 3: get the code
+
+Either download the repository from GitHub as a ZIP file and unzip it, or use
+Git:
+
+```
+git clone https://github.com/f20241463-cmd/CS-F407-chaturanga.git
+cd CS-F407-chaturanga
+```
+
+`cd` means "change directory": it moves the terminal into the project folder.
+Every command in this document is run from inside that folder.
+
+If you already have the code and want the newest version:
+
+```
+git checkout main
+git pull
+```
+
+## Step 4: check everything works
+
+```
+python -m pytest -q
+```
+
+This runs all 127 tests and should end with "127 passed". It takes about a
+minute.
+
+## Step 5: play against the AI
+
+```
+python play_web.py --player YOUR_NAME
+```
+
+The browser opens with the board. Press Ctrl+C in the terminal to stop.
+
+## Common problems and fixes
+
+| Problem | What it means | Fix |
+|---|---|---|
+| `command not found: python` | Python is not installed, or is called `python3` | Install Python, or use `python3` in every command |
+| `No module named torch` (or numpy) | A library is missing | Run `pip install numpy torch matplotlib pytest` |
+| `No such file or directory: models/chaturangzero_final.pt` | The terminal is not in the project folder | `cd` into the `CS-F407-chaturanga` folder first |
+| `Address already in use` when starting `play_web.py` | Another program (or an earlier copy) uses port 8000 | Stop the other copy, or add `--port 8001` and open http://127.0.0.1:8001 |
+| The browser does not open | Some systems block automatic opening | Type http://127.0.0.1:8000 into the browser yourself |
+| Training is very slow | It is running on one CPU core | Use `--workers 6 --device mps` on a Mac with Apple silicon (see the training commands) |
 
 # How to run everything
 
