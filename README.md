@@ -65,7 +65,9 @@ no domain knowledge), the final model:
   (score 0.657),
 - beats random play (16 wins, 0 losses) and the untrained network (17 wins,
   4 losses), where the first runs lost more than they won,
-- still draws almost every game against greedy capture (0 wins, 1 loss).
+- still draws almost every game against greedy capture (0 wins, 1 loss),
+- still loses to a person new to chess, who won 4 of 6 games against it at
+  800 simulations per move (1 draw, 1 loss).
 
 Its main weakness is finishing games: it gets ahead but rarely checkmates, so
 most games end by the 100-ply no-progress rule. A bigger 6 x 128 network was

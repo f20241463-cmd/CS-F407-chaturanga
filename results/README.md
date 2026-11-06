@@ -135,6 +135,28 @@ stalemated while trying to checkmate it. This matches the benchmark: the agent
 gives material away and cannot tell a lost position from a quiet one, so even a
 beginner beats it.
 
+**Against the final model.** The same player later played six games against
+the final model (`models/chaturangzero_final.pt`, 800 simulations per move)
+on the browser board (`python play_web.py`). A seventh game, stopped after
+4 plies, is recorded as unfinished and left out.
+
+| Game | Human plays | Result | Ending | Plies | Pieces left (human / agent) |
+|---|---|---|---|---|---|
+| 1 | White | Human win | Checkmate | 133 | 8 / 4 |
+| 2 | Black | Draw | Stalemate | 234 | 6 / 1 |
+| 3 | White | Human win | Checkmate | 105 | 9 / 2 |
+| 4 | White | Human win | Checkmate | 87 | 12 / 5 |
+| 5 | Black | Human win | Checkmate | 74 | 11 / 4 |
+| 6 | Black | Agent win | Human resigned | 295 | 6 / 1 |
+
+The human won four and the agent scored 0.250 again (95% Wilson range 0.060
+to 0.635). The final model kept more material than final B (two to five
+pieces in the games it lost), but it was still checkmated, three times in
+under 110 plies. Its one win was a resignation by the human in a position
+where the agent had only its king left. The final model beats random,
+untrained and earlier agents, but a person who attacks its king directly
+still wins, an attack it has rarely faced in self-play.
+
 ### Why most games are draws (measured)
 
 How games end, for final B iteration 16 under the benchmark protocol, 10 games
@@ -444,7 +466,7 @@ training on our laptop no longer makes the model measurably stronger.
 
 ## Limitations
 
-The stub-network results measure what search depth alone contributes, with no learned signal involved. The simulation-depth sweep's per-depth samples (1 to 4 decided games each) are too small to support a confident claim about how win rate scales with simulation count specifically; the pooled across-depth result is the more defensible number from that data. The benchmarks of the 400-game runs use 20 games per checkpoint, so their margins are about +/- 0.1; the long-run matches and benchmarks use 100 games (200 for the last comparison), with margins of about +/- 0.03 to 0.06. Differences smaller than that cannot be resolved, and with most games drawn a score says little about how often the model can actually win. The human games so far were played against final B, not the final model.
+The stub-network results measure what search depth alone contributes, with no learned signal involved. The simulation-depth sweep's per-depth samples (1 to 4 decided games each) are too small to support a confident claim about how win rate scales with simulation count specifically; the pooled across-depth result is the more defensible number from that data. The benchmarks of the 400-game runs use 20 games per checkpoint, so their margins are about +/- 0.1; the long-run matches and benchmarks use 100 games (200 for the last comparison), with margins of about +/- 0.03 to 0.06. Differences smaller than that cannot be resolved, and with most games drawn a score says little about how often the model can actually win. The human games are twelve games by one beginner, six against final B and six against the final model.
 
 ## Files in this folder
 
@@ -462,7 +484,7 @@ The stub-network results measure what search depth alone contributes, with no le
 - `benchmark_curve_finalB.png`, `benchmark_curve_final_vs_untrained.png`: benchmark score per iteration
 - `finalB_vs_finalA_iter20.log`: head-to-head match of the two final runs
 - `finalB_iter20_vs_iter10.log`: final B iteration 20 against its own iteration 10
-- `human_games.csv`: Agent vs. Human games against final B, with full move lists
+- `human_games.csv`: Agent vs. Human games against final B and the final model, with full move lists
 - `training_log_long.csv`: every iteration of the long run (1 to 20 are final B); `training_curves_long.png` plots it
 - `training_log_big_exploratory.csv`: the stopped 6 x 128 network
 - `benchmark_long_{random,greedy,untrained}.csv`, `benchmark_curve_long.png`: long-run benchmarks, 100 games per checkpoint
