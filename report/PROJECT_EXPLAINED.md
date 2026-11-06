@@ -28,16 +28,19 @@ material at the end:
   examples.
 - **A short history of Chaturanga**, and the **background**: the game's rules
   and how AlphaZero works.
-- **The course rules, milestones and team**, and the **timeline** of every
-  pull request.
-- **Building the system**: how every part was built.
+- **How every piece moves, with diagrams.**
+- **The course rules, milestones and team**, the **timeline** of every pull
+  request, and **the story of the project** in more detail.
+- **Building the system**: how every part was built, and **diagrams** of how
+  it all fits together.
 - **Walkthroughs with real examples**: real numbers followed through the
   system, from the board encoding to one training step.
 - **The first training runs**, which did not work, and why.
 - **Making training about 11 times faster**, and **the speed-ups in depth**.
 - **The long run and the final model.**
 - **Trying to make it even stronger**: every later experiment.
-- **Playing against the AI, and the human games.**
+- **Playing against the AI, and the human games**, including **one complete
+  game replayed move by move**.
 - **The decision log**, **every training option**, a **tour of the code**,
   **real code snippets explained line by line**, **every one of the 127
   tests in plain words**, and a guide to **presenting the project**.
@@ -45,7 +48,11 @@ material at the end:
 - **What it all means**, **limitations**, and the **key numbers**.
 - **Reference**: how to read every graph and data file, the repository file
   by file, how to set up and run everything from nothing (with common
-  problems and fixes), questions the professors may ask, and a glossary.
+  problems and fixes), questions the professors may ask, a **self-test quiz**,
+  and a glossary.
+
+Every chapter starts with a one-line "In short" summary, so you can skim the
+document by reading only those lines.
 
 A note on words used throughout: a **ply** is one move by one player (so 100
 plies is 50 moves by each side). An **iteration** (also called a round) is one
@@ -54,6 +61,8 @@ is the saved network after an iteration. A **simulation** is one step of the
 search the agent does before choosing a move.
 
 # The project in one page
+
+*In short: The whole project in short: what we built, what happened, and the main lesson.*
 
 **Goal.** Build an AlphaZero-style artificial intelligence for Chaturanga, the
 ancient Indian ancestor of chess, from scratch. The AI is given only the rules
@@ -108,6 +117,8 @@ very end, because nearly all of its training games are draws. Every
 improvement we tried ran into this same problem.
 
 # The basics, from zero
+
+*In short: The ideas you need before anything else: machine learning, neural networks, GPUs, Git, tests, seeds and how strength is measured.*
 
 This chapter assumes you know nothing about artificial intelligence,
 programming tools or this project. Everything later in the document builds on
@@ -334,6 +345,8 @@ from 20-game to 100-game and 200-game matches.
 
 # The math, made simple
 
+*In short: Every formula used in the project, each with a small worked example.*
+
 The project uses a handful of mathematical ideas. None of them needs advanced
 math to understand. Each is explained here with a small worked example.
 
@@ -486,6 +499,8 @@ because 10 games cannot pin down a score precisely.
 
 # A short history of Chaturanga
 
+*In short: Where the game comes from and why its exact rules had to be fixed by us.*
+
 Chaturanga is generally considered the oldest known ancestor of chess. It
 appears in India around the 6th century CE, during the Gupta period. The
 name comes from Sanskrit and means "four limbs" or "four divisions", referring
@@ -507,6 +522,8 @@ and tested them. What matters for the project is that the rules are fixed
 and consistent, so the AI learns a well-defined game.
 
 # Background
+
+*In short: The rules of Chaturanga and how AlphaZero's network, search and self-play work.*
 
 ## Chaturanga, the game
 
@@ -648,7 +665,97 @@ vary.
   precisely. This turned out to matter a lot.
 - **Adam.** The standard optimizer we used to update the network's weights.
 
+# How every piece moves, with diagrams
+
+*In short: A picture of every piece's moves, and why checkmate is hard in this game.*
+
+In each diagram, the piece stands in the middle of an empty board area, and
+an **x** marks every square it can move to. Dots are squares it cannot
+reach. Rows are drawn from Black's side at the top to White's side at the
+bottom, as in the browser game when you play White.
+
+**Raja (king)**: one square in any of the 8 directions. It may never move
+into check.
+
+```
+. . . . .
+. x x x .
+. x K x .
+. x x x .
+. . . . .
+```
+
+**Mantri (counselor)**: one square diagonally only, so at most 4 squares.
+This is much weaker than a chess queen.
+
+```
+. . . . .
+. x . x .
+. . M . .
+. x . x .
+. . . . .
+```
+
+**Ratha (chariot)**: any number of squares in a straight line, up, down, left
+or right, until it meets a piece. It can capture the first enemy piece it
+meets. It moves exactly like a chess rook and is the strongest piece in
+Chaturanga.
+
+```
+. . x . .
+. . x . .
+x x R x x
+. . x . .
+. . x . .
+```
+
+**Gaja (elephant)**: exactly two squares diagonally, jumping over the square
+in between even if it is occupied. So at most 4 squares. An elephant can only
+ever reach 8 squares of the whole board, which makes it a weak piece.
+
+```
+x . . . x
+. . . . .
+. . G . .
+. . . . .
+x . . . x
+```
+
+**Ashva (horse)**: an L-shaped jump (two squares one way, then one square to
+the side), jumping over anything in between, exactly like a chess knight. At
+most 8 squares.
+
+```
+. x . x .
+x . . . x
+. . A . .
+x . . . x
+. x . x .
+```
+
+**Padati (foot soldier), White**: one square forward onto an empty square
+(marked m), or one square diagonally forward to capture an enemy piece
+(marked c). It never moves backward or sideways, has no two-square first move,
+and becomes a Mantri when it reaches the far rank.
+
+```
+. . . . .
+. c m c .
+. . P . .
+. . . . .
+. . . . .
+```
+
+**Why this makes checkmate hard.** Compare with chess: the chess queen and
+bishops are long-range pieces that can attack from across the board. In
+Chaturanga, only the Rathas are long-range. The Mantri and Gajas are slow and
+limited, so building a mating net around a king takes a lot of coordination.
+That is why so many games end with one side ahead in material but unable to
+force mate, and why the no-progress rule ends most of our games.
+
 # The course rules, milestones and team
+
+*In short: The constraints we had to follow, the four milestones, and who did what.*
 
 ## The constraints
 
@@ -689,6 +796,8 @@ teammates were away, the training, the experiments, the speed-ups, the
 browser game and the report were completed and merged through pull requests.
 
 # Timeline
+
+*In short: Every pull request from October 2 to November 6, grouped into phases.*
 
 Every change to the project was made through the shared GitHub repository
 (https://github.com/f20241463-cmd/CS-F407-chaturanga). This is the full
@@ -735,7 +844,81 @@ Roughly, the project had six phases:
 5. **Nov 5: the browser game.**
 6. **Nov 6: human games against the final model**, added to the report.
 
+# The story of the project, in more detail
+
+*In short: The project told as a story, including the setbacks.*
+
+This chapter tells the project as a story, including the problems along the
+way.
+
+**Getting started (early October).** The team agreed on the design and the
+contracts between the parts. The rules engine came first, with tests for
+every piece and every way a game can end. The search was built and tested
+with a fake random network and a toy game, before the real network existed.
+The real network was then added, and an integration check confirmed that
+the rules, network and search worked together end to end, with identical
+results on repeated runs.
+
+**First numbers (October 3).** With the random stub network, MCTS beat a
+random player in about 70% of decided games: search helps. With the real but
+untrained network, it won only 3 of 8 decided games: an untrained network can
+mislead the search. Both results were recorded as reference points.
+
+**The pipeline (October 17 to 18).** Root noise, checkpoints, the self-play
+loop, lazy children, repetition avoidance and the full evaluation suite were
+added in a burst of pull requests. Early self-play games often ended in
+repetition loops, which led to the repetition-avoidance rule.
+
+**The disappointment (October 18).** The first proper runs, final A and final
+B, each took about 7 hours. The benchmarks were flat: no measurable
+improvement. A human beginner beat the AI easily. Instead of accepting this
+or blaming a bug, the team tested for bugs, measured how games ended, and
+measured what the value head had learned. The conclusion: too little data
+and too many draws. The first report draft described this negative result
+honestly.
+
+**Going faster (October 18).** The obvious fix was more data, and the
+obvious obstacle was speed. The rules engine was rewritten for speed (with a
+test proving it gives the same answers), the network got a faster prediction
+copy, and self-play was split across 6 processes. Training moved to the GPU.
+
+**The long run (October 18 to 26).** The long run started from final B and
+ran for days. It was restarted once, at iteration 220, which meant the replay
+buffer had to refill before training continued. Progress was checked with
+100-game matches. Most of the gain came in the first 100 to 140 iterations,
+then the model stalled. Matches between iterations 140, 300 and 420 showed
+they were all even: the learning rate was too high to settle. Lowering it to
+1e-4 produced iteration 460, which beat all three. Two more stretches at
+smaller rates gave iteration 560, the final model, after about 144 hours.
+Meanwhile, the first attempt at the bigger network ran alongside but was too
+slow and was stopped after 61 iterations.
+
+**Testing the final model (October 27).** More search at play time gave a
+small edge at 200 simulations. Counting draws as slightly bad made the AI
+weaker, and was stopped.
+
+**GPU self-play and the second wave (October 28 to 30).** Self-play was
+rebuilt so that many games share each GPU call, with tests proving the games
+are identical. The bigger network was tried again, starting from the final
+model's games: it caught up but did not pass it, first getting weaker at a
+high learning rate and then staying level at a lower one. One of these runs
+stopped when the laptop was running on battery power, a reminder that long
+runs need the laptop plugged in. A resignation measurement showed the AI does
+not see losses coming. Thinking-time tests at 400 and 800 simulations showed
+clear gains. A last training stretch at an even smaller learning rate gave
+nothing measurable, and training was ended.
+
+**The demo and the human games (November 5 to 6).** A browser version of the
+game was built for the presentation, and ten human games against the final
+model were played and added to the report: 5 human wins, 2 AI wins, 3 draws.
+
+**Documentation.** Throughout, every result was written into the results
+page and the report, and this explanation document was written so that every
+team member can understand and present the whole project.
+
 # Building the system
+
+*In short: How each part was built and first tested: rules, search, network, training loop and evaluation tools.*
 
 ## The rules engine (`chaturanga/`)
 
@@ -924,7 +1107,92 @@ the long run used 100 (and 200 for the most important comparisons).
 - `play_vs_ai.py`: play against the AI in the terminal, typing moves like
   `e2e4`.
 
+# How the system fits together, in diagrams
+
+*In short: Diagrams of the whole system, one training iteration, one search and the network.*
+
+## The big picture
+
+```
+            +---------------------+
+            |    Rules engine     |  board, legal moves, game end
+            |    (chaturanga/)    |
+            +----------+----------+
+                       |  positions and legal moves
+                       v
++-------------+   asks   +---------------------+
+|   Network   |<---------|        MCTS         |  50 simulations per move
+|  (network/) |--------->|       (mcts/)       |
++------+------+  policy  +----------+----------+
+       ^         + value            |  chosen move + visit counts
+       |                            v
+       |                 +---------------------+
+       |   trains on     |      Self-play      |  the AI plays itself
+       +-----------------|     (training/)     |  -> positions, targets
+         replay buffer   +---------------------+
+
+Evaluation (evaluation/) plays saved checkpoints against fixed opponents
+and against each other to measure progress.
+```
+
+## One iteration of training
+
+```
+  current network
+        |
+        v
+  1. SELF-PLAY: 100 games, each move chosen by a 50-simulation search
+        |        (6 workers in parallel; network calls batched on the GPU)
+        v
+  every position -> (13x8x8 position, visit distribution, final result)
+        |
+        v
+  2. REPLAY BUFFER: keep the newest 250,000 positions
+        |
+        v
+  3. TRAINING: 500 steps, each on 256 random positions from the buffer
+        |        loss = value error + policy error + weight penalty
+        v
+  4. SAVE: iter_NNNN.pt + one row in the log
+        |
+        v
+  improved network -> next iteration
+```
+
+## One search (one move)
+
+```
+  for each of 50 simulations:
+     start at the current position
+     SELECT: walk down the tree, at each step taking the move with
+             the highest  Q + 1.5 x prior x sqrt(N_parent) / (1 + N_move)
+     EXPAND: at a new position, ask the network -> priors for its moves
+     EVALUATE: the network's value for that position (no random playout)
+     BACKUP: add the value to every position on the path,
+             flipping its sign at every step
+  play the most visited move (or sample from the visits in self-play)
+```
+
+## The network
+
+```
+  input: 13 x 8 x 8
+     |
+  3x3 convolution, 64 filters, batch norm, ReLU
+     |
+  residual block x 4   (each: conv, BN, ReLU, conv, BN, + skip, ReLU)
+     |
+     +-----------------------------+
+     |                             |
+  POLICY HEAD                   VALUE HEAD
+  1x1 conv -> 2 planes          1x1 conv -> 1 plane
+  fully connected -> 4096       fully connected -> 64 -> 1
+  (one score per move)          tanh -> value in [-1, +1]
+```
+
 # Walkthroughs with real examples
+
+*In short: Real numbers followed through the system, from the board encoding to one move in the browser game.*
 
 This chapter follows concrete examples through the system, with real numbers
 from our code, so that every abstract idea above becomes something you can
@@ -1117,6 +1385,8 @@ positions.
 
 # The first training runs, and why they did not work
 
+*In short: The first 400-game runs did not improve the AI; this is how we found out why.*
+
 ## The runs
 
 | Run | Simulations | Games | Move choice in self-play | Decisive games | Policy loss | Time |
@@ -1237,6 +1507,8 @@ data was speed: about 20 minutes per iteration of 20 games on one CPU core.
 
 # Making training about 11 times faster
 
+*In short: How self-play became much faster without changing its results.*
+
 To train on much more data, we made self-play faster **without changing what
 it computes**: the same rules, the same search, the same results, just
 quicker.
@@ -1285,6 +1557,8 @@ from hours to about 9 minutes, and later, with GPU self-play, to about 4
 minutes.
 
 # The speed-ups in depth
+
+*In short: Why the original code was slow and exactly how each speed-up works.*
 
 This chapter explains, in more detail, how self-play went from 259
 milliseconds per move to 19, and then got faster again on the GPU.
@@ -1349,6 +1623,8 @@ about 111 to 89 microseconds per position. The result was about 2.2 to 2.4
 times faster self-play, with exactly the same games.
 
 # The long run and the final model
+
+*In short: 54,000 games over 144 hours produced a clearly stronger final model.*
 
 ## Setup
 
@@ -1467,6 +1743,8 @@ Each iteration took 25 to 30 minutes instead of about 9. After 61 iterations
 and used the time to lower the learning rate of the main run instead.
 
 # Trying to make it even stronger
+
+*In short: Every later idea: more search, draw penalties, GPU self-play, a bigger network, resignation and smaller steps.*
 
 After the final model, we tried every reasonable idea within the rules.
 
@@ -1608,6 +1886,8 @@ gain was within the margin.
 
 # Playing against the AI, and the human games
 
+*In short: The terminal and browser games, and the ten human games against the final model.*
+
 ## The terminal game
 
 `play_vs_ai.py` lets a person play in the terminal. Moves are typed as
@@ -1683,7 +1963,94 @@ range 0.137 to 0.646), up from 0.250 for final B.
 - The likely reason it struggles against people: it has rarely seen a direct
   attack on the king in self-play, where about 85% of games are drawn.
 
+# A complete game, move by move
+
+*In short: One real human win against the final model, replayed and explained.*
+
+To see what the AI actually does, here is game 10 of the human games against
+the final model (800 simulations per move). The human played Black, the AI
+played White, and the human won by checkmate in 66 plies. Every capture,
+check and key moment comes from replaying the recorded moves.
+
+**How to read the notation.** Each move is the starting square followed by
+the destination square. "b1a3" means the piece on b1 moved to a3. Files are
+the letters a to h from left to right (from White's side), and ranks are the
+numbers 1 to 8 from White's side to Black's side.
+
+## The opening (plies 1 to 13)
+
+| Ply | Side | Move | What happened |
+|---|---|---|---|
+| 1 | AI (White) | b1a3 | Horse develops to the edge |
+| 2 | Human (Black) | c8a6 | Elephant jumps out |
+| 3 | AI | d2d3 | Soldier forward |
+| 4 | Human | f8h6 | Second elephant out |
+| 5 | AI | b2b3 | Soldier forward |
+| 6 | Human | e7e6 | Soldier forward |
+| 7 | AI | d1d2 | The AI's king steps forward |
+| 8 | Human | g8e7 | Horse develops |
+| 9 | AI | a3b5 | Horse jumps forward |
+| 10 | Human | e7f5 | Horse to the center |
+| 11 | AI | d3d4 | Soldier forward |
+| 12 | Human | c7c6 | Soldier forward |
+| 13 | AI | b5c7 | **The AI's horse jumps deep into Black's camp, next to Black's king** |
+
+## The AI loses material (plies 14 to 36)
+
+| Ply | Side | Move | What happened |
+|---|---|---|---|
+| 14 | Human | d8c7 | **The king captures the horse.** The AI is a piece down |
+| 17 to 18 | | d4d5, c6d5 | The AI pushes a soldier and loses it |
+| 19 to 23 | | | Both sides move elephants back and forth |
+| 27 to 28 | | b4a5, a8a5 | Soldiers are traded |
+| 30 | Human | a5a3 | **The human's chariot captures the AI's elephant** |
+| 32 | Human | a3a2 | The chariot captures a soldier, **check** |
+| 35 to 36 | | b5a5, a2a5 | **The AI moves its chariot to a5, where the human's chariot simply captures it** |
+| 38 | Human | a5a2 | **Check** again |
+
+## The attack on the king (plies 40 to 52)
+
+| Ply | Side | Move | What happened |
+|---|---|---|---|
+| 40 to 44 | Human | b8a6, a6c5, c5b3 | The human's second horse comes forward |
+| 46 | Human | f5e3 | Horse jumps in, **check** |
+| 47 | AI | f2e3 | The AI's counselor captures the horse |
+| 49 | AI | e3f4 | The counselor moves |
+| 50 | Human | h6f4 | **The elephant captures the AI's counselor** |
+| 52 | Human | a2d2 | The chariot comes to the second rank, **check** |
+
+## The finish (plies 53 to 66)
+
+| Ply | Side | Move | What happened |
+|---|---|---|---|
+| 53 | AI | d1e1 | The king steps aside |
+| 55 to 65 | AI | h3f1, f1h3, ... | **The AI moves its elephant back and forth between f1 and h3 five times**, with no plan |
+| 56 to 62 | Human | d5d4, e6e5, e5d4, d4e3 | The human's soldiers advance and capture two more soldiers |
+| 64 | Human | h8a8 | The second chariot comes into play |
+| 66 | Human | a8a1 | **Checkmate**: one chariot holds the second rank, the other checks along the first rank, and the king has nowhere to go |
+
+At the end, the human had 13 pieces and the AI had 7.
+
+## What this game shows
+
+- **An early tactical mistake.** At ply 13 the AI's horse jumped next to the
+  enemy king and was simply captured. At 800 simulations the search should
+  see that, but its value judgment did not rate the danger correctly.
+- **Pieces lost one by one.** The elephant and then the chariot were lost
+  for nothing, and the counselor was traded for a horse, over the middle of
+  the game.
+- **No plan when under attack.** At the end, while the human brought both
+  chariots to its king, the AI shuffled an elephant between the same two
+  squares. This is exactly the behavior the resignation measurement
+  predicted: its evaluation stays close to even until mate is very near, so
+  it does not realize it is losing and does not defend.
+- **A direct attack works.** Two chariots coordinated against the king's
+  back rank delivered mate in 66 plies. The AI rarely saw such attacks in
+  self-play, where most games are slow and drawn.
+
 # The decision log: every choice and why it was made
+
+*In short: Twenty-four key decisions, each with the reason and the outcome.*
 
 This chapter lists the important decisions in the order they were made, with
 the question we faced, the reason for the choice, and what came of it. It is
@@ -1717,6 +2084,8 @@ the "why" behind the whole project.
 | 24 | How to evaluate against humans? | Logged human games through the browser board, 5 with each color | The project plan asks for agent-vs-human evaluation | 10 games: 5 human wins, 2 AI wins, 3 draws |
 
 # Every training option explained
+
+*In short: Every setting of the training command and the value we used.*
 
 `python -m training.train` accepts these options. The values in the last
 column are what the long run used.
@@ -1753,6 +2122,8 @@ column are what the long run used.
 | `--seed` | The run's random seed | A different one per stretch |
 
 # A tour of the code
+
+*In short: What each important file and function does, without reading code.*
 
 This chapter explains what the most important pieces of code do, file by
 file, without needing to read the code itself.
@@ -1845,6 +2216,8 @@ file, without needing to read the code itself.
   handling, written in plain HTML, CSS and JavaScript.
 
 # Inside the code, with real snippets
+
+*In short: Seven short pieces of real code, explained line by line.*
 
 This chapter shows a few short pieces of the actual code and explains them
 line by line. You do not need to know Python: read the explanation under
@@ -2000,6 +2373,8 @@ for conv_name, bn_name in _CONV_BN_PAIRS:
 
 # Every test, explained
 
+*In short: All 127 automated tests, in plain words.*
+
 There are 127 automated tests in 10 files. Each test name describes what it
 checks. Here they are, translated into plain words.
 
@@ -2138,6 +2513,8 @@ checks. Here they are, translated into plain words.
 
 # Presenting the project
 
+*In short: A two-minute summary, a slide outline, the live demo steps and what to emphasize.*
+
 ## The project in two minutes
 
 "We built an AlphaZero-style AI for Chaturanga, the ancestor of chess, from
@@ -2204,6 +2581,8 @@ draws."
 
 # Our project compared with the original AlphaZero
 
+*In short: Same method, a tiny fraction of the scale.*
+
 The method is the same; the scale is very different. These AlphaZero figures
 are approximate, as reported in DeepMind's 2018 paper for chess.
 
@@ -2225,6 +2604,8 @@ Given that, the fact that training clearly worked in the long run, and that
 its limits could be measured and explained, is the main achievement.
 
 # What it all means
+
+*In short: Why the AI learned what it did, and why it stopped improving.*
 
 **The first runs failed because of data, not bugs.** With 135 times as many
 games and nothing else changed in the method, the AI became clearly stronger.
@@ -2256,6 +2637,8 @@ one clear gain left is outside training: more search at play time.
 
 # Limitations and future work
 
+*In short: What our results cannot show, and what would most likely help next.*
+
 **Limitations.**
 
 - The first runs' benchmarks used 20 games, so differences smaller than about
@@ -2278,6 +2661,8 @@ one clear gain left is outside training: more search at play time.
    final model's level but needs many more games than one laptop can play.
 
 # Key numbers at a glance
+
+*In short: Every important number in one table.*
 
 | What | Number |
 |---|---|
@@ -2303,6 +2688,8 @@ one clear gain left is outside training: more search at play time.
 | Human vs final B | 3 human wins, 0 AI wins, 3 draws (AI score 0.250) |
 
 # How to read every graph and data file
+
+*In short: How to read each graph and every column of the result files.*
 
 ## The graphs (`results/*.png`)
 
@@ -2381,6 +2768,8 @@ side's lowest evaluation.
 
 # The repository, file by file
 
+*In short: Every folder, script and test file and what it is for.*
+
 ```
 chaturanga/   rules engine: board, legal moves, game end, tensor + action encoding
 network/      the residual network, loss, checkpoints, batched GPU evaluation
@@ -2427,6 +2816,8 @@ the plots, the match logs (`long_run_matches/`, `bigger_network/`,
 `results/README.md`, which explains all of it.
 
 # Getting started on your own computer, step by step
+
+*In short: Installing everything from nothing, running the project, and fixing common problems.*
 
 This chapter is for anyone who wants to run the project themselves, starting
 with nothing installed.
@@ -2508,6 +2899,8 @@ The browser opens with the board. Press Ctrl+C in the terminal to stop.
 
 # How to run everything
 
+*In short: The commands for the tests, the games, a small training run and a match.*
+
 ```
 python -m pytest -q                                   # all 127 tests
 python play_web.py --player NAME                      # play in the browser
@@ -2536,6 +2929,8 @@ Appendix B of the report. Requirements: Python 3 with `numpy`, `torch` and
 `matplotlib`.
 
 # Questions the professors may ask, with answers
+
+*In short: About thirty likely questions with short answers.*
 
 **Did you use any chess knowledge?** No. The agent only uses the rules. The
 greedy-capture opponent uses piece values, but it is only an opponent for
@@ -2678,7 +3073,62 @@ engine, Student 2 the network and training pipeline, Student 3 the search and
 evaluation. Later work (the long run, speed-ups, experiments, browser game and
 report) was merged through the pull requests in the timeline.
 
+# Test yourself
+
+*In short: Fifteen questions to check your understanding, with answers.*
+
+These questions check your understanding. The answers follow.
+
+1. What does the network output for a position?
+2. Why does the search need the network?
+3. What is a simulation?
+4. Why is the action space 4096?
+5. What is the value target of a position from a drawn game?
+6. Why did the first training runs not improve the AI?
+7. What made training faster without changing its results?
+8. What single change gave the clearest improvement in the long run?
+9. How do we know the final model is stronger than final B?
+10. Why does the final model draw almost every game against greedy capture?
+11. Why was resignation not used?
+12. Does the 30 to 50 simulation limit apply when playing a human?
+13. What is a score of 0.5?
+14. What does "+/- 0.049" after a score mean?
+15. Why can a beginner still beat the final model?
+
+**Answers.**
+
+1. A policy (a probability for each of the 4096 possible moves, with illegal
+   ones masked) and a value (a number from -1 to +1 for the side to move).
+2. The policy tells it which moves to explore, and the value judges the
+   positions it reaches, so it does not need random playouts.
+3. One pass of the search: walk down the tree, add and evaluate one new
+   position, and pass its value back up.
+4. Every move is a from-square and a to-square: 64 x 64 = 4096.
+5. 0 (unless the draw-penalty test was running, which used -0.2).
+6. Too little data (400 games) and about 80% draws, so the value head got
+   almost no win or loss signal; long games diluted it further.
+7. Caching legal moves, faster check detection, precomputed move tables,
+   batch normalization folded into the network, parallel workers, and later
+   batched GPU self-play, all tested to give identical results.
+8. Lowering the learning rate from 1e-3 to 1e-4.
+9. A 100-game match: 27 wins, 0 losses, 59 draws, score 0.657 +/- 0.049,
+   clearly above 0.5.
+10. Greedy capture trades pieces whenever possible; our AI does not lose
+    material but cannot force checkmate, so games end by the no-progress
+    rule.
+11. Its value judgment stays near 0 until just before mate, so almost every
+    resignation would have been in a game that was actually drawn.
+12. No. It applies to training. We play at 800 simulations.
+13. Even: the two sides are equally strong in that match.
+14. The 95% range: the true score is very likely within 0.049 of the
+    measured one.
+15. It learned mostly from slow, drawn games against itself, so it rarely
+    saw direct attacks on the king and does not recognize the danger in
+    time.
+
 # Glossary
+
+*In short: Every technical term in the document, explained in a line.*
 
 | Term | Meaning |
 |---|---|
