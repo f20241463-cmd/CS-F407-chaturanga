@@ -32,8 +32,8 @@ to the laptop's GPU (about 2.2 to 2.4 times faster), a second attempt with the
 larger network, started from the final model's games, reached the final
 model's level but did not pass it. A measurement of the final model's own
 evaluations showed that resigning hopeless games cannot work yet: it does not
-see a loss coming. A person new to chess still beat the final model in four
-of six games.
+see a loss coming. A person new to chess still beat the final model in five
+of ten games, losing two.
 
 # 1. Introduction
 
@@ -306,9 +306,10 @@ statistically, but the final positions are one-sided: the agent always ended
 with at most two pieces, and in each draw it had only its king left, which the
 human stalemated while going for checkmate.
 
-**Against the final model.** The same player later played six games against
-the final model at 800 simulations per move, using the browser board
-(`play_web.py`). One more game, stopped after 4 plies, is left out.
+**Against the final model.** The same player later played ten games against
+the final model at 800 simulations per move, five with each color, using the
+browser board (`play_web.py`). One more game, stopped after 4 plies, is left
+out.
 
 | Game | Human plays | Result | Ending | Plies | Pieces left (human / agent) |
 |---|---|---|---|---|---|
@@ -318,16 +319,22 @@ the final model at 800 simulations per move, using the browser board
 | 4 | White | Human win | Checkmate | 87 | 12 / 5 |
 | 5 | Black | Human win | Checkmate | 74 | 11 / 4 |
 | 6 | Black | Agent win | Human resigned | 295 | 6 / 1 |
+| 7 | Black | Agent win | Checkmate | 207 | 5 / 3 |
+| 8 | White | Draw | Stalemate | 137 | 8 / 1 |
+| 9 | White | Draw | Stalemate | 183 | 3 / 1 |
+| 10 | Black | Human win | Checkmate | 66 | 13 / 7 |
 
-The human won four games, three of them in under 110 plies, and the score is
-again 0.250 for the agent (95% Wilson range 0.060 to 0.635). The final model
-lost less material than final B, keeping two to five pieces in the games it
-lost, but it was still checkmated. Its only win was a resignation in a
-position where it had only its king left, after the human could not find a
-checkmate in 295 plies. The final model is much stronger than final B against
-programs (Sections 6.7 and 6.9), yet a person aiming directly at its king
-still beats it: it has rarely seen that kind of attack in self-play, where
-about 85% of games are drawn.
+The human won five games, four of them in under 110 plies, and the agent won
+two: one by checkmate and one by resignation, in a position where it had only
+its king left after the human could not find a checkmate in 295 plies. The
+agent's score is 0.350 (95% Wilson range 0.137 to 0.646), up from 0.250
+against final B, and it kept more material: two to seven pieces in the games
+it lost, against one or two for final B. It did better when the human played
+Black (2 wins, 1 draw, 2 losses) than White (0 wins, 2 draws, 3 losses).
+The final model is much stronger than final B against programs (Sections 6.7
+and 6.9), but a person aiming directly at its king still usually beats it:
+it has rarely seen that kind of attack in self-play, where about 85% of games
+are drawn.
 
 ## 6.5 How games end
 
@@ -559,8 +566,8 @@ reflected the method at that scale, not an error. Three causes stood out:
 
 The human games show the same weakness from the outside: the agent gives away
 material steadily and cannot defend, and a beginner can win. Against the final
-model the human still won four of six games (Section 6.4), though the agent
-kept more of its pieces.
+model the human still won five of ten games and lost two (Section 6.4),
+though the agent kept more of its pieces.
 
 The exploratory runs suggested that a better value signal alone is not enough
 at that scale: the value head learned material, but 30 to 100 simulations with
@@ -606,8 +613,8 @@ problem every change we tried ran into.
   per benchmark, and differences smaller than about 0.03 to 0.06 still cannot.
 - With most games drawn, a match score says little about how often the agent
   can actually win.
-- The human evaluation is twelve games by one beginner: six against final B
-  and six against the final model.
+- The human evaluation is sixteen games by one beginner: six against final B
+  and ten against the final model.
 - Compute was the main limit: even with GPU self-play, one iteration of 100
   games takes about 4 minutes, and the larger network about 10.
 
@@ -630,7 +637,7 @@ head, and the data was far too small. After making self-play about 11 times
 faster, a run of 54,000 games with the same method produced a clearly stronger
 agent. The final model beats its starting point 27 wins to 0 and beats random
 and untrained play, losing almost no games. It still draws nearly every game
-against greedy capture, a beginner beat it in four of six games, and it
+against greedy capture, a beginner beat it in five of ten games, and it
 rarely checkmates, so learning to convert an
 advantage remains the open problem. More search at play time makes it
 clearly stronger (23 wins to 0 at 800 simulations against 50), but neither
