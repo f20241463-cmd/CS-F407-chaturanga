@@ -11,8 +11,8 @@
     --ink: #1f1d1a;
     --muted: #6b665e;
     --line: #e2ddd3;
-    --light-sq: #efe3c8;
-    --dark-sq: #b9895a;
+    --sq: #e6cfa1;
+    --grid: #8a6a44;
     --accent: #2f6f5e;
     --accent-soft: rgba(47, 111, 94, 0.18);
     --last: rgba(232, 190, 70, 0.55);
@@ -29,8 +29,8 @@
       --ink: #f0ece4;
       --muted: #a39d92;
       --line: #35322d;
-      --light-sq: #d9c7a3;
-      --dark-sq: #8f6643;
+      --sq: #c9ad7c;
+      --grid: #5e4529;
       --accent: #6cc3a8;
       --accent-soft: rgba(108, 195, 168, 0.22);
       --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.3);
@@ -67,6 +67,7 @@
   .ranks { grid-template-rows: repeat(8, 1fr); align-items: center; justify-items: center; }
   .files { grid-template-columns: repeat(8, 1fr); justify-items: center; grid-column: 2; }
   .board {
+    border: 2px solid var(--grid);
     display: grid;
     grid-template-columns: repeat(8, 1fr);
     grid-template-rows: repeat(8, 1fr);
@@ -85,8 +86,8 @@
     justify-content: center;
     cursor: default;
   }
-  .sq.light { background: var(--light-sq); }
-  .sq.dark { background: var(--dark-sq); }
+  /* The historical Ashtapada board is not checkered: every square is the same color. */
+  .sq { background: var(--sq); box-shadow: inset 0 0 0 0.5px var(--grid); }
   .sq.last::before, .sq.sel::before, .sq.check::before {
     content: ""; position: absolute; inset: 0;
   }
@@ -246,7 +247,7 @@ function render() {
       const name = alg(sq);
       const piece = view.board[sq];
       const el = document.createElement("div");
-      el.className = "sq " + ((r + c) % 2 === 0 ? "dark" : "light");
+      el.className = "sq";
       if (last.includes(name)) el.classList.add("last");
       if (name === selected) el.classList.add("sel");
       if (view.legal[name]) el.classList.add("mine");
