@@ -216,6 +216,40 @@ class TestSelfPlay(unittest.TestCase):
         self.assertEqual(info["outcome"], "unfinished")
         self.assertEqual({value for _, _, value in examples}, {-0.25})
 
+    def _random_net_game(self, **kwargs):
+        from functools import partial
+
+        from chaturanga.stub_network import random_stub_network
+
+        trace = []
+        examples, info = play_self_play_game(
+            partial(random_stub_network, rng=np.random.default_rng(1)),
+            num_simulations=4,
+            max_plies=10,
+            rng=np.random.default_rng(0),
+            value_trace=trace,
+            **kwargs,
+        )
+        return examples, [v for _, v in trace]
+
+    def test_q_mix_blends_result_and_search_value(self):
+        plain, roots = self._random_net_game()
+        self.assertEqual({value for _, _, value in plain}, {0.0})  # unfinished
+        self.assertTrue(any(abs(r) > 1e-6 for r in roots))
+        full, roots_full = self._random_net_game(q_mix=1.0)
+        half, _ = self._random_net_game(q_mix=0.5, draw_value=-0.2)
+        self.assertEqual(roots, roots_full)  # same games either way
+        for (_, _, v_full), (_, _, v_half), r in zip(full, half, roots):
+            self.assertAlmostEqual(v_full, r, places=6)
+            self.assertAlmostEqual(v_half, 0.5 * -0.2 + 0.5 * r, places=6)
+
+    def test_q_mix_must_be_between_0_and_1(self):
+        from training.train import parse_args
+
+        with self.assertRaises(SystemExit):
+            parse_args(["--q_mix", "1.5"])
+        self.assertEqual(parse_args([]).q_mix, 0.0)
+
     def test_policy_target_is_zero_on_illegal_moves(self):
         roots = []
 

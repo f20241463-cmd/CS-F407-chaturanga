@@ -154,6 +154,7 @@ OMP_NUM_THREADS=1 python -m training.train --res_blocks 6 --filters 128 \
 | `--max_plies` | 300 | Games longer than this stop and count as unfinished. The final runs used 800. |
 | `--material_scale` | off | Value targets from material balance for drawn games. Uses piece values, which is human domain knowledge, so it is **outside the official plan** and kept only as a labeled experiment. |
 | `--draw_value` | 0.0 | Value target for drawn and unfinished games. |
+| `--q_mix` | 0.0 | Mix the search's own value of each position into its value target: (1 - w) x result + w x search value. |
 
 ## Evaluating checkpoints
 
