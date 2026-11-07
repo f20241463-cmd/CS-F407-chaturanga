@@ -112,6 +112,7 @@ def play_self_play_game(
     resign_after=2,
     resign_disabled=False,
     value_trace=None,
+    q_mix=0.0,
 ):
     """
     Returns (examples, info).
@@ -151,6 +152,13 @@ def play_self_play_game(
 
     value_trace: optional list; (side to move, root value) is appended for
     every move, for analysis.
+
+    q_mix: 0 (default) uses only the game result as each position's value
+    target. With q_mix = w > 0 the target is (1 - w) x result + w x the
+    search's own value of that position (the root value, from the mover's
+    point of view). A drawn game then still says which positions the
+    search found good or bad. It uses only the agent's own search, no game
+    knowledge.
     """
     return drive(
         self_play_game_steps(
@@ -168,6 +176,7 @@ def play_self_play_game(
             resign_after=resign_after,
             resign_disabled=resign_disabled,
             value_trace=value_trace,
+            q_mix=q_mix,
         ),
         network_fn,
     )
@@ -188,6 +197,7 @@ def self_play_game_steps(
     resign_after=2,
     resign_disabled=False,
     value_trace=None,
+    q_mix=0.0,
 ):
     """
     play_self_play_game as a generator: yields a state tensor whenever the
@@ -200,6 +210,7 @@ def self_play_game_steps(
 
     state = GameState()
     records = []  # (tensor, policy, side_to_move) per ply
+    root_values = []  # the search's value of each recorded position
     plies = 0
     low_streak = {Color.WHITE: 0, Color.BLACK: 0}
     would_resign = None  # first side whose evaluation crossed the threshold
@@ -224,6 +235,7 @@ def self_play_game_steps(
         policy = (visit_counts / visit_counts.sum()).astype(np.float32)
         mover = state.side_to_move
         records.append((encoding.state_to_tensor(state), policy, mover))
+        root_values.append(float(stats["root_value"]))
         if value_trace is not None:
             value_trace.append((mover, stats["root_value"]))
 
@@ -260,6 +272,8 @@ def self_play_game_steps(
         winner = state.side_to_move if result > 0 else state.side_to_move.opponent
         outcome = "white" if winner == Color.WHITE else "black"
 
+    if q_mix:
+        values = [(1.0 - q_mix) * z + q_mix * q for z, q in zip(values, root_values)]
     examples = [
         (tensor, policy, value) for (tensor, policy, _), value in zip(records, values)
     ]

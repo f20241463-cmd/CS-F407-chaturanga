@@ -20,7 +20,7 @@ evaluation/   baseline players, per-iteration benchmark, game endings, human-gam
 results/      training logs, benchmark CSVs, plots, and the results write-up
 models/       the final trained network (chaturangzero_final.pt)
 web/          the board page for play_web.py (play the final model in the browser)
-tests/        127 automated tests
+tests/        129 automated tests
 ```
 
 | Part | What it does | Details |

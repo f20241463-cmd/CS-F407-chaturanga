@@ -133,6 +133,15 @@ def parse_args(argv=None):
         "Uses only the rules, so it fits the no-domain-knowledge requirement.",
     )
     p.add_argument(
+        "--q_mix",
+        type=float,
+        default=0.0,
+        help="0 (default): value targets are the game result only. With w > 0 "
+        "each position's target is (1 - w) x result + w x the search's own value "
+        "of that position, so drawn games still carry a signal. Uses only the "
+        "agent's own search, no game knowledge.",
+    )
+    p.add_argument(
         "--resign_threshold",
         type=float,
         default=None,
@@ -248,6 +257,8 @@ def parse_args(argv=None):
         p.error("--filters must be between 64 and 128")
     if args.bootstrap_iters < 0:
         p.error("--bootstrap_iters must be at least 0")
+    if not 0.0 <= args.q_mix <= 1.0:
+        p.error("--q_mix must be between 0 and 1")
     if args.bootstrap_iters and not args.bootstrap_model:
         p.error("--bootstrap_iters needs --bootstrap_model")
     return args
@@ -304,6 +315,7 @@ _SELF_PLAY_KEYS = (
     "resign_threshold",
     "resign_after",
     "resign_check_fraction",
+    "q_mix",
 )
 
 # Per-process state of a self-play worker: the network it is currently
@@ -349,6 +361,7 @@ def _play_one_game(task):
         rng=np.random.default_rng(seed),
         material_scale=settings["material_scale"],
         avoid_repetition=settings["avoid_repetition"],
+        q_mix=settings["q_mix"],
         **_resign_settings(settings, _check_rng(seed)),
     )
     compact = [compact_example(t, p, v) for t, p, v in examples]
@@ -383,6 +396,7 @@ def _game_steps(settings, seed):
         rng=np.random.default_rng(seed),
         material_scale=settings["material_scale"],
         avoid_repetition=settings["avoid_repetition"],
+        q_mix=settings["q_mix"],
         **_resign_settings(settings, _check_rng(seed)),
     )
 
@@ -498,6 +512,7 @@ def run_self_play(model, args, rng):
             rng=rng,
             material_scale=args.material_scale,
             avoid_repetition=args.avoid_repetition,
+            q_mix=args.q_mix,
             **_resign_settings(settings, rng),
         )
         examples_per_game.append(examples)
