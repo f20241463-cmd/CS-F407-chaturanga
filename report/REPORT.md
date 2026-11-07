@@ -1,7 +1,7 @@
 ---
 title: "ChaturangZero: Learning Chaturanga by Self-Play"
 subtitle: "CS F407 course project report"
-date: "October 2026"
+date: "November 2026"
 ---
 
 # Abstract
@@ -64,8 +64,10 @@ make it stronger.
 
 # 2. The game
 
-Chaturanga is played on an 8x8 board with the same starting layout as chess,
-but most pieces are weaker:
+Chaturanga is played on the Ashtapada, an 8x8 board whose squares are all the
+same color (it is not checkered like a chess board; our browser game draws it
+this way). The starting layout is the same as in chess, but most pieces are
+weaker:
 
 | Piece | Letter | Move |
 |---|---|---|
@@ -157,11 +159,11 @@ The code is plain Python with NumPy and PyTorch, organized by component:
 | `training/` | self-play, replay buffer, training loop |
 | `evaluation/` | baseline players, benchmark, parallel matches, game-ending classifier, human-game log |
 
-127 automated tests cover the rules (36 tests, including check, checkmate,
+129 automated tests cover the rules (36 tests, including check, checkmate,
 stalemate, promotion and the draw rules), the search (including a toy game
 with a known best move), the network, value-target signs, policy targets, a
 complete small training run including resuming from a checkpoint, the
-benchmark scoring, the evaluation tools, batched GPU self-play and the browser game. All runs
+benchmark scoring, the search-value targets of Section 6.16, the evaluation tools, batched GPU self-play and the browser game. All runs
 are seeded and repeatable.
 
 **Faster self-play.** For the long run we sped up self-play about 11 times on
@@ -544,6 +546,19 @@ diagnosis below. They are not the final agent.
 
 ![Exploratory runs: loss, decisive share and game length.](../results/training_curves_exploratory.png)
 
+## 6.16 Learning from the search's own values
+
+About 85% of self-play games are draws, so most value targets are 0 and the
+value head learns little (Section 7). A rules-only fix is to blend each
+position's final result z with the value the search itself found at that
+position, q: the target becomes (1 - w) z + w q. Even in a drawn game, the
+search's values then tell the value head which positions looked better or
+worse. We continued the final model (iteration 560) for 100 more iterations
+with w = 0.5 (`--q_mix 0.5`, learning rate 1e-4), keeping every other setting
+the same, and tested iterations 600, 630 and 660 against iteration 560.
+
+*This experiment is still running; its results will be added here.*
+
 # 7. Discussion
 
 **The first runs.** We first checked for a bug. The tests confirm the value
@@ -606,6 +621,41 @@ side does not see its loss coming. With about 85% of self-play games drawn,
 the value head gets too few clear results to learn from, and that is the
 problem every change we tried ran into.
 
+**Why the agent does not master the game.** The proposal's aim was an agent
+that masters Chaturanga. Ours does not, and the reason is scale. The method is
+the same as AlphaZero's; the amount of training is not:
+
+| | AlphaZero (chess) | ChaturangZero |
+|---|---|---|
+| Self-play games | about 44 million | about 54,000 |
+| Simulations per move in training | 800 | 50 |
+| Network | about 20 blocks of 256 filters | 4 blocks of 64 filters |
+| Hardware | thousands of TPU chips | one laptop |
+| Training time | hours, on that hardware | about 144 hours |
+
+That is roughly 800 times fewer games. At our speed (54,000 games in about
+144 hours), 44 million games would take about 800 x 144 hours, or roughly 13
+years of nonstop running on this laptop. Chaturanga's weaker pieces probably
+make it simpler than chess, so it may need fewer games, but very likely still
+millions rather than thousands. The course constraints also cap strength
+regardless of time: 30 to 50 simulations per move in training and a small
+network give much weaker training targets than AlphaZero's 800 simulations.
+
+Within these limits, three things can still raise strength, and we tried each:
+
+1. **Learn more from each game.** Mixing the search's own value into the value
+   targets gives the value head a signal even from drawn games (Section 6.16).
+2. **Search more at play time.** The constraint on simulations applies to
+   training only. At 800 simulations the final model beats its own 50-simulation
+   version 23 wins to 0 (Section 6.11), and the browser game uses 800.
+3. **More hardware.** Running self-play on several machines at once would
+   multiply the number of games, but four laptops or a rented GPU would give
+   a few times more games, not 800 times more.
+
+So the honest summary is: the full AlphaZero method works here and keeps
+improving with more games, and the gap to mastery is one of compute, which we
+measured rather than guessed.
+
 # 8. Limitations and future work
 
 - The first runs' benchmarks use 20 games per checkpoint, so differences
@@ -631,7 +681,7 @@ What we expect would help most, in order:
 # 9. Conclusion
 
 We implemented every part of an AlphaZero-style system for Chaturanga under the
-course constraints and verified it with 127 tests. With 400 self-play games per
+course constraints and verified it with 129 tests. With 400 self-play games per
 run the agent did not improve, and we measured why: draws starve the value
 head, and the data was far too small. After making self-play about 11 times
 faster, a run of 54,000 games with the same method produced a clearly stronger
@@ -689,3 +739,32 @@ python play_web.py --player NAME    # the same game in the browser
 
 Every log, benchmark CSV, match log and plot is in `results/`, and the final
 model is `models/chaturangzero_final.pt`.
+
+# Appendix C: The project proposal, item by item
+
+Every requirement of the course proposal, and where it is met.
+
+| Proposal requirement | Where it is met |
+|---|---|
+| Efficient, bug-free 8x8 rules engine: legal moves, turns, terminal states | `chaturanga/`; 36 rule tests and an equivalence test of the fast engine (Section 4) |
+| 12 piece types encoded as a 13-channel 8x8 tensor with a turn indicator | Section 3.1 |
+| Moves as from-square to to-square transitions | Section 3.1 |
+| Dual-head residual network: policy over the flattened action space, value in [-1, 1] | Section 3.2 |
+| MCTS guided by the policy priors, leaves evaluated by the value head, no random rollouts | Section 3.3 |
+| Loss: value MSE + policy cross-entropy + L2 regularization | Section 3.2 |
+| Local self-play loop with a replay buffer | Section 3.4 |
+| 4 to 6 residual blocks, 64 to 128 filters | 4 x 64 final model; 6 x 128 tried (Sections 6.10 and 6.12) |
+| 30 to 50 simulations per move in training | 50 in every training run |
+| 4,096-dimensional action space, illegal moves masked before the softmax | Sections 3.1 and 3.3 |
+| No human domain knowledge beyond the rules | The final model uses only the rules; the two runs that break this are labeled exploratory (Section 6.15) |
+| Runs on consumer hardware in an academic timeframe | One laptop; self-play about 11 times faster, then 2.2 to 2.4 times faster on its GPU (Section 4) |
+| Milestone 1: rules engine verified by unit tests | Section 4 |
+| Milestone 2: MCTS with an untrained network | Search tests and untrained baselines (Sections 4 and 5.2) |
+| Milestone 3: self-play pipeline, loss tracked over 50 to 100+ games | 54,000 games with loss curves (Sections 6.1 and 6.6) |
+| Milestone 4: benchmarks against past iterations and baseline players, learning curves | Sections 6.2, 6.3 and 6.7 to 6.9 |
+| Agent vs. random and agent vs. human evaluation | Sections 6.2, 6.4 and 6.9 |
+| Progress plots | `results/` and the figures in Section 6 |
+| Uncheckered 8x8 Ashtapada board; Mantri one diagonal step, Gaja two-square diagonal jump | Section 2; the browser game draws the uncheckered board |
+| An agent that masters the game from scratch | Not reached; Section 7 ("Why the agent does not master the game") explains the 800-fold gap in games and what we did within the limits |
+| Three-student division of labor | Appendix A |
+
