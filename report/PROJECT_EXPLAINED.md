@@ -39,8 +39,9 @@ material at the end:
 - **Making training about 11 times faster**, and **the speed-ups in depth**.
 - **The long run and the final model.**
 - **Trying to make it even stronger**: every later experiment.
-- **Playing against the AI, and the human games**, including **one complete
-  game replayed move by move**.
+- **Playing against the AI, and the human games**, including **game 10
+  replayed move by move**, **the other nine games replayed** with their key
+  moments, and **the patterns across all ten games**.
 - **The decision log**, **every training option**, a **tour of the code**,
   **real code snippets explained line by line**, **every one of the 127
   tests in plain words**, and a guide to **presenting the project**.
@@ -2047,6 +2048,300 @@ At the end, the human had 13 pieces and the AI had 7.
 - **A direct attack works.** Two chariots coordinated against the king's
   back rank delivered mate in 66 plies. The AI rarely saw such attacks in
   self-play, where most games are slow and drawn.
+
+# The other nine games, replayed
+
+*In short: games 1 to 9 against the final model, each replayed with its key moments, and the patterns that show up across all ten games.*
+
+These are the other nine games the same player (new to chess) played against
+the final model at 800 simulations per move, in the order they were played.
+Game 10 is in the previous chapter. Every capture, check and promotion below
+comes from replaying the recorded moves in `results/human_games.csv`.
+
+Long games have hundreds of plies, so instead of listing every move, each
+game shows its **key moments**: captures (marked "takes"), checks and
+promotions. "H" is the human and "AI" is the final model. A
+**back-and-forth move** means a piece moved straight back to the square it
+had just left, which is a sign of having no plan.
+
+## Game 1: human (White) wins by checkmate in 133 plies
+
+**Opening.** g1f3 f7f6 e2e3 e8f7 b2b3 f7e6 b1c3 c7c6 f1h3 c6c5 d2d3 c8a6. As
+Black, the AI walked its own king forward in the first moves (e8f7, then
+f7e6).
+
+| Ply | Who | Move | What happened |
+|---|---|---|---|
+| 17 | H | b3c4 | A soldier takes the AI's elephant |
+| 24 to 25 | AI, H | e6d5, c4d5 | The AI's counselor takes a horse; a soldier takes the counselor back |
+| 27, 29 | H | d3c4, c4b5 | Soldiers take two soldiers |
+| 41 to 43 | | d4f5, f8d6, f5d6 | A soldier each, then the human's horse takes the AI's elephant |
+| 49 | H | c5a7 | The human's elephant takes a chariot |
+| 63 to 64 | H, AI | f5h6, g7h6 | A horse takes a soldier with check, and is taken |
+| 69 | H | d1d7 | The chariot takes a soldier |
+| 73 to 74 | H, AI | e5e8, f6d7 | Chariots are traded |
+| 81 to 82 | H, AI | g8g7, f7g7 | The human's chariot gives check and is taken by the king |
+| 87 | H | c7b8 | The counselor takes a horse |
+| 90 | AI | g2g1 | **The AI promotes a soldier to a counselor** |
+| 91 | H | b7b8 | The human promotes too |
+| 92 to 93 | AI, H | g1f2, e2f2 | The AI's new counselor takes a soldier and is taken by the king |
+| 103 to 133 | H | h4h5, h5h6, h6h7 | A soldier walks up the h-file, giving check, and delivers **checkmate** |
+
+**End.** Human: king, 2 counselors, 2 elephants, 3 soldiers. AI: king, horse,
+2 soldiers. The AI made 6 back-and-forth moves.
+
+**What it shows.** The AI lost its elephant, counselor and chariot one at a
+time, then lost the endgame. It did manage one promotion, but lost the new
+piece at once.
+
+## Game 2: draw by stalemate in 234 plies (human Black)
+
+**Opening.** b1a3 e7e6 d2d3 c8a6 b2b3 g8f6 a3b5 c7c6 b5c7 d8c7 d3d4 f8d6.
+
+| Ply | Who | Move | What happened |
+|---|---|---|---|
+| 9 to 10 | AI, H | b5c7, d8c7 | **The AI jumps its horse next to the human's king, and the king takes it**, exactly as in game 10 |
+| 18 to 19 | H, AI | d5e3, f2e3 | A horse takes an elephant with check and is taken |
+| 14 to 34 | H | | The human picks off soldiers and, at ply 34, a chariot |
+| 55 to 56 | AI, H | h3f5, g6f5 | Elephant takes horse, soldier takes elephant |
+| 72 | H | f8f2 | The chariot takes the AI's counselor |
+| 77 to 78 | AI, H | g1g2, h3g2 | Chariot takes chariot, soldier takes back |
+| 80 | H | g2g1 | Human promotes |
+| 97 | AI | e1f2 | The AI's king takes a chariot |
+| 108 to 172 | H | | **The human promotes six soldiers in total** (plies 80, 108, 166, 168, 170, 172) |
+| 216 to 234 | H | | Checks with counselors, then **stalemate**: the AI's lone king has no legal move but is not in check |
+
+**End.** Human: king and 5 counselors. AI: king only. The AI made 35
+back-and-forth moves.
+
+**What it shows.** The human won almost all the material, but five
+counselors (each moving one square diagonally) could not force checkmate, and
+the game ended in stalemate. This is exactly why the game is so drawish: even
+a huge material advantage is hard to convert with short-range pieces.
+
+## Game 3: human (White) wins by checkmate in 105 plies
+
+**Opening.** g2g3 f7f6 f1h3 e8f7 b2b3 c8a6 c1a3 f7e6 g1f3 b8c6 b1c3 c6d4. The
+AI's king again walks forward early (e8f7, f7e6).
+
+| Ply | Who | Move | What happened |
+|---|---|---|---|
+| 13 | H | f3d4 | A horse takes the AI's horse |
+| 15 | H | d4e6 | The horse takes the AI's counselor **with check** |
+| 17 | H | e6f8 | The same horse takes an elephant |
+| 25 to 28 | | | Soldier trades |
+| 39 | H | c5e7 | The elephant takes a chariot |
+| 62 to 63 | AI, H | g4f2, e4f2 | The AI's horse gives check and is taken |
+| 67 | H | g6f8 | A horse takes the second chariot |
+| 81 to 82 | H, AI | c5b6, a7b6 | The human's counselor gives check and is taken by the king |
+| 96 to 97 | AI, H | c4c3, d2c3 | A soldier gives check and is taken by the king |
+| 105 | H | a1a5 | The chariot takes a soldier with **checkmate** |
+
+**End.** Human: king, 2 chariots, 2 horses, 2 elephants, 2 soldiers. AI: king
+and 1 soldier.
+
+**What it shows.** One horse won three pieces in five plies (horse, counselor
+with check, elephant), because the AI's king had walked into the open. The
+AI never recovered.
+
+## Game 4: human (White) wins by checkmate in 87 plies
+
+**Opening.** g2g3 f7f6 b2b3 e8f7 b1c3 f7e6 d2d3 c7c6 e2e3 c6c5 f1h3 b7b6. The
+AI's king walks out again (e8f7, f7e6).
+
+| Ply | Who | Move | What happened |
+|---|---|---|---|
+| 19 to 20 | H, AI | d5e6, b4c3 | A soldier takes the AI's counselor; the AI takes a horse back |
+| 23 to 25 | | | Soldiers and an elephant exchanged |
+| 29 | H | c5a7 | The elephant takes a chariot |
+| 31 | H | b1b8 | The chariot takes a horse **with check** |
+| 33 | H | b8f8 | The chariot takes an elephant |
+| 47 | H | f8g8 | The chariot takes the second horse |
+| 67 | H | b6c7 | The counselor takes the second chariot |
+| 73 to 87 | H | | Chariot checks (b8a8, h1c1, a8d8), then **checkmate** with c1c5 |
+
+**End.** Human: king, 2 chariots, counselor, horse, elephant, 6 soldiers. AI:
+king and 4 soldiers.
+
+**What it shows.** The fastest of the White wins. Once a chariot got behind
+the AI's lines, it collected piece after piece, and two chariots then
+checkmated the exposed king.
+
+## Game 5: human (Black) wins by checkmate in 74 plies
+
+**Opening.** b1a3 e7e6 d2d3 f8h6 d3d4 g8f6 b2b3 f6d5 a3c4 b7b6 c4d6 c7d6.
+
+| Ply | Who | Move | What happened |
+|---|---|---|---|
+| 11 to 12 | AI, H | c4d6, c7d6 | **The AI's horse jumps deep into Black's camp and is taken by a soldier** |
+| 18 | H | d5e3 | A horse takes an elephant with check |
+| 36 | H | g4h3 | A soldier takes the second elephant |
+| 38 | H | d5c3 | A horse takes a soldier with check |
+| 48 to 49 | H, AI | f4g3, f2g3 | Check; the king takes the soldier |
+| 62 | H | b6b4 | The chariot takes a chariot |
+| 66 | H | c4b4 | The chariot takes the counselor |
+| 70 to 72 | | e2g1, h1g1, g8g1 | Horse takes horse, chariot takes horse, chariot takes chariot |
+| 74 | H | b4h4 | **Checkmate** with a chariot |
+
+**End.** Human: king, 2 chariots, counselor, horse, elephant, 5 soldiers. AI:
+king and 3 soldiers.
+
+**What it shows.** The shortest game of all. The AI again lost its horse by
+jumping it forward early, and its king was mated by two chariots.
+
+## Game 6: AI wins by resignation in 295 plies (human Black)
+
+**Opening.** b1a3 c7c6 d2d3 f7f6 d3d4 e7e6 b2b3 d7d6 d1d2 f8h6 c1e3 h6f4.
+
+| Ply | Who | Move | What happened |
+|---|---|---|---|
+| 12 | H | h6f4 | Elephant check |
+| 16 to 21 | | | The human's soldier takes a soldier, an elephant and another soldier; the AI's counselor takes it back |
+| 26 | H | c6b5 | A soldier takes a horse |
+| 33 | AI | d2e3 | The AI's king takes a horse |
+| 46 to 47 | H, AI | d5e4, d3e4 | The human's counselor gives check and is taken by the king |
+| 60 | H | f8f2 | The chariot takes the AI's counselor |
+| 63 | AI | e2f2 | The AI's chariot takes the human's chariot |
+| 70 | H | h6f4 | The elephant takes the AI's chariot |
+| 80 to 81 | H, AI | e4d4, c3d4 | Chariot takes horse; a soldier takes the chariot |
+| 90 | H | c4e2 | The elephant takes the AI's last chariot |
+| 124 to 212 | H | | **The human promotes five soldiers** (plies 124, 126, 142, 210, 212); the AI's king takes two of the new counselors |
+| 240 to 295 | H | | Checks with counselors and an elephant, but no mate |
+
+**End.** The human **resigned** at ply 295 with king, 3 counselors, an
+elephant and a soldier against the AI's lone king. The no-progress counter
+stood at 83 of 100, so the game was about 17 plies from being a draw anyway.
+The AI made **64 back-and-forth moves**, almost all with its king.
+
+**What it shows.** The AI did not win this game by play: it had only its king
+left. The human could not find a checkmate with counselors and an elephant
+and gave up. It counts as an AI win because the human resigned, and the
+report says so.
+
+## Game 7: AI wins by checkmate in 207 plies (human Black)
+
+**Opening.** b1a3 g8f6 d2d3 f6h5 d3d4 h5f4 g2g3 c7c6 g3f4 c6c5 d4d5 e7e6.
+
+| Ply | Who | Move | What happened |
+|---|---|---|---|
+| 9 | AI | g3f4 | **The AI's soldier takes the human's horse**, which had jumped forward |
+| 30, 34 | H | d5e4, c4b2 | The human takes a horse, and a soldier with check |
+| 37 to 41 | AI | c3e4, e4d6, d6e8 | **The AI's horse goes on a raid: it takes a soldier, an elephant and the human's counselor** |
+| 42 | H | d8e8 | The king finally takes the horse |
+| 51 to 54 | | | Exchanges of horses, elephants and soldiers |
+| 56 | H | c5b5 | The human's chariot takes a chariot |
+| 60 | H | b1e1 | The chariot takes the AI's counselor with check |
+| 67 | AI | f3f2 | The AI's king takes a chariot |
+| 86 to 184 | H | | The human promotes four soldiers; the AI's chariot and king take three of the new counselors |
+| 207 | AI | d2d8 | **The AI's chariot delivers checkmate** |
+
+**End.** Human: king, chariot, counselor, elephant, soldier. AI: king,
+chariot, soldier. The AI made 42 back-and-forth moves.
+
+**What it shows.** The AI's only real win. Its horse raid in plies 37 to 41
+won three pieces, and at the end its chariot found a back-rank checkmate even
+though the human still had more pieces. This shows the AI can punish
+mistakes sharply when they happen.
+
+## Game 8: draw by stalemate in 137 plies (human White)
+
+**Opening.** g1f3 f7f6 f3g5 e8f7 g5e4 f7e6 f2f3 c7c6 f3f4 c6c5 e1f2 b7b6. The
+AI's king walks out again (e8f7, f7e6).
+
+| Ply | Who | Move | What happened |
+|---|---|---|---|
+| 17 to 26 | | | Soldier exchanges |
+| 27 to 30 | H, AI | b1b8, a7b6 | The human's chariot takes a horse with check, and is taken by a soldier |
+| 31 to 43 | H | | The human takes an elephant, soldiers and the second elephant |
+| 51 to 52 | H, AI | e5f6, g7f6 | Counselor takes horse; soldier takes counselor |
+| 61 | H | g2f3 | A soldier takes the AI's counselor |
+| 73 | H | e4f6 | A horse takes a chariot |
+| 95 | H | b6d7 | A horse takes the second chariot |
+| 89 to 137 | H | | Many checks with chariot, horse and soldiers, ending in **stalemate** |
+
+**End.** Human: king, chariot, horse, 5 soldiers. AI: king only.
+
+**What it shows.** Another huge material win that ended in stalemate instead
+of checkmate: the human kept checking the lone king and finally left it with
+no legal move while not in check.
+
+## Game 9: draw by stalemate in 183 plies (human White)
+
+**Opening.** b2b3 f7f6 g1f3 e8f7 f3h4 c7c6 c1a3 c6c5 a3c5 b7b6 c5e7 b6b5. The
+AI's king walks out again (e8f7).
+
+| Ply | Who | Move | What happened |
+|---|---|---|---|
+| 9 to 16 | H, AI | | The human's elephant takes three soldiers and is finally taken by a chariot |
+| 21 to 24 | | a1a5, a5a6, b8a6 | Chariot takes chariot, takes an elephant, and is taken by a horse |
+| 29 to 43 | H | | The human wins both of the AI's horses and several soldiers (the AI's counselor takes one horse back at ply 36) |
+| 55 to 57 | H | e3f4, b3c4 | The human takes an elephant and the AI's counselor |
+| 62, 66 | AI | f5g5, f5e5 | **The AI's chariot takes a horse and a counselor** |
+| 77 to 78 | H, AI | e1e6, d7e6 | Chariot trade |
+| 87 to 151 | H | | The human promotes four soldiers; the AI's king takes several pieces |
+| 173 to 183 | H | | Counselor checks, then **stalemate** |
+
+**End.** Human: king and 2 counselors. AI: king only. The AI made 18
+back-and-forth moves.
+
+**What it shows.** The AI fought back in the middle (its chariot won two
+pieces), but ended with a lone king. The human could not mate with two
+counselors, and the game ended in stalemate.
+
+## Patterns across all ten games
+
+**1. As Black, the AI walks its king forward in the opening.** In all five
+games where the human played White (games 1, 3, 4, 8 and 9), the AI's first
+moves included e8f7, and in four of them f7e6 too, putting its king in front
+of its own soldiers. No chess player would do this; the AI learned it in
+self-play, where it did no harm because its opponent (itself) did not attack.
+Against a human it was costly: in game 3, a horse used the exposed king to win
+the counselor with check.
+
+**2. As White, the AI throws its horse forward.** In games 2, 5, 6, 7 and 10
+the AI opened b1a3 and d2d3. In games 2 and 10 its horse then jumped to c7,
+right next to the human's king, and was simply taken (b5c7, d8c7). In game 5
+it jumped to d6 and was taken by a soldier.
+
+**3. It loses pieces one at a time.** In four of the five human wins, the AI
+ended with only its king, a few soldiers and at most one other piece (in game
+10 it still had a chariot, a horse and an elephant, but its king was mated
+anyway). Its chariots, elephants and counselor usually fell in the
+middlegame, often to the human's chariots or horses getting behind its
+lines.
+
+**4. It shuffles when it has no plan.** The AI made many back-and-forth moves
+in long games: 64 in game 6, 42 in game 7 and 35 in game 2, almost all with
+its king or a single piece. It does not realize it is losing, which matches
+the resignation measurement: its evaluation stays near 0 until the very end.
+
+**5. Big material leads are hard to convert, even for the human.** In games
+2, 8 and 9, the human had a huge material lead against a lone king but ended
+in stalemate, and in game 6 the human resigned with three counselors against
+a lone king. With short-range pieces, forcing checkmate is genuinely hard.
+This is the same reason our AI's self-play games are mostly draws.
+
+**6. It can punish mistakes.** In game 7, its horse won three pieces in five
+plies, and its chariot found a back-rank checkmate while behind in material.
+The search is sharp when there is something concrete to calculate.
+
+**7. White or Black.** The AI did much better when the human played Black (2
+AI wins, 1 draw, 2 losses) than White (0 wins, 2 draws, 3 losses). When the AI
+is Black, its habit of walking the king forward makes it especially
+vulnerable.
+
+| Game | Human plays | Result | Plies | AI back-and-forth moves | Main reason for the result |
+|---|---|---|---|---|---|
+| 1 | White | Human win | 133 | 6 | AI lost pieces one by one, then the endgame |
+| 2 | Black | Draw | 234 | 35 | Human promoted six soldiers but stalemated the lone king |
+| 3 | White | Human win | 105 | 7 | A horse won three pieces off the AI's exposed king |
+| 4 | White | Human win | 87 | 5 | A chariot got behind the AI's lines |
+| 5 | Black | Human win | 74 | 2 | AI lost its horse early; two chariots mated |
+| 6 | Black | AI win | 295 | 64 | Human resigned with three counselors against a lone king |
+| 7 | Black | AI win | 207 | 42 | AI's horse raid, then a back-rank mate |
+| 8 | White | Draw | 137 | 8 | Human stalemated the lone king |
+| 9 | White | Draw | 183 | 18 | Human stalemated the lone king |
+| 10 | Black | Human win | 66 | 6 | AI lost its horse early, shuffled an elephant, mated by two chariots |
 
 # The decision log: every choice and why it was made
 
