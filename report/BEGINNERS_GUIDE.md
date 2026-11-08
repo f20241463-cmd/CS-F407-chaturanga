@@ -37,8 +37,8 @@ The short story of what happened:
 4. After that, it became clearly stronger than where it started.
 5. We tried several more ideas to make it even stronger. Most did not help,
    but letting it "think longer" before each move did.
-6. A beginner from our team played 10 games against it and won 5, lost 2 and
-   drew 3.
+6. A rated club chess player (FIDE blitz rating 1641) played 10 games against
+   it and won 5, lost 2 and drew 3.
 
 # The game: Chaturanga
 
@@ -330,7 +330,9 @@ You click a piece, it shows where the piece can go, you click the square,
 and the AI answers in under a second. A side panel shows **what the AI
 thinks**: who it believes is winning, and the three moves it considered most.
 
-A team member who is new to chess played **10 games** against the final
+A rated club chess player from outside the team, with a **FIDE blitz rating of
+1641** (the official international rating; 1641 is a solid club player, well
+above a beginner), played **10 games** against the final
 version (thinking 800 times per move), 5 as White and 5 as Black:
 
 | | Human won | AI won | Draw |
@@ -339,9 +341,10 @@ version (thinking 800 times per move), 5 as White and 5 as Black:
 | Human as Black | 2 | 2 | 1 |
 | **Total** | **5** | **2** | **3** |
 
-Compared with the first version (which never beat the human), the final
-version kept more of its pieces and won 2 games. But the human still won
-half the games, four of them quickly (in under 110 moves).
+The first version never beat even a beginner. The final version won 2
+games and drew 3 against a much stronger player, and kept more of its
+pieces. But the club player still won half the games, four of them quickly
+(in under 110 moves).
 
 **What a typical loss looks like for the AI.** In one game, the AI jumped its
 horse right next to the human's king, where the king simply captured it.
@@ -374,7 +377,7 @@ it does not recognize the danger in time.
 | Imaginings per move in practice | 800 | 50 |
 | Computer | Thousands of special chips in a data center | One laptop |
 | Knowledge given | Only the rules | Only the rules |
-| Result | Better than any human | Better than random and its earlier selves; a beginner can still win |
+| Result | Better than any human | Better than random and its earlier selves; a rated club player (FIDE blitz 1641) still wins half the games |
 
 Same method, a tiny fraction of the resources. Given that, the fact that the
 long practice clearly worked, and that we could measure and explain its
@@ -389,7 +392,7 @@ knows the rules and teaches itself by playing against itself. At first it did
 not improve, because almost every game was a draw and it had too little
 practice. We made it 11 times faster and trained it for 54,000 games. It then
 beat its starting version 27 to 0. It still struggles to checkmate, and a
-beginner can beat it, because it never learned to recognize when a game is
+rated club player beat it in half of ten games, because it never learned to recognize when a game is
 won or lost."
 
 **Running the live demo:**
@@ -417,7 +420,7 @@ earlier self and won 27, lost 0, drew 59. That is far beyond luck.
 checkmate is hard to force. Our AI learned not to lose, but not how to finish
 a won game.
 
-**Why can a beginner beat it?** It practiced mostly through slow, drawn games,
+**Why can a club player beat it?** It practiced mostly through slow, drawn games,
 so it never learned to defend against a direct attack on its king.
 
 **Why not just practice more?** We did: 140 more rounds gave no improvement.
