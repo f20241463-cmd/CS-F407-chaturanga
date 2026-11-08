@@ -367,8 +367,9 @@ Four times the search gives only a small edge, but the gain grows with more:
 at 800 simulations the model won 23 games and lost none. Most games are still
 drawn, so extra search helps the model avoid mistakes and punish the other
 side's, more than it helps it convert a slow advantage. Each move takes about
-1 to 2 seconds at 800 simulations, so this is the setting to use when playing
-against the model (`play_vs_ai.py --simulations 800`).
+0.3 seconds at 800 simulations. 1600 is better still (see "Averaging
+checkpoints, and more search again" below) and is now the default for playing
+against the model.
 
 **Counting draws as slightly bad.** We continued the final model from
 iteration 560 with `--draw_value -0.2`, so every position of a drawn or
@@ -513,6 +514,31 @@ about 2.4 minutes instead of 6 to 7 and still had 15% decisive games, so the
 run produced about 2.4 times as many decisive games per hour as the q_mix run,
 but that did not make the agent stronger within 100 iterations.
 
+### Averaging checkpoints, and more search again
+
+**Averaging checkpoints (a "model soup").** We averaged the weights of seven
+late checkpoints into one network: iteration 560 and iterations 620, 640 and
+660 of both the q_mix and the shorter-games runs (`soup_and_sims/make_soup.py`,
+no training needed).
+
+| Match (50 sims) | Games | Wins | Losses | Draws | Unfinished | Score |
+|---|---|---|---|---|---|---|
+| averaged model vs final (560) | 200 | 16 | 10 | 173 | 1 | 0.515 +/- 0.025 |
+
+Slightly ahead but inside the margin, so iteration 560 stays the final model.
+
+**1600 simulations against 800.** The final model played itself with 1600
+simulations per move against 800 (100 games):
+
+| Match | Games | Wins | Losses | Draws | Unfinished | Score |
+|---|---|---|---|---|---|---|
+| final at 1600 vs final at 800 | 100 | 15 | 3 | 82 | 0 | 0.560 +/- 0.040 |
+
+1600 is measurably better (above 0.5 even at the bottom of the margin), but the
+gain is smaller than from 50 to 800 (0.616): each doubling of search helps less.
+A move takes about 0.55 seconds at 1600, so `play_web.py` now uses 1600 by
+default. The human games above were played at 800, before this change.
+
 ## Limitations
 
 The stub-network results measure what search depth alone contributes, with no learned signal involved. The simulation-depth sweep's per-depth samples (1 to 4 decided games each) are too small to support a confident claim about how win rate scales with simulation count specifically; the pooled across-depth result is the more defensible number from that data. The benchmarks of the 400-game runs use 20 games per checkpoint, so their margins are about +/- 0.1; the long-run matches and benchmarks use 100 games (200 for the last comparison), with margins of about +/- 0.03 to 0.06. Differences smaller than that cannot be resolved, and with most games drawn a score says little about how often the model can actually win. The human games are sixteen games by two players: six by a beginner against final B and ten by an experienced player (FIDE blitz rating 1641) against the final model.
@@ -546,3 +572,4 @@ The stub-network results measure what search depth alone contributes, with no le
 - `smaller_lr/`: the continuation at learning rate 2e-5 (training log and matches against the final model)
 - `qmix/`: the continuation with search-value targets (training log and matches against the final model)
 - `shortcap/`: the continuation with self-play capped at 300 plies (training log and matches against the final model)
+- `soup_and_sims/`: the averaged-weights model against the final model, the script that made it, and the final model at 1600 against 800 simulations
