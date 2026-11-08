@@ -29,7 +29,9 @@ gave a gain and a loss of strength respectively: with 800 simulations per
 move the final model beats itself at 50 by 23 wins to 0. 140 more iterations
 at an even smaller learning rate gave no measurable gain, and neither did 100
 iterations that mixed the search's own values into the value targets or 100
-iterations with self-play games capped at 300 plies. After moving self-play
+iterations with self-play games capped at 300 plies, and neither did averaging
+the weights of seven late checkpoints into one model. Doubling the search again
+to 1600 simulations still helps a little (15 wins to 3 against 800). After moving self-play
 to the laptop's GPU (about 2.2 to 2.4 times faster), a second attempt with the
 larger network, started from the final model's games, reached the final
 model's level but did not pass it. A measurement of the final model's own
@@ -462,9 +464,9 @@ With 200 simulations per move against itself at 50 (100 games) it scored
 At 800 simulations the model won 23 games and lost none, a larger gain than
 the last 100 iterations of training gave. Most games are still drawn, so the
 extra search mainly avoids mistakes and punishes the opponent's, rather than
-converting slow advantages. A move then takes about 1 to 2 seconds, which is
-fine for play against a person, so this is the setting we recommend for
-games against the final model.
+converting slow advantages. A move then takes about a third of a second,
+which is fine for play against a person. Section 6.18 shows that 1600 simulations is
+better still, and that is now the default for games against the final model.
 
 **Counting draws as slightly bad.** We continued the final model from
 iteration 560 with a value target of -0.2 for both sides in every drawn or
@@ -603,6 +605,37 @@ produced about 380 decisive games per hour against about 160 in the q_mix run
 give a stronger agent within 100 iterations, which again points to what the
 value head can learn from them rather than how many there are.
 
+## 6.18 Averaging checkpoints, and more search again
+
+**Averaging checkpoints (a "model soup").** All our continuations ended close
+to the final model, so we tried averaging the weights of seven of them into
+one network: iteration 560 and iterations 620, 640 and 660 of both the q_mix
+run (Section 6.16) and the shorter-games run (Section 6.17). It needs no
+training, only a few seconds to average the numbers
+(`results/soup_and_sims/make_soup.py`).
+
+| Match (50 sims) | Games | Wins | Losses | Draws | Unfinished | Score |
+|---|---|---|---|---|---|---|
+| averaged model vs final (560) | 200 | 16 | 10 | 173 | 1 | 0.515 +/- 0.025 |
+
+The averaged model is slightly ahead, but inside the margin, so we kept
+iteration 560.
+
+**1600 simulations against 800.** Section 6.11 showed that 800 simulations
+beat 50. To see whether more search still helps, the final model played
+itself with 1600 simulations per move against 800 (100 games).
+
+| Match | Games | Wins | Losses | Draws | Unfinished | Score |
+|---|---|---|---|---|---|---|
+| final at 1600 vs final at 800 | 100 | 15 | 3 | 82 | 0 | 0.560 +/- 0.040 |
+
+1600 simulations is measurably better (the score stays above 0.5 even at the
+bottom of the margin), but the gain is smaller than from 50 to 800 (0.616).
+Each doubling of search helps less than the one before. A move takes about
+0.55 seconds at 1600 against about 0.3 seconds at 800, so the
+browser game now uses 1600 by default (`play_web.py --simulations 1600`). The
+human games in Section 6.4 were played at 800, before this change.
+
 # 7. Discussion
 
 **The first runs.** We first checked for a bug. The tests confirm the value
@@ -654,7 +687,9 @@ without a better sense of which positions are won seems to lead to riskier,
 worse play. Within the constraints and our compute, the 4 x 64 network at 50
 simulations appears close to its limit. The one clear gain left is outside
 training: 800 simulations per move at play time beat the final model at 50
-by 23 wins to 0 (Section 6.11).
+by 23 wins to 0 (Section 6.11), and 1600 beat 800 by 15 wins to 3
+(Section 6.18). Averaging the weights of late checkpoints gave no measurable
+gain (Section 6.18).
 
 **Size and what the value head knows.** The larger network learned to play as
 well as the final model from its games, but its own games did not take it
@@ -695,7 +730,8 @@ Within these limits, three things can still raise strength, and we tried each:
    made the model measurably stronger in 100 iterations.
 2. **Search more at play time.** The constraint on simulations applies to
    training only. At 800 simulations the final model beats its own 50-simulation
-   version 23 wins to 0 (Section 6.11), and the browser game uses 800.
+   version 23 wins to 0 (Section 6.11), and 1600 beats 800 by 15 wins to 3
+   (Section 6.18), so the browser game uses 1600.
 3. **More hardware.** Running self-play on several machines at once would
    multiply the number of games, but four laptops or a rented GPU would give
    a few times more games, not 800 times more.
@@ -747,10 +783,11 @@ against greedy capture, an experienced chess player (FIDE blitz rating 1641)
 beat it in five of ten games while losing two, and it
 rarely checkmates, so learning to convert an
 advantage remains the open problem. More search at play time makes it
-clearly stronger (23 wins to 0 at 800 simulations against 50), but neither
+clearly stronger (23 wins to 0 at 800 simulations against 50, and 15 to 3 at
+1600 against 800), but neither
 that, longer training at smaller learning rates, counting draws as bad,
-learning from the search's own values, shorter self-play games, nor a
-larger network solved it, and the
+learning from the search's own values, shorter self-play games, averaging
+checkpoints, nor a larger network solved it, and the
 model's own evaluations show why: it does not yet recognize won or lost
 positions until the end is near. The evaluation tools (a fixed benchmark
 protocol, head-to-head matches, game-ending counts and human-game logging) made
@@ -791,7 +828,7 @@ OMP_NUM_THREADS=1 python -m training.train --resume checkpoints/final_B/latest.p
     --checkpoint_dir checkpoints/long --log checkpoints/long/log.csv
 python -m evaluation.parallel_match --a models/chaturangzero_final.pt \
     --b checkpoints/final_B/latest.pt --games 100 --workers 6
-python play_vs_ai.py --checkpoint models/chaturangzero_final.pt --player NAME --simulations 800
+python play_vs_ai.py --checkpoint models/chaturangzero_final.pt --player NAME --simulations 1600
 python play_web.py --player NAME    # the same game in the browser
 ```
 

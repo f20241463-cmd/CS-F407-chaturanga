@@ -280,9 +280,11 @@ We tried several more ideas. Here is each one, simply.
 
 **1. Let it think longer when playing.** The 50-imaginings limit is only for
 practice. When playing for real, we let it imagine 800 times per move instead
-of 50. Against its normal self, it won **23 games and lost 0**. This clearly
-helps, and still takes less than a second or two per move. **This is the
-setting we use when people play against it.**
+of 50. Against its normal self, it won **23 games and lost 0**. Later we
+tried 1600 against 800: 1600 won **15 games and lost 3**. So thinking longer
+still helps, but each doubling helps less than the one before. A move at
+1600 takes about half a second, so **1600 is now the setting when people
+play against it** in the browser.
 
 **2. Tell it draws are slightly bad.** We hoped this would make it try harder
 to win. It did play more games to a result, but it took bad risks and got
@@ -314,6 +316,11 @@ draws go on for hundreds of moves. So we stopped practice games at 300 moves
 instead of 800, which gave about 2.4 times more games with a winner per hour.
 After 100 more rounds it was exactly even with round 560 (10 wins, 10 losses,
 177 draws), so **no improvement** again.
+
+**5d. Averaging several versions.** We took seven trained versions that were
+all about as strong as round 560 and averaged their numbers into one. This
+needs no practice at all, only a few seconds. It was about even with round
+560 (16 wins, 10 losses, 173 draws), so **no improvement**.
 
 **6. Faster practice on the graphics chip.** We rebuilt the practice system
 so many games share the graphics chip at once. Practice got about 2.2 to 2.4
@@ -441,10 +448,11 @@ within the rules, for example by making practice games shorter.
 
 **What is the difference between thinking 50 times and 800 times?** It
 imagines more possible futures before each move, so it makes fewer mistakes.
-At 800 it beat its 50 self 23 to 0.
+At 800 it beat its 50 self 23 to 0, and at 1600 it beat its 800 self 15 to 3.
 
 **Is the program you're showing the same one in the report?** Yes, the same
-final version, thinking 800 times per move.
+final version. The browser game now thinks 1600 times per move; the ten
+games against the chess player were played at 800, before that change.
 
 # Small word list
 
