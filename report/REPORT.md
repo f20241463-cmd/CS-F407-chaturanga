@@ -27,7 +27,8 @@ the 100-ply no-progress rule rather than checkmate. A larger 6-block,
 search per move when playing and counting draws as slightly bad in training,
 gave a gain and a loss of strength respectively: with 800 simulations per
 move the final model beats itself at 50 by 23 wins to 0. 140 more iterations
-at an even smaller learning rate gave no measurable gain. After moving self-play
+at an even smaller learning rate gave no measurable gain, and neither did 100
+iterations that mixed the search's own values into the value targets. After moving self-play
 to the laptop's GPU (about 2.2 to 2.4 times faster), a second attempt with the
 larger network, started from the final model's games, reached the final
 model's level but did not pass it. A measurement of the final model's own
@@ -557,7 +558,24 @@ worse. We continued the final model (iteration 560) for 100 more iterations
 with w = 0.5 (`--q_mix 0.5`, learning rate 1e-4), keeping every other setting
 the same, and tested iterations 600, 630 and 660 against iteration 560.
 
-*This experiment is still running; its results will be added here.*
+| Match vs final (560) | Games | Wins | Losses | Draws | Unfinished | Score |
+|---|---|---|---|---|---|---|
+| iteration 600 | 100 | 7 | 5 | 84 | 4 | 0.510 +/- 0.035 |
+| iteration 630 | 100 | 9 | 6 | 84 | 1 | 0.515 +/- 0.038 |
+| iteration 660 | 200 | 21 | 14 | 162 | 3 | 0.518 +/- 0.029 |
+
+All three are slightly above an even score but inside the margin, so none is
+clearly stronger and we kept iteration 560. Self-play changed little: 16.6%
+of games were decisive, against 15.3% over the same iterations of the 2e-5
+run (Section 6.14). The value loss was much lower (0.007 against 0.037), but
+that is expected and not a sign of learning: half of each target is now the
+search's own estimate, which the network finds easy to predict. The run took
+about 10.6 hours (`results/qmix/`).
+
+The likely reason is that the search's values come from the same value head
+we are trying to improve. Where that head cannot yet tell a won position from
+a lost one, the search's estimate is close to 0 as well, so the blended target
+adds little new information.
 
 # 7. Discussion
 
@@ -644,7 +662,9 @@ network give much weaker training targets than AlphaZero's 800 simulations.
 Within these limits, three things can still raise strength, and we tried each:
 
 1. **Learn more from each game.** Mixing the search's own value into the value
-   targets gives the value head a signal even from drawn games (Section 6.16).
+   targets gives the value head a signal even from drawn games. In our test it
+   did not make the model stronger, because that signal comes from the same
+   weak value head (Section 6.16).
 2. **Search more at play time.** The constraint on simulations applies to
    training only. At 800 simulations the final model beats its own 50-simulation
    version 23 wins to 0 (Section 6.11), and the browser game uses 800.
@@ -691,8 +711,8 @@ against greedy capture, a beginner beat it in five of ten games, and it
 rarely checkmates, so learning to convert an
 advantage remains the open problem. More search at play time makes it
 clearly stronger (23 wins to 0 at 800 simulations against 50), but neither
-that, longer training at smaller learning rates, counting draws as bad, nor a
-larger network solved it, and the
+that, longer training at smaller learning rates, counting draws as bad,
+learning from the search's own values, nor a larger network solved it, and the
 model's own evaluations show why: it does not yet recognize won or lost
 positions until the end is near. The evaluation tools (a fixed benchmark
 protocol, head-to-head matches, game-ending counts and human-game logging) made

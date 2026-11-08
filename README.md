@@ -75,8 +75,9 @@ also tried and stopped, since it stayed behind after 61 iterations. Thinking
 longer when playing helps: with 800 simulations per move the final model beats
 itself at 50 by 23 wins to 0 (0.616). Training on with draws counted as
 slightly bad made it weaker (0.454), and 140 more iterations at a smaller
-learning rate gave no measurable gain (0.515), so iteration 560 stays the
-final model. Self-play later moved to the GPU (about
+learning rate gave no measurable gain (0.515), and neither did 100 iterations
+that also trained on the search's own values (`--q_mix 0.5`, 0.518), so
+iteration 560 stays the final model. Self-play later moved to the GPU (about
 2.2 to 2.4 times faster); with it, the bigger network reached the final
 model's level by learning from its games but did not pass it, and a
 measurement showed that resigning hopeless games cannot work yet, because the
