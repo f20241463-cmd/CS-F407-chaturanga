@@ -168,7 +168,7 @@ In plain terms, the finished project has:
    older versions of itself, so we can tell whether it is improving.
 6. **Two ways to play against it**: by typing moves in a text window, and by
    clicking on a board in the web browser.
-7. **127 automatic checks** (called **tests**) that make sure every part
+7. **129 automatic checks** (called **tests**) that make sure every part
    works correctly. If anyone breaks something, a test fails and shows
    exactly what.
 
@@ -301,6 +301,13 @@ up games that were really draws. We did not use it.
 
 **5. Even smaller learning steps, for 140 more rounds.** **No improvement.**
 We kept the round-560 version.
+
+**5b. Learning from its own look-ahead.** Most practice games are draws, so
+the program is mostly told "this position was even". We tried also training
+on the search's own guess of how good each position was, so even drawn games
+teach it something. After 100 more rounds it was about even with round 560
+(21 wins, 14 losses, 162 draws), so **no improvement**. The guesses come from
+the same weak "who is winning" feeling we were trying to fix.
 
 **6. Faster practice on the graphics chip.** We rebuilt the practice system
 so many games share the graphics chip at once. Practice got about 2.2 to 2.4

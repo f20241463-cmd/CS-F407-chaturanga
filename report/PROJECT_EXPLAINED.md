@@ -43,7 +43,7 @@ material at the end:
   replayed move by move**, **the other nine games replayed** with their key
   moments, and **the patterns across all ten games**.
 - **The decision log**, **every training option**, a **tour of the code**,
-  **real code snippets explained line by line**, **every one of the 127
+  **real code snippets explained line by line**, **every one of the 129
   tests in plain words**, and a guide to **presenting the project**.
 - **Our project compared with the original AlphaZero.**
 - **What it all means**, **limitations**, and the **key numbers**.
@@ -85,7 +85,7 @@ learns entirely by playing against itself.
    matches between versions of the AI, analysis of how games end, and a
    system for logging games against humans.
 6. A **terminal game** and a **browser game** to play against the AI.
-7. **127 automated tests** that check every part.
+7. **129 automated tests** that check every part.
 
 **What happened.**
 
@@ -102,8 +102,8 @@ learns entirely by playing against itself.
   17 to 4. It still draws almost every game against a "greedy capture"
   player and rarely finishes games with checkmate.
 - We tried many ways to make it stronger: a bigger network (twice), counting
-  draws as slightly bad, resigning hopeless games, and even smaller learning
-  steps. **None of them made it stronger within the project rules.** The one
+  draws as slightly bad, resigning hopeless games, even smaller learning
+  steps, and learning from the search's own values. **None of them made it stronger within the project rules.** The one
   thing that clearly helps is letting it **think longer when playing**: with
   800 search steps per move instead of 50, it beats its normal self 23 to 0.
 - We moved self-play to the laptop's GPU, making it about **2.2 to 2.4 times
@@ -296,7 +296,7 @@ A **unit test** is a small program that checks that one piece of code does
 what it should, for example "a horse on b1 can move to a3 and c3 and nowhere
 else" or "after checkmate, the result is a loss for the side to move". Tests
 are run with `python -m pytest -q`. If someone changes code and breaks
-something, a test fails and shows exactly what broke. The project has 127
+something, a test fails and shows exactly what broke. The project has 129
 tests, and all of them pass.
 
 ## Random seeds and reproducibility
@@ -829,6 +829,7 @@ history.
 | Nov 5 | PR #22 | The browser version of the game |
 | Nov 6 | PR #23 | The first six human games against the final model |
 | Nov 6 | PR #24 | The last four human games (ten in total) |
+| Nov 7 | PR #30 | Search-value targets, the uncheckered board, the gap to mastery in the report |
 
 Roughly, the project had six phases:
 
@@ -907,7 +908,9 @@ stopped when the laptop was running on battery power, a reminder that long
 runs need the laptop plugged in. A resignation measurement showed the AI does
 not see losses coming. Thinking-time tests at 400 and 800 simulations showed
 clear gains. A last training stretch at an even smaller learning rate gave
-nothing measurable, and training was ended.
+nothing measurable, and training was ended. One last idea was tested in
+November (learning from the search's own values, next chapter); it did not
+help either.
 
 **The demo and the human games (November 5 to 6).** A browser version of the
 game was built for the presentation, and ten human games against the final
@@ -1058,6 +1061,8 @@ decided games, this is not strong evidence either way, but it set a clear
 - `--material_scale` (exploratory only, breaks the rules): value targets for
   drawn games from the final material balance.
 - `--draw_value`: the value target for drawn games (normally 0).
+- `--q_mix`: blend the search's own value of each position into its value
+  target (normally 0, off; tested at 0.5).
 - `--workers`, `--device`, `--selfplay_device`, `--bootstrap`, network size
   options and resignation options, described in later chapters and in the
   table of every training option.
@@ -1875,10 +1880,49 @@ No checkpoint was clearly stronger, so we kept iteration 560 and stopped at
 iteration 702. Earlier stretches gained about 0.52 to 0.53 each; at 2e-5 the
 gain was within the margin.
 
+## Learning from the search's own values
+
+**The idea.** About 85% of practice games end in a draw, so for most positions
+the value head is told "0" and learns nothing about which positions were good
+or bad. But during every move, the search already works out a value for the
+position (the average of everything it looked at). So we tried training on a
+blend: half the game's result, half the search's own value.
+
+```
+target = (1 - w) x result + w x search value      (we used w = 0.5)
+```
+
+For example, in a drawn game (result 0), a position where the search found
++0.4 gets a target of 0.5 x 0 + 0.5 x 0.4 = +0.2 instead of 0. This uses only
+the rules and the program's own search, so it is allowed. The option is
+`--q_mix` in `training/train.py`, and it is 0 (off) unless switched on.
+
+**The test.** We continued the final model from iteration 560 for 100 more
+iterations with w = 0.5 and learning rate 1e-4 (about 10.6 hours), and played
+three matches against iteration 560:
+
+| Match vs final (560) | Games | Wins | Losses | Draws | Score |
+|---|---|---|---|---|---|
+| Iteration 600 | 100 | 7 | 5 | 84 | 0.510 |
+| Iteration 630 | 100 | 9 | 6 | 84 | 0.515 |
+| Iteration 660 | 200 | 21 | 14 | 162 | 0.518 |
+
+**The result.** Each is a little above even, but inside the margin (about
++/- 0.03), so none is clearly stronger, and iteration 560 stays the final
+model. Self-play hardly changed (16.6% decisive games, against 15.3% in the
+2e-5 stretch). The value loss fell to about 0.007, but that is not progress:
+half of each target is now the search's own estimate, which the network finds
+easy to predict.
+
+**Why it did not help.** The search's values come from the same value head we
+are trying to teach. Where that head cannot tell a won position from a lost
+one, the search cannot either, so the blended target adds little new
+information. The files are in `results/qmix/`.
+
 ## Why we stopped training
 
 - Every extra idea within the rules (more training, smaller steps, a bigger
-  network, draw penalties, resignation) either did not help or made things
+  network, draw penalties, resignation, search-value targets) either did not help or made things
   worse.
 - No university machine was available, and paying for cloud computing was
   not worth it for the small expected gain.
@@ -1908,7 +1952,8 @@ python play_web.py --player YOUR_NAME
 
 The browser opens at http://127.0.0.1:8000. The page shows:
 
-- the board: click a piece to see its legal moves (dots for moves, rings for
+- the board, drawn uncheckered in one wooden color like the historical
+  Ashtapada (ancient Chaturanga boards had no light and dark squares): click a piece to see its legal moves (dots for moves, rings for
   captures), then click a square; the last move and a king in check are
   highlighted;
 - buttons for a new game as White or Black, and Resign (click twice to
@@ -2374,6 +2419,7 @@ the "why" behind the whole project.
 | 19 | Could self-play use the GPU? | Rewrite the search as a generator and batch positions across games | GPUs are fast on batches, slow on single positions | 2.2 to 2.4 times faster with identical games |
 | 20 | Could resigning hopeless games give more decisive results? | Measure first whether resigning would be safe | A wrong resignation teaches the network the wrong lesson | No safe threshold; not used |
 | 21 | Would even smaller learning steps help? | 140 more iterations at 2e-5 | Smaller steps had helped before | No measurable gain; stopped |
+| 21b | Could drawn games teach the value head something? | Blend the result with the search's own value (`--q_mix 0.5`), 100 iterations | Uses only the rules and the search | No measurable gain (0.518); not kept |
 | 22 | Pay for cloud computing? | No | No university machine was available, and the expected gain was small | Training ended; the model stayed at iteration 560 |
 | 23 | How to demonstrate the AI to professors? | A clickable browser board running on the laptop | Easier to watch than typed moves, and needs no internet | `play_web.py` |
 | 24 | How to evaluate against humans? | Logged human games through the browser board, 5 with each color | The project plan asks for agent-vs-human evaluation | 10 games: 5 human wins, 2 AI wins, 3 draws |
@@ -2397,6 +2443,7 @@ column are what the long run used.
 | `--max_plies` | Game length limit; longer games count as unfinished | 800 |
 | `--avoid_repetition` | Never cause a threefold repetition unless forced | On |
 | `--draw_value` | Value target for drawn and unfinished games | 0 (-0.2 in the draw-penalty test) |
+| `--q_mix` | Share of the search's own value in each value target | 0 (0.5 in the search-value test) |
 | `--material_scale` | Exploratory only: value targets from material (breaks the rules) | Off |
 | `--resign_threshold`, `--resign_after`, `--resign_check_fraction` | Resignation (tested, not used) | Off |
 | `--buffer_capacity` | Maximum positions kept in the replay buffer | 250,000 |
@@ -2668,9 +2715,9 @@ for conv_name, bn_name in _CONV_BN_PAIRS:
 
 # Every test, explained
 
-*In short: All 127 automated tests, in plain words.*
+*In short: All 129 automated tests, in plain words.*
 
-There are 127 automated tests in 10 files. Each test name describes what it
+There are 129 automated tests in 10 files. Each test name describes what it
 checks. Here they are, translated into plain words.
 
 ## Rules engine: `test_chaturanga.py` (36 tests)
@@ -2735,7 +2782,7 @@ checks. Here they are, translated into plain words.
 - The network function follows the team's contract.
 - A move chosen directly from the network is always legal.
 
-## Training: `test_training.py` (26 tests)
+## Training: `test_training.py` (28 tests)
 
 - **Replay buffer**: batches have the right shapes and the policy survives
   compact storage; sampling does not repeat examples when the buffer is
@@ -2760,6 +2807,9 @@ checks. Here they are, translated into plain words.
   full run writes its log and checkpoints and then resumes correctly;
   parallel self-play gives the same games for any number of workers; the
   number of workers must be positive.
+- **Search-value targets**: with `q_mix` 1 the value targets equal the
+  search's values, with 0.5 they are the halfway blend of result and search
+  value; values outside 0 to 1 are refused.
 - **Bigger network**: a bigger network can be bootstrapped from a smaller
   one's games; network size and bootstrap options are checked.
 
@@ -2837,7 +2887,7 @@ draws."
    diagram).
 4. **The constraints**: rules only, 30 to 50 simulations, 4 to 6 blocks,
    4096 actions.
-5. **What we built**: the five parts and 127 tests.
+5. **What we built**: the five parts and 129 tests.
 6. **First runs**: no improvement, with the benchmark graph.
 7. **Diagnosis**: too little data, draws starve the value head, long games.
 8. **Speed-up**: 259 to 19 ms per move, workers, GPU.
@@ -2895,6 +2945,14 @@ are approximate, as reported in DeepMind's 2018 paper for chess.
 In other words, our project had roughly **800 times fewer games**, **16 times
 fewer simulations per move**, and a far smaller network than AlphaZero,
 running on a laptop instead of a data center.
+At our speed (54,000 games in about 144 hours), playing AlphaZero's 44
+million games would take about 800 x 144 hours, roughly 13 years of nonstop
+running on this laptop. Chaturanga's weaker pieces probably make it simpler
+than chess, so it may need fewer games, but very likely still millions. The
+course limits (30 to 50 search steps in training, a small network) would also
+cap the strength even with unlimited time. This is why the project could not
+"master" the game, as the proposal hoped: the gap is compute, not a missing
+part of the method.
 Given that, the fact that training clearly worked in the long run, and that
 its limits could be measured and explained, is the main achievement.
 
@@ -2965,7 +3023,7 @@ one clear gain left is outside training: more search at play time.
 | Search | PUCT MCTS, c_puct 1.5, 50 simulations in training, Dirichlet noise alpha 0.3 weight 0.25 |
 | Action space | 4096 (64 x 64) |
 | Position encoding | 13 planes of 8 x 8 |
-| Automated tests | 127 |
+| Automated tests | 129 |
 | First runs | 2 x 400 games, about 7 hours each, no measurable gain |
 | Speed-up | 259 to 19 ms per move (about 11 times faster per move), plus 6 workers, plus GPU self-play (about 2.2 to 2.4 times faster again) |
 | Long run | 540 iterations, 54,000 games, about 23.7 million positions, about 144 hours |
@@ -2978,6 +3036,7 @@ one clear gain left is outside training: more search at play time.
 | Bigger network (best) | Even with the final model (0.495), never better |
 | Draw penalty | Weaker (0.454) |
 | Smaller learning rate (2e-5) | No gain (0.515) |
+| Search-value targets (q_mix 0.5) | No gain (0.518) |
 | Resignation | No safe threshold |
 | Human vs final model | 5 human wins, 2 AI wins, 3 draws (AI score 0.350) |
 | Human vs final B | 3 human wins, 0 AI wins, 3 draws (AI score 0.250) |
@@ -3037,7 +3096,7 @@ Each row is one checkpoint against one opponent: iteration, checkpoint,
 opponent, games, wins, losses, draws, unfinished, score, margin, average
 plies and seconds taken.
 
-## The match files (`results/long_run_matches/`, `bigger_network/`, `draw_penalty/`, `thinking_time/`, `smaller_lr/`)
+## The match files (`results/long_run_matches/`, `bigger_network/`, `draw_penalty/`, `thinking_time/`, `smaller_lr/`, `qmix/`)
 
 Each match file starts with the two models (A and B) and the settings (games,
 simulations, temperature, repetition avoidance, ply cap, workers), then one
@@ -3074,7 +3133,7 @@ evaluation/   baseline players, benchmark, matches, game endings, human log, res
 results/      every training log, benchmark CSV, match log, plot and the results write-up
 models/       the final trained network (chaturangzero_final.pt)
 web/          the board page for the browser game
-tests/        127 automated tests
+tests/        129 automated tests
 report/       the report (REPORT.md and REPORT.docx) and this document
 ```
 
@@ -3106,7 +3165,7 @@ report/       the report (REPORT.md and REPORT.docx) and this document
 
 **Results (`results/`).** The training logs of every run, the benchmark CSVs,
 the plots, the match logs (`long_run_matches/`, `bigger_network/`,
-`draw_penalty/`, `thinking_time/`, `smaller_lr/`), the resignation measurement
+`draw_penalty/`, `thinking_time/`, `smaller_lr/`, `qmix/`), the resignation measurement
 (`resign_check.txt`), the human games (`human_games.csv`), and
 `results/README.md`, which explains all of it.
 
@@ -3170,7 +3229,7 @@ git pull
 python -m pytest -q
 ```
 
-This runs all 127 tests and should end with "127 passed". It takes about a
+This runs all 129 tests and should end with "129 passed". It takes about a
 minute.
 
 ## Step 5: play against the AI
@@ -3197,7 +3256,7 @@ The browser opens with the board. Press Ctrl+C in the terminal to stop.
 *In short: The commands for the tests, the games, a small training run and a match.*
 
 ```
-python -m pytest -q                                   # all 127 tests
+python -m pytest -q                                   # all 129 tests
 python play_web.py --player NAME                      # play in the browser
 python play_vs_ai.py --checkpoint models/chaturangzero_final.pt --player NAME --simulations 800
 python play_vs_ai.py --summary --checkpoint models/chaturangzero_final.pt
