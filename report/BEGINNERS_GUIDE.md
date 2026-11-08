@@ -309,6 +309,12 @@ teach it something. After 100 more rounds it was about even with round 560
 (21 wins, 14 losses, 162 draws), so **no improvement**. The guesses come from
 the same weak "who is winning" feeling we were trying to fix.
 
+**5c. Shorter practice games.** Games with a winner tend to be short, and
+draws go on for hundreds of moves. So we stopped practice games at 300 moves
+instead of 800, which gave about 2.4 times more games with a winner per hour.
+After 100 more rounds it was exactly even with round 560 (10 wins, 10 losses,
+177 draws), so **no improvement** again.
+
 **6. Faster practice on the graphics chip.** We rebuilt the practice system
 so many games share the graphics chip at once. Practice got about 2.2 to 2.4
 times faster again, with exactly the same games.

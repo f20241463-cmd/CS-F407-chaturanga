@@ -103,7 +103,7 @@ learns entirely by playing against itself.
   player and rarely finishes games with checkmate.
 - We tried many ways to make it stronger: a bigger network (twice), counting
   draws as slightly bad, resigning hopeless games, even smaller learning
-  steps, and learning from the search's own values. **None of them made it stronger within the project rules.** The one
+  steps, learning from the search's own values, and shorter practice games. **None of them made it stronger within the project rules.** The one
   thing that clearly helps is letting it **think longer when playing**: with
   800 search steps per move instead of 50, it beats its normal self 23 to 0.
 - We moved self-play to the laptop's GPU, making it about **2.2 to 2.4 times
@@ -909,9 +909,9 @@ stopped when the laptop was running on battery power, a reminder that long
 runs need the laptop plugged in. A resignation measurement showed the AI does
 not see losses coming. Thinking-time tests at 400 and 800 simulations showed
 clear gains. A last training stretch at an even smaller learning rate gave
-nothing measurable, and training was ended. One last idea was tested in
-November (learning from the search's own values, next chapter); it did not
-help either.
+nothing measurable, and training was ended. Two last ideas were tested in
+November (learning from the search's own values, and shorter practice games;
+next chapter); neither helped.
 
 **The demo and the human games (November 5 to 6).** A browser version of the
 game was built for the presentation, and ten human games against the final
@@ -1921,10 +1921,43 @@ are trying to teach. Where that head cannot tell a won position from a lost
 one, the search cannot either, so the blended target adds little new
 information. The files are in `results/qmix/`.
 
+## Shorter practice games
+
+**The idea.** In our matches, games with a winner were short (half ended
+before ply 132) while draws were long (half went past ply 469). So most
+practice time was spent on long drawn games that teach almost nothing. If
+practice games stop at 300 plies instead of 800, about 9 in 10 games with a
+winner still finish, and the long draws are cut short. Games that reach the
+limit count as draws (target 0), exactly as before. This only changes a game
+length setting (`--max_plies 300`), so it is allowed.
+
+**The test.** We continued the final model from iteration 560 for 100 more
+iterations with the 300-ply limit and learning rate 1e-4 (about 4 hours).
+The matches against iteration 560 still used the normal 800-ply limit:
+
+| Match vs final (560) | Games | Wins | Losses | Draws | Score |
+|---|---|---|---|---|---|
+| Iteration 600 | 100 | 4 | 4 | 92 | 0.500 |
+| Iteration 630 | 100 | 10 | 4 | 86 | 0.530 |
+| Iteration 660 | 200 | 10 | 10 | 177 | 0.500 |
+
+**The result.** The data side worked: a round took about 2.4 minutes instead
+of 6 to 7, 15% of games still had a winner, and the run produced about 2.4
+times as many decisive games per hour as the previous experiment. Iteration
+630 was the best result of any continuation (0.530), but still inside the
+margin, and the bigger 200-game match at iteration 660 was exactly even. So
+iteration 560 stays the final model.
+
+**What it shows.** Giving the value head more decisive games per hour did not
+make it stronger within 100 iterations. Together with the other tests, this
+suggests the limit is what the network can learn from these games at this
+size and search depth, not only how many decisive games it sees. The files
+are in `results/shortcap/`.
+
 ## Why we stopped training
 
 - Every extra idea within the rules (more training, smaller steps, a bigger
-  network, draw penalties, resignation, search-value targets) either did not help or made things
+  network, draw penalties, resignation, search-value targets, shorter games) either did not help or made things
   worse.
 - No university machine was available, and paying for cloud computing was
   not worth it for the small expected gain.
@@ -2429,6 +2462,7 @@ the "why" behind the whole project.
 | 20 | Could resigning hopeless games give more decisive results? | Measure first whether resigning would be safe | A wrong resignation teaches the network the wrong lesson | No safe threshold; not used |
 | 21 | Would even smaller learning steps help? | 140 more iterations at 2e-5 | Smaller steps had helped before | No measurable gain; stopped |
 | 21b | Could drawn games teach the value head something? | Blend the result with the search's own value (`--q_mix 0.5`), 100 iterations | Uses only the rules and the search | No measurable gain (0.518); not kept |
+| 21c | Could more decisive games per hour help? | Stop practice games at 300 plies, 100 iterations | Decisive games are short, draws are long | 2.4 times more decisive games per hour, but no gain (0.500); not kept |
 | 22 | Pay for cloud computing? | No | No university machine was available, and the expected gain was small | Training ended; the model stayed at iteration 560 |
 | 23 | How to demonstrate the AI to professors? | A clickable browser board running on the laptop | Easier to watch than typed moves, and needs no internet | `play_web.py` |
 | 24 | How to evaluate against humans? | Logged human games through the browser board, 5 with each color | The project plan asks for agent-vs-human evaluation | 10 games: 5 human wins, 2 AI wins, 3 draws |
@@ -3047,6 +3081,7 @@ one clear gain left is outside training: more search at play time.
 | Draw penalty | Weaker (0.454) |
 | Smaller learning rate (2e-5) | No gain (0.515) |
 | Search-value targets (q_mix 0.5) | No gain (0.518) |
+| Shorter practice games (300 plies) | No gain (0.500) |
 | Resignation | No safe threshold |
 | Human (FIDE blitz 1641) vs final model | 5 human wins, 2 AI wins, 3 draws (AI score 0.350) |
 | Human (beginner) vs final B | 3 human wins, 0 AI wins, 3 draws (AI score 0.250) |
@@ -3106,7 +3141,7 @@ Each row is one checkpoint against one opponent: iteration, checkpoint,
 opponent, games, wins, losses, draws, unfinished, score, margin, average
 plies and seconds taken.
 
-## The match files (`results/long_run_matches/`, `bigger_network/`, `draw_penalty/`, `thinking_time/`, `smaller_lr/`, `qmix/`)
+## The match files (`results/long_run_matches/`, `bigger_network/`, `draw_penalty/`, `thinking_time/`, `smaller_lr/`, `qmix/`, `shortcap/`)
 
 Each match file starts with the two models (A and B) and the settings (games,
 simulations, temperature, repetition avoidance, ply cap, workers), then one
@@ -3175,7 +3210,7 @@ report/       the report (REPORT.md and REPORT.docx) and this document
 
 **Results (`results/`).** The training logs of every run, the benchmark CSVs,
 the plots, the match logs (`long_run_matches/`, `bigger_network/`,
-`draw_penalty/`, `thinking_time/`, `smaller_lr/`, `qmix/`), the resignation measurement
+`draw_penalty/`, `thinking_time/`, `smaller_lr/`, `qmix/`, `shortcap/`), the resignation measurement
 (`resign_check.txt`), the human games (`human_games.csv`), and
 `results/README.md`, which explains all of it.
 
