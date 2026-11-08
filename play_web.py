@@ -238,8 +238,8 @@ def main(argv=None):
     p = argparse.ArgumentParser(description="Play Chaturanga against the agent in the browser")
     p.add_argument("--checkpoint", default="models/chaturangzero_final.pt",
                    help="trained model to play against ('stub' for random play)")  # fmt: skip
-    p.add_argument("--simulations", type=int, default=800,
-                   help="search steps per agent move (800: about 1 to 2 seconds)")  # fmt: skip
+    p.add_argument("--simulations", type=int, default=1600,
+                   help="search steps per agent move (1600: about half a second)")  # fmt: skip
     p.add_argument("--c_puct", type=float, default=1.5)
     p.add_argument("--player", default="human", help="your name, for the game log")
     p.add_argument("--log", default="results/human_games.csv")
