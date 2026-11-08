@@ -469,6 +469,28 @@ iteration 560 and stopped the run at iteration 702. Earlier stretches at
 is within the margin. With the 4 x 64 network at 50 simulations, more
 training on our laptop no longer makes the model measurably stronger.
 
+### Learning from the search's own values
+
+Most self-play games are draws, so most value targets are 0. With `--q_mix 0.5`
+each value target is half the game result and half the search's own value of
+that position, which gives the value head a signal even from drawn games.
+We continued the final model from iteration 560 for 100 iterations this way
+(learning rate 1e-4, seed 21, GPU self-play, about 10.6 hours, `qmix/`):
+
+| Match against the final (560) | Games | Wins | Losses | Draws | Unfinished | Score |
+|---|---|---|---|---|---|---|
+| iteration 600 | 100 | 7 | 5 | 84 | 4 | 0.510 +/- 0.035 |
+| iteration 630 | 100 | 9 | 6 | 84 | 1 | 0.515 +/- 0.038 |
+| iteration 660 | 200 | 21 | 14 | 162 | 3 | 0.518 +/- 0.029 |
+
+None is clearly stronger, so iteration 560 stays the final model. 16.6% of
+self-play games were decisive (15.3% over the same iterations at 2e-5). The
+value loss dropped to about 0.007, but only because half of each target is
+the search's estimate, which is easy to predict; it is not comparable with the
+other runs. The search's values come from the same value head, so where that
+head cannot judge a position, neither can the search, and the blend adds
+little.
+
 ## Limitations
 
 The stub-network results measure what search depth alone contributes, with no learned signal involved. The simulation-depth sweep's per-depth samples (1 to 4 decided games each) are too small to support a confident claim about how win rate scales with simulation count specifically; the pooled across-depth result is the more defensible number from that data. The benchmarks of the 400-game runs use 20 games per checkpoint, so their margins are about +/- 0.1; the long-run matches and benchmarks use 100 games (200 for the last comparison), with margins of about +/- 0.03 to 0.06. Differences smaller than that cannot be resolved, and with most games drawn a score says little about how often the model can actually win. The human games are sixteen games by one beginner, six against final B and ten against the final model.
@@ -500,3 +522,4 @@ The stub-network results measure what search depth alone contributes, with no le
 - `bigger_network/`: the second 6 x 128 attempt (training logs at both learning rates and matches against the final model)
 - `resign_check.txt`: how often resigning would have been right, for each threshold
 - `smaller_lr/`: the continuation at learning rate 2e-5 (training log and matches against the final model)
+- `qmix/`: the continuation with search-value targets (training log and matches against the final model)
