@@ -727,7 +727,12 @@ What we expect would help most, in order:
    iterations than we could run.
 2. Far more self-play games with the larger network, which can start from the
    final model's level (Section 6.12) but needs many more games than we could
-   play to improve on it.
+   play to improve on it. That would take several days of nonstop GPU time,
+   for example on Google Colab or a university machine. We did not use free
+   Colab: it gives only 2 processor cores (our search runs mostly on the
+   processor, where the laptop has 6), its sessions stop after a few hours,
+   and it has a daily GPU limit, so it would not have been faster than the
+   laptop.
 
 # 9. Conclusion
 
