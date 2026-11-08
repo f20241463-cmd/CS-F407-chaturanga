@@ -3085,11 +3085,16 @@ one clear gain left is outside training: more search at play time.
 **What would most likely help, in order.**
 
 1. A way for game results to reach the value head more often, within the
-   rules, for example a shorter game cap during self-play. Draw penalties did
-   not work, and resignation needs a value head that already recognizes lost
-   positions.
+   rules. Draw penalties, search-value targets and shorter practice games did
+   not make it stronger in 100 iterations, and resignation needs a value head
+   that already recognizes lost positions.
 2. Far more self-play games with the larger network, which can start from the
    final model's level but needs many more games than one laptop can play.
+   That would take several days of nonstop GPU time, for example on Google
+   Colab or a university machine. We did not use free Colab: it gives only 2
+   processor cores (our search runs mostly on the processor, where the laptop
+   has 6), its sessions stop after a few hours, and it has a daily GPU limit,
+   so it would not have been faster than the laptop.
 
 # Key numbers at a glance
 
