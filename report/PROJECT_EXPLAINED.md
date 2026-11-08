@@ -29,7 +29,7 @@ material at the end:
 - **A short history of Chaturanga**, and the **background**: the game's rules
   and how AlphaZero works.
 - **How every piece moves, with diagrams.**
-- **The course rules, milestones and team**, the **timeline** of every pull
+- **The course rules, milestones and team** (with the proposal checked line by line), the **timeline** of every pull
   request, and **the story of the project** in more detail.
 - **Building the system**: how every part was built, and **diagrams** of how
   it all fits together.
@@ -796,6 +796,40 @@ position is turned into numbers for the network, how moves map to action
 numbers, and what a network function returns. Later in the project, while
 teammates were away, the training, the experiments, the speed-ups, the
 browser game and the report were completed and merged through pull requests.
+
+## The project proposal, line by line
+
+The course professors gave us a written proposal. Here is every thing it
+asks for, whether we did it, and where in this document it is explained.
+
+| What the proposal asks for | Done? | Where it is explained |
+|---|---|---|
+| Play on the 8x8 uncheckered Ashtapada board | Yes. The browser game draws the board in one color, like the historical board | "The browser game" |
+| The Mantri moves one step diagonally; the Gaja jumps two squares diagonally | Yes, with every other piece rule, all tested | "How every piece moves, with diagrams" |
+| A fast, bug-free rules engine: legal moves, turns, game end | Yes. 36 rule tests, and a fast version checked to give exactly the same moves | "Building the system", "Every test, explained" |
+| 12 piece types as a 13-channel 8x8 tensor with a turn indicator | Yes, exactly 13 channels | "The basics, from zero", "Walkthroughs with real examples" |
+| Moves as from-square to to-square pairs | Yes | "The basics, from zero" |
+| Learn from scratch with no human knowledge beyond the rules | Yes for the final model. Two early test runs that broke this rule are clearly marked as exploratory and were not used | "The first training runs, and why they did not work" |
+| A two-headed residual network: policy and value | Yes. Policy over 4,096 moves; value from -1 to +1 | "Building the system" |
+| MCTS guided by the policy, leaves judged by the value, no random rollouts | Yes, with the PUCT formula | "Building the system", "The math, made simple" |
+| Loss: value MSE + policy cross-entropy + L2 regularization | Yes (weight decay 1e-4) | "The math, made simple" |
+| Self-play loop with a replay buffer | Yes. Replay buffer of 250,000 positions | "Building the system" |
+| 4 to 6 residual blocks, 64 to 128 filters | Yes. Final model 4 x 64; 6 x 128 also tried | "The long run and the final model", "Trying to make it even stronger" |
+| 30 to 50 simulations per move in training | Yes. 50 in every training run | "The course rules, milestones and team" |
+| 4,096 actions, illegal moves masked before softmax | Yes | "The basics, from zero" |
+| Runs on consumer hardware in an academic timeframe | Yes. One laptop; we made self-play about 11 times faster, then 2.2 to 2.4 times faster again on its GPU | "Making training about 11 times faster" |
+| Milestone 1: rules engine verified by unit tests | Yes | "Every test, explained" |
+| Milestone 2: MCTS with an untrained network | Yes | "Building the system" |
+| Milestone 3: self-play pipeline, loss tracked over 50 to 100 games | Yes, and far beyond: 54,000 games | "The long run and the final model" |
+| Milestone 4: benchmarks against past versions and baseline players, learning curves | Yes. Against random, greedy-capture, untrained and earlier versions, with plots | "The long run and the final model", "How to read every graph and data file" |
+| Agent vs. random and agent vs. human | Yes. 16 human games: 6 by a beginner, 10 by a FIDE-rated club player | "Playing against the AI, and the human games" |
+| Progress plots | Yes | "How to read every graph and data file" |
+| Three students, split by part | Yes | "The team roles" above |
+| An agent that **masters** the game | **No.** It would need about 800 times more games (roughly 13 years on our laptop). We measured and explained this gap instead | "Our project compared with the original AlphaZero" |
+
+So everything the proposal asks to build and measure is done. The only aim
+not reached is mastery itself, and that is a limit of compute, not of the
+method or the code.
 
 # Timeline
 
