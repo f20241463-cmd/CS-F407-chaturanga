@@ -122,7 +122,9 @@ saved in the repo as `models/chaturangzero_final.pt`. A later stretch from
 iteration 560 at `--lr 2e-5` (seed 12, `--selfplay_device mps`, iterations
 561 to 702) was not measurably stronger and was not kept
 (`results/smaller_lr/`). Neither was a stretch from iteration 560 with
-`--q_mix 0.5 --lr 1e-4` (seed 21, iterations 561 to 660, `results/qmix/`).
+`--q_mix 0.5 --lr 1e-4` (seed 21, iterations 561 to 660, `results/qmix/`), nor
+one with `--max_plies 300 --lr 1e-4` (seed 31, iterations 561 to 660,
+`results/shortcap/`).
 
 ### A bigger network, started from an earlier agent's games
 

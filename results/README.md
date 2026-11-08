@@ -494,6 +494,25 @@ other runs. The search's values come from the same value head, so where that
 head cannot judge a position, neither can the search, and the blend adds
 little.
 
+### Shorter self-play games
+
+Decisive games are short (median 132 plies in the matches) and draws are long
+(median 469), so we continued the final model from iteration 560 for 100
+iterations with self-play stopped at 300 plies (`--max_plies 300`, learning
+rate 1e-4, seed 31, about 4 hours, `shortcap/`). Capped games count as draws,
+as before; the matches below still use the 800-ply cap.
+
+| Match vs final (560) | Games | Wins | Losses | Draws | Unfinished | Score |
+|---|---|---|---|---|---|---|
+| iteration 600 | 100 | 4 | 4 | 92 | 0 | 0.500 +/- 0.028 |
+| iteration 630 | 100 | 10 | 4 | 86 | 0 | 0.530 +/- 0.036 |
+| iteration 660 | 200 | 10 | 10 | 177 | 3 | 0.500 +/- 0.022 |
+
+None is clearly stronger, so iteration 560 stays the final model. Rounds took
+about 2.4 minutes instead of 6 to 7 and still had 15% decisive games, so the
+run produced about 2.4 times as many decisive games per hour as the q_mix run,
+but that did not make the agent stronger within 100 iterations.
+
 ## Limitations
 
 The stub-network results measure what search depth alone contributes, with no learned signal involved. The simulation-depth sweep's per-depth samples (1 to 4 decided games each) are too small to support a confident claim about how win rate scales with simulation count specifically; the pooled across-depth result is the more defensible number from that data. The benchmarks of the 400-game runs use 20 games per checkpoint, so their margins are about +/- 0.1; the long-run matches and benchmarks use 100 games (200 for the last comparison), with margins of about +/- 0.03 to 0.06. Differences smaller than that cannot be resolved, and with most games drawn a score says little about how often the model can actually win. The human games are sixteen games by two players: six by a beginner against final B and ten by an experienced player (FIDE blitz rating 1641) against the final model.
@@ -526,3 +545,4 @@ The stub-network results measure what search depth alone contributes, with no le
 - `resign_check.txt`: how often resigning would have been right, for each threshold
 - `smaller_lr/`: the continuation at learning rate 2e-5 (training log and matches against the final model)
 - `qmix/`: the continuation with search-value targets (training log and matches against the final model)
+- `shortcap/`: the continuation with self-play capped at 300 plies (training log and matches against the final model)
