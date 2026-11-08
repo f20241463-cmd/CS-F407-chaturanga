@@ -28,7 +28,8 @@ search per move when playing and counting draws as slightly bad in training,
 gave a gain and a loss of strength respectively: with 800 simulations per
 move the final model beats itself at 50 by 23 wins to 0. 140 more iterations
 at an even smaller learning rate gave no measurable gain, and neither did 100
-iterations that mixed the search's own values into the value targets. After moving self-play
+iterations that mixed the search's own values into the value targets or 100
+iterations with self-play games capped at 300 plies. After moving self-play
 to the laptop's GPU (about 2.2 to 2.4 times faster), a second attempt with the
 larger network, started from the final model's games, reached the final
 model's level but did not pass it. A measurement of the final model's own
@@ -578,6 +579,30 @@ we are trying to improve. Where that head cannot yet tell a won position from
 a lost one, the search's estimate is close to 0 as well, so the blended target
 adds little new information.
 
+## 6.17 Shorter self-play games
+
+In the matches, games with a winner are short (median 132 plies) and draws
+are long (median 469), so most self-play time goes into long drawn games. We
+continued the final model from iteration 560 for 100 iterations with
+self-play games stopped at 300 plies instead of 800 (`--max_plies 300`,
+learning rate 1e-4, seed 31), everything else unchanged. Games that reach the
+cap get the draw value 0, as before. Benchmarks still use the 800-ply cap.
+
+| Match vs final (560) | Games | Wins | Losses | Draws | Unfinished | Score |
+|---|---|---|---|---|---|---|
+| iteration 600 | 100 | 4 | 4 | 92 | 0 | 0.500 +/- 0.028 |
+| iteration 630 | 100 | 10 | 4 | 86 | 0 | 0.530 +/- 0.036 |
+| iteration 660 | 200 | 10 | 10 | 177 | 3 | 0.500 +/- 0.022 |
+
+Iteration 630 was the best of any continuation, but inside its margin, and
+the 200-game match at iteration 660 was exactly even, so we kept iteration
+560. The idea worked as intended on the data side: rounds took about 2.4
+minutes instead of 6 to 7, 15% of games still had a winner, and the run
+produced about 380 decisive games per hour against about 160 in the q_mix run
+(4 hours in all, `results/shortcap/`). More decisive games per hour did not
+give a stronger agent within 100 iterations, which again points to what the
+value head can learn from them rather than how many there are.
+
 # 7. Discussion
 
 **The first runs.** We first checked for a bug. The tests confirm the value
@@ -663,10 +688,11 @@ network give much weaker training targets than AlphaZero's 800 simulations.
 
 Within these limits, three things can still raise strength, and we tried each:
 
-1. **Learn more from each game.** Mixing the search's own value into the value
-   targets gives the value head a signal even from drawn games. In our test it
-   did not make the model stronger, because that signal comes from the same
-   weak value head (Section 6.16).
+1. **Learn more from each game, or play more decisive games.** Mixing the
+   search's own value into the value targets gives the value head a signal
+   even from drawn games (Section 6.16), and capping self-play at 300 plies
+   gives about 2.4 times more decisive games per hour (Section 6.17). Neither
+   made the model measurably stronger in 100 iterations.
 2. **Search more at play time.** The constraint on simulations applies to
    training only. At 800 simulations the final model beats its own 50-simulation
    version 23 wins to 0 (Section 6.11), and the browser game uses 800.
@@ -693,10 +719,12 @@ measured rather than guessed.
 
 What we expect would help most, in order:
 
-1. A way for results to reach the value head more often, within the rules,
-   for example a shorter game cap during self-play. Counting draws as
-   slightly bad did not work (Section 6.11), and resigning needs a value head
-   that already recognizes lost positions (Section 6.13).
+1. A way for results to reach the value head more often, within the rules.
+   Counting draws as slightly bad (Section 6.11), search-value targets
+   (Section 6.16) and a shorter game cap (Section 6.17) did not make the
+   agent stronger in 100 iterations, and resigning needs a value head that
+   already recognizes lost positions (Section 6.13). Each might need far more
+   iterations than we could run.
 2. Far more self-play games with the larger network, which can start from the
    final model's level (Section 6.12) but needs many more games than we could
    play to improve on it.
@@ -716,7 +744,8 @@ rarely checkmates, so learning to convert an
 advantage remains the open problem. More search at play time makes it
 clearly stronger (23 wins to 0 at 800 simulations against 50), but neither
 that, longer training at smaller learning rates, counting draws as bad,
-learning from the search's own values, nor a larger network solved it, and the
+learning from the search's own values, shorter self-play games, nor a
+larger network solved it, and the
 model's own evaluations show why: it does not yet recognize won or lost
 positions until the end is near. The evaluation tools (a fixed benchmark
 protocol, head-to-head matches, game-ending counts and human-game logging) made
