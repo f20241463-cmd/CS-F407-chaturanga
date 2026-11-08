@@ -108,8 +108,9 @@ learns entirely by playing against itself.
   800 search steps per move instead of 50, it beats its normal self 23 to 0.
 - We moved self-play to the laptop's GPU, making it about **2.2 to 2.4 times
   faster** again.
-- A team member new to chess played **10 games** against the final model
-  through the browser game: **5 human wins, 2 AI wins, 3 draws**.
+- An experienced chess player from outside the team (FIDE blitz rating
+  **1641**) played **10 games** against the final model through the browser
+  game: **5 human wins, 2 AI wins, 3 draws**.
 
 **The main lesson.** Within the project's rules and the compute of one
 laptop, the model has reached about its limit. Its central weakness is that
@@ -914,7 +915,8 @@ help either.
 
 **The demo and the human games (November 5 to 6).** A browser version of the
 game was built for the presentation, and ten human games against the final
-model were played and added to the report: 5 human wins, 2 AI wins, 3 draws.
+model were played by an experienced chess player (FIDE blitz 1641) and added
+to the report: 5 human wins, 2 AI wins, 3 draws.
 
 **Documentation.** Throughout, every result was written into the results
 page and the report, and this explanation document was written so that every
@@ -1969,8 +1971,12 @@ version. Four tests cover it.
 
 ## Ten games against the final model
 
-The same team member new to chess played ten games against the final model,
-five with each color:
+An experienced chess player from outside the team, with a **FIDE blitz
+rating of 1641**, played ten games against the final model, five with each
+color. (A FIDE rating is the official international chess rating; his ratings are
+1641 in blitz and 1617 in rapid: a solid club player, well above a beginner.) The games were played on
+the team member's laptop, so `human_games.csv` lists the team member's name
+as the player:
 
 | Game | Human plays | Result | Ending | Plies | Pieces left (human / AI) |
 |---|---|---|---|---|---|
@@ -1989,7 +1995,8 @@ five with each color:
 out.)
 
 **Totals: 5 human wins, 2 AI wins, 3 draws.** The AI's score is 0.350 (Wilson
-range 0.137 to 0.646), up from 0.250 for final B.
+range 0.137 to 0.646). Final B scored 0.250 against a beginner; the final
+model scored more against a much stronger player.
 
 | | Human wins | AI wins | Draws |
 |---|---|---|---|
@@ -2001,6 +2008,8 @@ range 0.137 to 0.646), up from 0.250 for final B.
 - The final model kept much more material than final B: two to seven pieces
   in the games it lost, against one or two for final B.
 - It did better when the human played Black.
+- Beating a FIDE-rated club player (blitz 1641) twice and drawing three times is a fair result
+  for a laptop-trained AI, but it still lost half the games.
 - Four of the human's wins came in under 110 plies: a direct attack on its
   king still usually beats it.
 - One of its wins was a resignation by the human in a position where the AI
@@ -2098,7 +2107,7 @@ At the end, the human had 13 pieces and the AI had 7.
 
 *In short: games 1 to 9 against the final model, each replayed with its key moments, and the patterns that show up across all ten games.*
 
-These are the other nine games the same player (new to chess) played against
+These are the other nine games the same experienced player (FIDE blitz 1641) played against
 the final model at 800 simulations per move, in the order they were played.
 Game 10 is in the previous chapter. Every capture, check and promotion below
 comes from replaying the recorded moves in `results/human_games.csv`.
@@ -2871,8 +2880,8 @@ improve the AI, and we found out why: about 80% of games were draws, so the
 network had almost nothing to learn from, and the data was far too small. We
 made training about 11 times faster and trained for 54,000 games over 144
 hours. The final model beats its starting point 27 wins to 0 and beats random
-and untrained players, but it rarely checkmates and a beginner can still beat
-it. We tried a bigger network, draw penalties, resignation and smaller
+and untrained players, but it rarely checkmates and an experienced player
+(FIDE blitz 1641) beat it in five of ten games. We tried a bigger network, draw penalties, resignation and smaller
 learning steps; none helped. Letting it think longer at play time does help.
 The main open problem is that its value judgment cannot tell won or lost
 positions until the very end, because almost all its training games are
@@ -2940,7 +2949,7 @@ are approximate, as reported in DeepMind's 2018 paper for chess.
 | Training time | Hours, on that hardware | About 144 hours for the long run |
 | Knowledge given | Rules only | Rules only |
 | Action space | Encoded moves of chess | 4096 from-to pairs |
-| Result | Superhuman | Beats random, untrained and earlier versions; a beginner can still win |
+| Result | Superhuman | Beats random, untrained and earlier versions; a rated club player (FIDE blitz 1641) still wins half the games |
 
 In other words, our project had roughly **800 times fewer games**, **16 times
 fewer simulations per move**, and a far smaller network than AlphaZero,
@@ -2999,8 +3008,9 @@ one clear gain left is outside training: more search at play time.
   differences smaller than about 0.03 to 0.06 still cannot be detected.
 - With most games drawn, a match score says little about how often the AI can
   actually win.
-- The human evaluation is 16 games by one beginner: 6 against final B and 10
-  against the final model.
+- The human evaluation is 16 games by two players: 6 by a beginner against
+  final B and 10 by an experienced player (FIDE blitz 1641) against the final
+  model.
 - Compute was the main limit: even with GPU self-play, one iteration of 100
   games takes about 4 minutes (10 for the bigger network).
 
@@ -3038,8 +3048,8 @@ one clear gain left is outside training: more search at play time.
 | Smaller learning rate (2e-5) | No gain (0.515) |
 | Search-value targets (q_mix 0.5) | No gain (0.518) |
 | Resignation | No safe threshold |
-| Human vs final model | 5 human wins, 2 AI wins, 3 draws (AI score 0.350) |
-| Human vs final B | 3 human wins, 0 AI wins, 3 draws (AI score 0.250) |
+| Human (FIDE blitz 1641) vs final model | 5 human wins, 2 AI wins, 3 draws (AI score 0.350) |
+| Human (beginner) vs final B | 3 human wins, 0 AI wins, 3 draws (AI score 0.250) |
 
 # How to read every graph and data file
 
@@ -3310,7 +3320,7 @@ untrained players and almost never loses to them.
 whenever it can. Our agent keeps its material and does not lose, but it
 cannot force checkmate, so most games end by the no-progress rule.
 
-**Why can a beginner beat it?** It learned mostly from drawn games against
+**Why can a club player beat it?** It learned mostly from drawn games against
 itself, so it rarely saw a direct attack on the king. Its value judgment does
 not recognize danger until the end is near.
 
@@ -3447,7 +3457,7 @@ These questions check your understanding. The answers follow.
 12. Does the 30 to 50 simulation limit apply when playing a human?
 13. What is a score of 0.5?
 14. What does "+/- 0.049" after a score mean?
-15. Why can a beginner still beat the final model?
+15. Why can an experienced human player still beat the final model?
 
 **Answers.**
 

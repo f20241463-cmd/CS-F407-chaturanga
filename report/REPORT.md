@@ -33,8 +33,8 @@ to the laptop's GPU (about 2.2 to 2.4 times faster), a second attempt with the
 larger network, started from the final model's games, reached the final
 model's level but did not pass it. A measurement of the final model's own
 evaluations showed that resigning hopeless games cannot work yet: it does not
-see a loss coming. A person new to chess still beat the final model in five
-of ten games, losing two.
+see a loss coming. An experienced chess player (FIDE blitz rating 1641) beat
+the final model in five of ten games, but lost two and drew three.
 
 # 1. Introduction
 
@@ -309,8 +309,8 @@ statistically, but the final positions are one-sided: the agent always ended
 with at most two pieces, and in each draw it had only its king left, which the
 human stalemated while going for checkmate.
 
-**Against the final model.** The same player later played ten games against
-the final model at 800 simulations per move, five with each color, using the
+**Against the final model.** Later, an experienced chess player from outside the team (FIDE blitz rating 1641,
+rapid 1617) played ten games against the final model at 800 simulations per move, five with each color, using the
 browser board (`play_web.py`). One more game, stopped after 4 plies, is left
 out.
 
@@ -330,12 +330,13 @@ out.
 The human won five games, four of them in under 110 plies, and the agent won
 two: one by checkmate and one by resignation, in a position where it had only
 its king left after the human could not find a checkmate in 295 plies. The
-agent's score is 0.350 (95% Wilson range 0.137 to 0.646), up from 0.250
-against final B, and it kept more material: two to seven pieces in the games
+agent's score is 0.350 (95% Wilson range 0.137 to 0.646). That is higher than
+final B's 0.250 although this opponent was much stronger than the beginner who
+played final B, and it kept more material: two to seven pieces in the games
 it lost, against one or two for final B. It did better when the human played
 Black (2 wins, 1 draw, 2 losses) than White (0 wins, 2 draws, 3 losses).
 The final model is much stronger than final B against programs (Sections 6.7
-and 6.9), but a person aiming directly at its king still usually beats it:
+and 6.9), but an experienced player aiming directly at its king still usually beats it:
 it has rarely seen that kind of attack in self-play, where about 85% of games
 are drawn.
 
@@ -598,8 +599,9 @@ reflected the method at that scale, not an error. Three causes stood out:
    hundreds of quiet positions.
 
 The human games show the same weakness from the outside: the agent gives away
-material steadily and cannot defend, and a beginner can win. Against the final
-model the human still won five of ten games and lost two (Section 6.4),
+material steadily and cannot defend, and a beginner beat final B. Against the
+final model, an experienced player (FIDE blitz rating 1641) still won five of
+ten games and lost two (Section 6.4),
 though the agent kept more of its pieces.
 
 The exploratory runs suggested that a better value signal alone is not enough
@@ -683,8 +685,9 @@ measured rather than guessed.
   per benchmark, and differences smaller than about 0.03 to 0.06 still cannot.
 - With most games drawn, a match score says little about how often the agent
   can actually win.
-- The human evaluation is sixteen games by one beginner: six against final B
-  and ten against the final model.
+- The human evaluation is sixteen games by two players: six by a beginner
+  against final B and ten by an experienced player (FIDE blitz rating 1641)
+  against the final model. Neither set is large enough for a precise score.
 - Compute was the main limit: even with GPU self-play, one iteration of 100
   games takes about 4 minutes, and the larger network about 10.
 
@@ -707,7 +710,8 @@ head, and the data was far too small. After making self-play about 11 times
 faster, a run of 54,000 games with the same method produced a clearly stronger
 agent. The final model beats its starting point 27 wins to 0 and beats random
 and untrained play, losing almost no games. It still draws nearly every game
-against greedy capture, a beginner beat it in five of ten games, and it
+against greedy capture, an experienced chess player (FIDE blitz rating 1641)
+beat it in five of ten games while losing two, and it
 rarely checkmates, so learning to convert an
 advantage remains the open problem. More search at play time makes it
 clearly stronger (23 wins to 0 at 800 simulations against 50), but neither
