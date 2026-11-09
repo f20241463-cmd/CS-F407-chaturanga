@@ -2069,6 +2069,7 @@ means "as strong as the final model". The files are in
 | Three networks averaged (play only, 400 games) | The final model and the two best continuations each give their opinion, and the search uses the average | 30 | 18 | 347 | 0.515 |
 | More root noise (training) | Practice games mix more randomness into the first choice of each search | 8 | 19 | 168 | 0.472 |
 | Late starts (training) | Some practice games begin from a position deep into an earlier game | 10 | 9 | 180 | 0.503 |
+| Mixed searches (training) | Half of the moves in practice games get a quick search and are not learned from, so more games fit in the same time | 5 | 11 | 179 | 0.485 |
 
 **Search setting.** "c_puct" decides how much the search tries moves the
 network does not like yet, compared with following its favourites. 1.5,
@@ -2094,6 +2095,12 @@ and drawn. Here 30% of practice games instead began from a position 50% to
 90% of the way through one of the previous round's games, so the network
 sees more late positions. It came out exactly as strong as the final model
 (0.503).
+
+**Mixed searches.** Only half of the moves in practice games got the full
+50-simulation search, and only those were learned from. The other half got a
+quick 30-simulation search, just to move the game along. That made room for
+160 games per round instead of 100 in about the same time. It came out
+slightly weaker (0.485), well inside the margin, so no gain.
 
 ## Why we stopped training
 
