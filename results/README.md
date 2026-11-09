@@ -547,6 +547,18 @@ the browser game, `--reuse_a`/`--reuse_b` in `evaluation.parallel_match`). In a
 subtree of the reply played, but it carried only about 76 visits on average
 (about 5% more search), too little to measure, so no match was run.
 
+### A last round of ideas
+
+Every remaining idea within the rules, each measured with 200 games against the
+final model (`last_ideas/`). Training ideas continue iteration 560 for 60
+iterations and are measured at iteration 620; play-only ideas need no training.
+
+| Idea | Wins | Losses | Draws | Score vs 560 |
+|---|---|---|---|---|
+| c_puct 1.0 instead of 1.5 (play only) | 9 | 10 | 177 | 0.497 +/- 0.022 |
+| c_puct 2.0 (play only) | 15 | 14 | 171 | 0.502 +/- 0.026 |
+| c_puct 3.0 (play only) | 6 | 13 | 176 | 0.482 +/- 0.022 |
+
 ## Limitations
 
 The stub-network results measure what search depth alone contributes, with no learned signal involved. The simulation-depth sweep's per-depth samples (1 to 4 decided games each) are too small to support a confident claim about how win rate scales with simulation count specifically; the pooled across-depth result is the more defensible number from that data. The benchmarks of the 400-game runs use 20 games per checkpoint, so their margins are about +/- 0.1; the long-run matches and benchmarks use 100 games (200 for the last comparison), with margins of about +/- 0.03 to 0.06. Differences smaller than that cannot be resolved, and with most games drawn a score says little about how often the model can actually win. The human games are sixteen games by two players: six by a beginner against final B and ten by an experienced player (FIDE blitz rating 1641) against the final model.
@@ -580,4 +592,5 @@ The stub-network results measure what search depth alone contributes, with no le
 - `smaller_lr/`: the continuation at learning rate 2e-5 (training log and matches against the final model)
 - `qmix/`: the continuation with search-value targets (training log and matches against the final model)
 - `shortcap/`: the continuation with self-play capped at 300 plies (training log and matches against the final model)
+- `last_ideas/`: the last round of ideas (one match file per idea against the final model)
 - `soup_and_sims/`: the averaged-weights model against the final model, the script that made it, and the final model at 1600 against 800 and 3200 against 1600 simulations

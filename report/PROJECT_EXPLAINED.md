@@ -43,7 +43,7 @@ material at the end:
   replayed move by move**, **the other nine games replayed** with their key
   moments, and **the patterns across all ten games**.
 - **The decision log**, **every training option**, a **tour of the code**,
-  **real code snippets explained line by line**, **every one of the 134
+  **real code snippets explained line by line**, **every one of the 157
   tests in plain words**, and a guide to **presenting the project**.
 - **Our project compared with the original AlphaZero.**
 - **What it all means**, **limitations**, and the **key numbers**.
@@ -85,7 +85,7 @@ learns entirely by playing against itself.
    matches between versions of the AI, analysis of how games end, and a
    system for logging games against humans.
 6. A **terminal game** and a **browser game** to play against the AI.
-7. **134 automated tests** that check every part.
+7. **157 automated tests** that check every part.
 
 **What happened.**
 
@@ -300,7 +300,7 @@ A **unit test** is a small program that checks that one piece of code does
 what it should, for example "a horse on b1 can move to a3 and c3 and nowhere
 else" or "after checkmate, the result is a loss for the side to move". Tests
 are run with `python -m pytest -q`. If someone changes code and breaks
-something, a test fails and shows exactly what broke. The project has 134
+something, a test fails and shows exactly what broke. The project has 157
 tests, and all of them pass.
 
 ## Random seeds and reproducibility
@@ -2051,6 +2051,26 @@ move, which is too small to measure when even doubling (3200 against 1600)
 gave nothing, so we did not run a match for it. It is free and does no harm,
 so we kept it.
 
+## A last round of ideas
+
+To be sure nothing obvious was left, we then tried every remaining idea we
+know of that keeps to the course rules, one at a time. Ideas that only
+change how the final model plays are tested with 200 games against it.
+Training ideas continue the final model from iteration 560 for 60 more
+iterations and then play 200 games against iteration 560. A score of 0.5
+means "as strong as the final model". The files are in
+`results/last_ideas/`.
+
+| Idea | What it changes | Wins | Losses | Draws | Score |
+|---|---|---|---|---|---|
+| Search setting c_puct 1.0 (play only) | The search explores less than with the usual 1.5 | 9 | 10 | 177 | 0.497 |
+| Search setting c_puct 2.0 (play only) | The search explores more | 15 | 14 | 171 | 0.502 |
+| Search setting c_puct 3.0 (play only) | The search explores much more | 6 | 13 | 176 | 0.482 |
+
+**Search setting.** "c_puct" decides how much the search tries moves the
+network does not like yet, compared with following its favourites. 1.5,
+the value we used everywhere, is as good as any other we tried.
+
 ## Why we stopped training
 
 - Every extra idea within the rules (more training, smaller steps, a bigger
@@ -2859,9 +2879,9 @@ for conv_name, bn_name in _CONV_BN_PAIRS:
 
 # Every test, explained
 
-*In short: All 134 automated tests, in plain words.*
+*In short: All 157 automated tests, in plain words.*
 
-There are 134 automated tests in 11 files. Each test name describes what it
+There are 157 automated tests in 12 files. Each test name describes what it
 checks. Here they are, translated into plain words.
 
 ## Rules engine: `test_chaturanga.py` (36 tests)
@@ -3000,6 +3020,27 @@ checks. Here they are, translated into plain words.
 - Games are logged, including resigned and unfinished games.
 - The web server serves the page and answers move requests correctly.
 
+## The last round of ideas: `test_more_ideas.py` (23 tests)
+
+- Late starts: a game continues from the given moves, which are not
+  recorded; start positions are chosen in the right part of earlier games.
+- Mixed search sizes: only full searches become training examples.
+- Replay buffer: the left-right mirror matches the rules (mirrored legal
+  moves equal the legal moves of the mirrored board); the buffer flips a
+  position and its move targets together; decisive positions are sampled
+  more often; plies left are stored.
+- Older opponents: only the current network's moves are recorded.
+- Gumbel search: the completed values are right; the move targets are a
+  proper distribution over legal moves; it finds a move the network rates as
+  winning.
+- Moves-left head: the backbone plus heads equal the normal network; the
+  head learns plies left; saved networks are unchanged.
+- Reanalyse: replaying a game gives the same positions and results with new
+  move targets; reanalysed games are not counted as games played.
+- Averaged networks: one network averaged alone keeps its choices; matches
+  run with several averaged networks.
+- Short training runs with each new option.
+
 ## Keeping the search: `test_tree_reuse.py` (5 tests)
 
 - After a move, the branch for the opponent's reply comes back with its
@@ -3045,7 +3086,7 @@ draws."
    diagram).
 4. **The constraints**: rules only, 30 to 50 simulations, 4 to 6 blocks,
    4096 actions.
-5. **What we built**: the five parts and 134 tests.
+5. **What we built**: the five parts and 157 tests.
 6. **First runs**: no improvement, with the benchmark graph.
 7. **Diagnosis**: too little data, draws starve the value head, long games.
 8. **Speed-up**: 259 to 19 ms per move, workers, GPU.
@@ -3193,7 +3234,7 @@ one clear gain left is outside training: more search at play time.
 | Search | PUCT MCTS, c_puct 1.5, 50 simulations in training, Dirichlet noise alpha 0.3 weight 0.25 |
 | Action space | 4096 (64 x 64) |
 | Position encoding | 13 planes of 8 x 8 |
-| Automated tests | 134 |
+| Automated tests | 157 |
 | First runs | 2 x 400 games, about 7 hours each, no measurable gain |
 | Speed-up | 259 to 19 ms per move (about 11 times faster per move), plus 6 workers, plus GPU self-play (about 2.2 to 2.4 times faster again) |
 | Long run | 540 iterations, 54,000 games, about 23.7 million positions, about 144 hours |
@@ -3307,7 +3348,7 @@ evaluation/   baseline players, benchmark, matches, game endings, human log, res
 results/      every training log, benchmark CSV, match log, plot and the results write-up
 models/       the final trained network (chaturangzero_final.pt)
 web/          the board page for the browser game
-tests/        134 automated tests
+tests/        157 automated tests
 report/       the report (REPORT.md and REPORT.docx) and this document
 ```
 
@@ -3403,7 +3444,7 @@ git pull
 python -m pytest -q
 ```
 
-This runs all 134 tests and should end with "134 passed". It takes about a
+This runs all 157 tests and should end with "157 passed". It takes about a
 minute.
 
 ## Step 5: play against the AI
@@ -3430,7 +3471,7 @@ The browser opens with the board. Press Ctrl+C in the terminal to stop.
 *In short: The commands for the tests, the games, a small training run and a match.*
 
 ```
-python -m pytest -q                                   # all 134 tests
+python -m pytest -q                                   # all 157 tests
 python play_web.py --player NAME                      # play in the browser
 python play_vs_ai.py --checkpoint models/chaturangzero_final.pt --player NAME --simulations 1600
 python play_vs_ai.py --summary --checkpoint models/chaturangzero_final.pt
