@@ -20,6 +20,7 @@ import numpy as np
 from chaturanga import encoding
 from chaturanga.game import GameState
 from chaturanga.types import Color
+from mcts.reuse import TreeCache
 from mcts.search import drive, mcts_search, select_action_from_visits
 from training.self_play import PIECE_VALUES, filter_repeating_moves  # noqa: F401
 
@@ -47,13 +48,17 @@ def greedy_capture_player(state, rng):
 
 
 def mcts_move_steps(state, rng, simulations=50, c_puct=1.5, temperature=0.3,
-                    avoid_repetition=True):  # fmt: skip
+                    avoid_repetition=True, tree_cache=None):  # fmt: skip
     """
     The MCTS player's move choice as a generator: yields each position the
     network must evaluate, takes (policy_logits, value) back, and returns
     the move. make_mcts_player drives it one position at a time; batched
     matches drive many at once.
+
+    tree_cache: optional TreeCache; the search then starts from the tree
+    kept after the previous move, and keeps its own tree for the next one.
     """
+    stats = {}
     visit_counts, _ = yield from mcts_search(
         state,
         simulations,
@@ -61,15 +66,20 @@ def mcts_move_steps(state, rng, simulations=50, c_puct=1.5, temperature=0.3,
         encoding.state_to_tensor,
         encoding.legal_action_mask,
         encoding.action_to_move,
+        stats=stats,
+        root=tree_cache.take(state) if tree_cache is not None else None,
     )
     if avoid_repetition:
         visit_counts, _ = filter_repeating_moves(state, visit_counts)
     action = select_action_from_visits(visit_counts, temperature, rng)
+    if tree_cache is not None and "root" in stats:
+        tree_cache.keep(stats["root"], action)
     return encoding.action_to_move(action)
 
 
 def make_mcts_player(
-    network_fn, simulations=50, c_puct=1.5, temperature=0.3, avoid_repetition=True
+    network_fn, simulations=50, c_puct=1.5, temperature=0.3, avoid_repetition=True,
+    reuse_tree=False,
 ):
     """
     MCTS player with no Dirichlet noise. The move is sampled from the
@@ -80,11 +90,15 @@ def make_mcts_player(
 
     The player also carries .steps(state, rng), the same move choice as a
     generator (mcts_move_steps), for batched matches.
+
+    reuse_tree: keep the search tree between the player's moves
+    (mcts/reuse.py), so each search builds on the last one.
     """
+    tree_cache = TreeCache() if reuse_tree else None
 
     def steps(state, rng):
         return mcts_move_steps(state, rng, simulations, c_puct, temperature,
-                               avoid_repetition)  # fmt: skip
+                               avoid_repetition, tree_cache)  # fmt: skip
 
     def player(state, rng):
         return drive(steps(state, rng), network_fn)

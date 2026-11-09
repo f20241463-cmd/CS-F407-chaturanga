@@ -31,7 +31,8 @@ at an even smaller learning rate gave no measurable gain, and neither did 100
 iterations that mixed the search's own values into the value targets or 100
 iterations with self-play games capped at 300 plies, and neither did averaging
 the weights of seven late checkpoints into one model. Doubling the search again
-to 1600 simulations still helps a little (15 wins to 3 against 800). After moving self-play
+to 1600 simulations still helps a little (15 wins to 3 against 800), but
+3200 is no better than 1600 (0.505). After moving self-play
 to the laptop's GPU (about 2.2 to 2.4 times faster), a second attempt with the
 larger network, started from the final model's games, reached the final
 model's level but did not pass it. A measurement of the final model's own
@@ -163,7 +164,7 @@ The code is plain Python with NumPy and PyTorch, organized by component:
 | `training/` | self-play, replay buffer, training loop |
 | `evaluation/` | baseline players, benchmark, parallel matches, game-ending classifier, human-game log |
 
-129 automated tests cover the rules (36 tests, including check, checkmate,
+134 automated tests cover the rules (36 tests, including check, checkmate,
 stalemate, promotion and the draw rules), the search (including a toy game
 with a known best move), the network, value-target signs, policy targets, a
 complete small training run including resuming from a checkpoint, the
@@ -605,7 +606,7 @@ produced about 380 decisive games per hour against about 160 in the q_mix run
 give a stronger agent within 100 iterations, which again points to what the
 value head can learn from them rather than how many there are.
 
-## 6.18 Averaging checkpoints, and more search again
+## 6.18 Averaging checkpoints, more search, and keeping the search tree
 
 **Averaging checkpoints (a "model soup").** All our continuations ended close
 to the final model, so we tried averaging the weights of seven of them into
@@ -628,13 +629,29 @@ itself with 1600 simulations per move against 800 (100 games).
 | Match | Games | Wins | Losses | Draws | Unfinished | Score |
 |---|---|---|---|---|---|---|
 | final at 1600 vs final at 800 | 100 | 15 | 3 | 82 | 0 | 0.560 +/- 0.040 |
+| final at 3200 vs final at 1600 | 100 | 7 | 6 | 87 | 0 | 0.505 +/- 0.035 |
 
-1600 simulations is measurably better (the score stays above 0.5 even at the
-bottom of the margin), but the gain is smaller than from 50 to 800 (0.616).
-Each doubling of search helps less than the one before. A move takes about
-0.55 seconds at 1600 against about 0.3 seconds at 800, so the
+1600 simulations is measurably better than 800 (the score stays above 0.5
+even at the bottom of the margin), but the gain is smaller than from 50 to
+800 (0.616), and 3200 is no better than 1600. Each doubling of search helps
+less than the one before, and past 1600 the gain is gone: more search cannot
+make up for a value head that does not recognize won positions. A move takes
+about 0.55 seconds at 1600 against about 0.3 seconds at 800, so the
 browser game now uses 1600 by default (`play_web.py --simulations 1600`). The
 human games in Section 6.4 were played at 800, before this change.
+
+**Keeping the search tree between moves.** After the agent moves, the part
+of its tree below that move already holds searches of the opponent's likely
+replies. The search can now keep that part and, once the opponent has
+replied, start the next search from the subtree of the reply actually played
+instead of from nothing (`mcts/reuse.py`, `--reuse_a`/`--reuse_b` in the match
+tool; the browser game does it by default). It uses only the search itself.
+In a 60-move game with the final model at 1600 simulations, 58 searches
+started from a kept subtree, but each brought only about 76 visits on
+average: the search spreads widely, so the move played gets only about 15 to
+20% of the visits and the opponent's actual reply far fewer. That is about 5%
+more search per move, far too little to measure when doubling the search
+from 1600 to 3200 gave nothing, so we did not run a match for it.
 
 # 7. Discussion
 
@@ -687,8 +704,8 @@ without a better sense of which positions are won seems to lead to riskier,
 worse play. Within the constraints and our compute, the 4 x 64 network at 50
 simulations appears close to its limit. The one clear gain left is outside
 training: 800 simulations per move at play time beat the final model at 50
-by 23 wins to 0 (Section 6.11), and 1600 beat 800 by 15 wins to 3
-(Section 6.18). Averaging the weights of late checkpoints gave no measurable
+by 23 wins to 0 (Section 6.11), and 1600 beat 800 by 15 wins to 3, but
+3200 was no better than 1600 (Section 6.18). Averaging the weights of late checkpoints gave no measurable
 gain (Section 6.18).
 
 **Size and what the value head knows.** The larger network learned to play as
@@ -730,8 +747,9 @@ Within these limits, three things can still raise strength, and we tried each:
    made the model measurably stronger in 100 iterations.
 2. **Search more at play time.** The constraint on simulations applies to
    training only. At 800 simulations the final model beats its own 50-simulation
-   version 23 wins to 0 (Section 6.11), and 1600 beats 800 by 15 wins to 3
-   (Section 6.18), so the browser game uses 1600.
+   version 23 wins to 0 (Section 6.11), and 1600 beats 800 by 15 wins to 3,
+   but 3200 is no better than 1600 (Section 6.18), so the browser game uses
+   1600.
 3. **More hardware.** Running self-play on several machines at once would
    multiply the number of games, but four laptops or a rented GPU would give
    a few times more games, not 800 times more.
@@ -773,7 +791,7 @@ What we expect would help most, in order:
 # 9. Conclusion
 
 We implemented every part of an AlphaZero-style system for Chaturanga under the
-course constraints and verified it with 129 tests. With 400 self-play games per
+course constraints and verified it with 134 tests. With 400 self-play games per
 run the agent did not improve, and we measured why: draws starve the value
 head, and the data was far too small. After making self-play about 11 times
 faster, a run of 54,000 games with the same method produced a clearly stronger
@@ -784,7 +802,7 @@ beat it in five of ten games while losing two, and it
 rarely checkmates, so learning to convert an
 advantage remains the open problem. More search at play time makes it
 clearly stronger (23 wins to 0 at 800 simulations against 50, and 15 to 3 at
-1600 against 800), but neither
+1600 against 800, with no further gain at 3200), but neither
 that, longer training at smaller learning rates, counting draws as bad,
 learning from the search's own values, shorter self-play games, averaging
 checkpoints, nor a larger network solved it, and the
