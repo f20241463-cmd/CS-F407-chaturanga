@@ -558,6 +558,7 @@ iterations and are measured at iteration 620; play-only ideas need no training.
 | c_puct 1.0 instead of 1.5 (play only) | 9 | 10 | 177 | 0.497 +/- 0.022 |
 | c_puct 2.0 (play only) | 15 | 14 | 171 | 0.502 +/- 0.026 |
 | c_puct 3.0 (play only) | 6 | 13 | 176 | 0.482 +/- 0.022 |
+| Three networks averaged: 560 + qmix 660 + shortcap 660 (play only, 400 games) | 30 | 18 | 347 | 0.515 +/- 0.017 |
 | Root noise weight 0.4 instead of 0.25 (training) | 8 | 19 | 168 | 0.472 +/- 0.026 |
 
 ## Limitations

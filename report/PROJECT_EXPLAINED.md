@@ -2066,11 +2066,21 @@ means "as strong as the final model". The files are in
 | Search setting c_puct 1.0 (play only) | The search explores less than with the usual 1.5 | 9 | 10 | 177 | 0.497 |
 | Search setting c_puct 2.0 (play only) | The search explores more | 15 | 14 | 171 | 0.502 |
 | Search setting c_puct 3.0 (play only) | The search explores much more | 6 | 13 | 176 | 0.482 |
+| Three networks averaged (play only, 400 games) | The final model and the two best continuations each give their opinion, and the search uses the average | 30 | 18 | 347 | 0.515 |
 | More root noise (training) | Practice games mix more randomness into the first choice of each search | 8 | 19 | 168 | 0.472 |
 
 **Search setting.** "c_puct" decides how much the search tries moves the
 network does not like yet, compared with following its favourites. 1.5,
 the value we used everywhere, is as good as any other we tried.
+
+**Three networks averaged.** Instead of one network, three (the final
+model, and iteration 660 of the q_mix and short-games runs) look at each
+position, and the search uses the average of their move preferences and
+their guesses of who is winning. It scored a little above even in both
+matches (0.521, then 0.510 with new games). Over all 400 games that is
+0.515 +/- 0.017, which only just reaches 0.5, so it may be a very small gain
+or just luck. It also makes every move three times as slow, so we kept the
+single final model.
 
 **More root noise.** In practice games, random "noise" is mixed into the
 network's move preferences at the start of each search, so the agent tries

@@ -669,9 +669,14 @@ benchmark protocol (50 simulations, temperature 0.3). The options are in
 | Search constant c_puct 1.0 (play only) | Less exploration in the search than the usual 1.5 | 9 | 10 | 177 | 0.497 +/- 0.022 |
 | Search constant c_puct 2.0 (play only) | More exploration | 15 | 14 | 171 | 0.502 +/- 0.026 |
 | Search constant c_puct 3.0 (play only) | Much more exploration | 6 | 13 | 176 | 0.482 +/- 0.022 |
+| Three networks averaged (play only), 400 games | Final model + q_mix 660 + short-games 660 (Sections 6.16, 6.17), priors and values averaged | 30 | 18 | 347 | 0.515 +/- 0.017 |
 | More root noise in self-play | Dirichlet weight 0.4 instead of 0.25 | 8 | 19 | 168 | 0.472 +/- 0.026 |
 
 The search constant of 1.5 used throughout is as good as any we tried.
+Averaging the final model with the two strongest continuations is the only
+idea with a score above 0.5 in both of its 200-game matches (0.521 and
+0.510), but pooled over 400 games the margin still reaches 0.5, and each
+move costs three network evaluations instead of one. We did not adopt it.
 More root noise during self-play, to explore more openings, made the model
 slightly weaker, if anything.
 
