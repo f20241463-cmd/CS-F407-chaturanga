@@ -92,11 +92,23 @@ class ChaturangaNet(nn.Module):
         if single_input:
             x = x.unsqueeze(0)
 
-        # Backbone
+        policy_logits, value = self.heads(self.features(x))
+
+        if single_input:
+            policy_logits = policy_logits.squeeze(0)
+            value = value.squeeze(0)
+
+        return policy_logits, value
+
+    def features(self, x: torch.Tensor) -> torch.Tensor:
+        """The residual backbone's output for a batch [B, 13, 8, 8]."""
         out = F.relu(self.input_bn(self.input_conv(x)), inplace=True)
         for block in self.res_blocks:
             out = block(out)
+        return out
 
+    def heads(self, out: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Policy logits [B, 4096] and value [B, 1] from backbone features."""
         # Policy Head
         p = F.relu(self.policy_bn(self.policy_conv(out)), inplace=True)
         p = p.flatten(start_dim=1)
@@ -107,11 +119,6 @@ class ChaturangaNet(nn.Module):
         v = v.flatten(start_dim=1)
         v = F.relu(self.value_fc1(v), inplace=True)
         value = torch.tanh(self.value_fc2(v))
-
-        if single_input:
-            policy_logits = policy_logits.squeeze(0)
-            value = value.squeeze(0)
-
         return policy_logits, value
 
     @torch.no_grad()
@@ -131,3 +138,23 @@ class ChaturangaNet(nn.Module):
         t = torch.from_numpy(state_tensor).to(device=device, dtype=torch.float32)
         policy_logits, value = self.forward(t)
         return policy_logits.cpu().numpy().astype(np.float32), float(value.item())
+
+
+class MovesLeftHead(nn.Module):
+    """
+    Auxiliary head used only in training (from KataGo): predicts how many
+    plies the game still lasts, in units of 100, from the backbone features.
+    Its loss shapes the shared backbone; it is not saved with the network
+    and plays no part in search.
+    """
+
+    def __init__(self, num_filters: int = 64):
+        super().__init__()
+        self.conv = nn.Conv2d(num_filters, 1, kernel_size=1, bias=False)
+        self.bn = nn.BatchNorm2d(1)
+        self.fc1 = nn.Linear(64, 32)
+        self.fc2 = nn.Linear(32, 1)
+
+    def forward(self, features: torch.Tensor) -> torch.Tensor:
+        m = F.relu(self.bn(self.conv(features)), inplace=True).flatten(start_dim=1)
+        return self.fc2(F.relu(self.fc1(m), inplace=True)).squeeze(1)
