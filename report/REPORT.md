@@ -669,8 +669,11 @@ benchmark protocol (50 simulations, temperature 0.3). The options are in
 | Search constant c_puct 1.0 (play only) | Less exploration in the search than the usual 1.5 | 9 | 10 | 177 | 0.497 +/- 0.022 |
 | Search constant c_puct 2.0 (play only) | More exploration | 15 | 14 | 171 | 0.502 +/- 0.026 |
 | Search constant c_puct 3.0 (play only) | Much more exploration | 6 | 13 | 176 | 0.482 +/- 0.022 |
+| More root noise in self-play | Dirichlet weight 0.4 instead of 0.25 | 8 | 19 | 168 | 0.472 +/- 0.026 |
 
 The search constant of 1.5 used throughout is as good as any we tried.
+More root noise during self-play, to explore more openings, made the model
+slightly weaker, if anything.
 
 # 7. Discussion
 

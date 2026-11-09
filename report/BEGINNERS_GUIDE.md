@@ -327,7 +327,9 @@ needs no practice at all, only a few seconds. It was about even with round
 that keeps to the rules, one at a time (see the full explanation for the
 list). First: changing how adventurous the search is (its "c_puct"
 setting) from 1.5 to 1.0, 2.0 or 3.0. All three were about even with 1.5,
-so **no improvement**.
+so **no improvement**. Next: adding more randomness to the practice games
+so the agent tries more new openings. It came out slightly weaker, so
+**no improvement** either.
 
 **6. Faster practice on the graphics chip.** We rebuilt the practice system
 so many games share the graphics chip at once. Practice got about 2.2 to 2.4

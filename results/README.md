@@ -558,6 +558,7 @@ iterations and are measured at iteration 620; play-only ideas need no training.
 | c_puct 1.0 instead of 1.5 (play only) | 9 | 10 | 177 | 0.497 +/- 0.022 |
 | c_puct 2.0 (play only) | 15 | 14 | 171 | 0.502 +/- 0.026 |
 | c_puct 3.0 (play only) | 6 | 13 | 176 | 0.482 +/- 0.022 |
+| Root noise weight 0.4 instead of 0.25 (training) | 8 | 19 | 168 | 0.472 +/- 0.026 |
 
 ## Limitations
 
@@ -592,5 +593,5 @@ The stub-network results measure what search depth alone contributes, with no le
 - `smaller_lr/`: the continuation at learning rate 2e-5 (training log and matches against the final model)
 - `qmix/`: the continuation with search-value targets (training log and matches against the final model)
 - `shortcap/`: the continuation with self-play capped at 300 plies (training log and matches against the final model)
-- `last_ideas/`: the last round of ideas (one match file per idea against the final model)
+- `last_ideas/`: the last round of ideas (one match file per idea against the final model, plus the training log of each training idea)
 - `soup_and_sims/`: the averaged-weights model against the final model, the script that made it, and the final model at 1600 against 800 and 3200 against 1600 simulations
