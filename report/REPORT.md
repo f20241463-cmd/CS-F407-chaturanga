@@ -673,6 +673,7 @@ benchmark protocol (50 simulations, temperature 0.3). The options are in
 | More root noise in self-play | Dirichlet weight 0.4 instead of 0.25 | 8 | 19 | 168 | 0.472 +/- 0.026 |
 | Late starts | 30% of self-play games start from a position 50-90% of the way through a game of the previous iteration | 10 | 9 | 180 | 0.503 +/- 0.021 |
 | Mixed searches | Half of the moves get the full 50-simulation search and are trained on; the rest a fast 30-simulation search that is not; 160 games per iteration | 5 | 11 | 179 | 0.485 +/- 0.020 |
+| Decisive games weighted | Positions from won or lost games are sampled 3 times as often in training | 9 | 10 | 176 | 0.497 +/- 0.022 |
 
 The search constant of 1.5 used throughout is as good as any we tried.
 Averaging the final model with the two strongest continuations is the only
@@ -684,7 +685,8 @@ slightly weaker, if anything. Starting some self-play games late, so that more
 training positions come from endgames where games are decided, gave an even
 score. Mixing fast, untrained searches into self-play (playout cap
 randomization), which gives more games for the same time, did not help
-either.
+either. Nor did sampling positions from decisive games three times as often,
+which gives the value head more non-zero targets.
 
 # 7. Discussion
 
