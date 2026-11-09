@@ -867,9 +867,17 @@ history.
 | Nov 5 | PR #22 | The browser version of the game |
 | Nov 6 | PR #23 | The first six human games against the final model |
 | Nov 6 | PR #24 | The last four human games (ten in total) |
+| Nov 6 to 7 | PRs #26 to #29 | This full explanation, the beginner's guide, diagrams, replayed games and a quiz |
 | Nov 7 | PR #30 | Search-value targets, the uncheckered board, the gap to mastery in the report |
+| Nov 8 | PR #31 | Search-value (q_mix) results: no gain |
+| Nov 8 | PR #32 | Correct who played the human games (an experienced player, FIDE blitz 1641) |
+| Nov 8 | PR #33 | Shorter practice games (300 plies): no gain |
+| Nov 8 | PR #34 | The project proposal, checked line by line |
+| Nov 8 | PR #35 | Future work: GPU time (for example Colab) for the bigger network |
+| Nov 9 | PR #36 | Averaged checkpoints (no gain), 1600 against 800 simulations (a small gain), browser game at 1600 |
+| Nov 9 | PR #37 | 3200 against 1600 simulations (no gain), keeping the search between moves |
 
-Roughly, the project had six phases:
+Roughly, the project had seven phases:
 
 1. **Oct 2 to Oct 3: building the parts.** Rules engine, MCTS, network, first
    baselines.
@@ -883,6 +891,10 @@ Roughly, the project had six phases:
    smaller learning rate.
 5. **Nov 5: the browser game.**
 6. **Nov 6: human games against the final model**, added to the report.
+7. **Nov 7 to Nov 9: the last ideas.** Search-value targets, shorter
+   practice games, averaging checkpoints, thinking longer (1600 and 3200)
+   and keeping the search between moves. Only thinking up to 1600 helped,
+   so the final model stays iteration 560, playing at 1600 simulations.
 
 # The story of the project, in more detail
 
@@ -3014,8 +3026,12 @@ network had almost nothing to learn from, and the data was far too small. We
 made training about 11 times faster and trained for 54,000 games over 144
 hours. The final model beats its starting point 27 wins to 0 and beats random
 and untrained players, but it rarely checkmates and an experienced player
-(FIDE blitz 1641) beat it in five of ten games. We tried a bigger network, draw penalties, resignation and smaller
-learning steps; none helped. Letting it think longer at play time does help.
+(FIDE blitz 1641) beat it in five of ten games. We tried a bigger network,
+draw penalties, resignation, smaller learning steps, search-value targets,
+shorter practice games and averaging checkpoints; none helped. Letting it
+think longer at play time helps up to 1600 search steps per move, then stops.
+Mastering the game would need about 800 times more games, roughly 13 years
+on our laptop.
 The main open problem is that its value judgment cannot tell won or lost
 positions until the very end, because almost all its training games are
 draws."
@@ -3037,10 +3053,13 @@ draws."
 10. **The final model's results**: against the starting model, random,
     untrained, greedy capture.
 11. **Trying to go further**: bigger network, draw penalty, resignation,
-    smaller steps, more search at play time.
+    smaller steps, search-value targets, shorter games, averaged checkpoints,
+    more search at play time (gain up to 1600, none at 3200).
 12. **Human games**: the 10-game table.
 13. **Live demo**: the browser game.
-14. **What we learned and future work.**
+14. **Why it does not master the game**: AlphaZero against our project
+    (about 800 times fewer games).
+15. **What we learned and future work.**
 
 ## Running the live demo
 
