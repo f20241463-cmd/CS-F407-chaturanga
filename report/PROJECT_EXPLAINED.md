@@ -3075,6 +3075,9 @@ draws."
 5. The demo needs no internet. If the browser does not open by itself, type
    the address manually. If port 8000 is busy, add `--port 8001` and use
    http://127.0.0.1:8001.
+6. **Backup:** if the live demo fails, slide 14 of the deck
+   (`report/ChaturangZero_Slides.pptx`) has a 40-second recording of a game
+   in the browser; the same video is `report/ChaturangZero_Demo.mp4`.
 
 ## What to emphasize
 
