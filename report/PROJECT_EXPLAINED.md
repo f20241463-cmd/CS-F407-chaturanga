@@ -2068,6 +2068,7 @@ means "as strong as the final model". The files are in
 | Search setting c_puct 3.0 (play only) | The search explores much more | 6 | 13 | 176 | 0.482 |
 | Three networks averaged (play only, 400 games) | The final model and the two best continuations each give their opinion, and the search uses the average | 30 | 18 | 347 | 0.515 |
 | More root noise (training) | Practice games mix more randomness into the first choice of each search | 8 | 19 | 168 | 0.472 |
+| Late starts (training) | Some practice games begin from a position deep into an earlier game | 10 | 9 | 180 | 0.503 |
 
 **Search setting.** "c_puct" decides how much the search tries moves the
 network does not like yet, compared with following its favourites. 1.5,
@@ -2086,6 +2087,13 @@ single final model.
 network's move preferences at the start of each search, so the agent tries
 new openings. We raised its weight from 0.25 to 0.4. The model came out
 slightly weaker (0.472), so more randomness does not help.
+
+**Late starts.** Games with a winner are mostly decided late, but every
+practice game starts from the opening, so most training positions are early
+and drawn. Here 30% of practice games instead began from a position 50% to
+90% of the way through one of the previous round's games, so the network
+sees more late positions. It came out exactly as strong as the final model
+(0.503).
 
 ## Why we stopped training
 
