@@ -33,8 +33,8 @@ from network.checkpoint import load_checkpoint, save_checkpoint
 from network.loss import AlphaZeroLoss
 from network.model import ChaturangaNet
 from training.replay_buffer import ReplayBuffer, compact_example
-from training.batched_self_play import play_games_batched
-from training.self_play import play_self_play_game, self_play_game_steps
+from training.batched_self_play import play_games_batched, play_keyed_games_batched
+from training.self_play import play_self_play_game, reanalyse_game_steps, self_play_game_steps
 
 LOG_FIELDS = [
     "iteration",
@@ -58,19 +58,38 @@ LOG_FIELDS = [
 ]
 
 
-def train_step(model, optimizer, loss_fn, batch, device="cpu"):
-    """One gradient step on a numpy batch (states, policies, values). Returns the metrics dict."""
-    states, policies, values = batch
+def train_step(model, optimizer, loss_fn, batch, device="cpu", aux=None):
+    """
+    One gradient step on a numpy batch (states, policies, values). Returns
+    the metrics dict. aux: optional (MovesLeftHead, its optimizer, weight);
+    the batch then also holds each position's plies left, and the head's
+    loss (weighted) is added, training the shared backbone too.
+    """
+    states, policies, values = batch[:3]
     x = torch.as_tensor(states, dtype=torch.float32, device=device)
     target_p = torch.as_tensor(policies, dtype=torch.float32, device=device)
     target_v = torch.as_tensor(values, dtype=torch.float32, device=device)
 
     model.train()
     optimizer.zero_grad()
-    pred_logits, pred_values = model(x)
-    loss, metrics = loss_fn(pred_logits, pred_values, target_p, target_v)
+    if aux is None:
+        pred_logits, pred_values = model(x)
+        loss, metrics = loss_fn(pred_logits, pred_values, target_p, target_v)
+    else:
+        head, aux_optimizer, weight = aux
+        head.train()
+        aux_optimizer.zero_grad()
+        features = model.features(x)
+        pred_logits, pred_values = model.heads(features)
+        loss, metrics = loss_fn(pred_logits, pred_values, target_p, target_v)
+        target_m = torch.as_tensor(batch[3], dtype=torch.float32, device=device).clamp(max=400) / 100
+        m_loss = torch.nn.functional.mse_loss(head(features), target_m)
+        loss = loss + weight * m_loss
+        metrics["moves_left_loss"] = float(m_loss.item())
     loss.backward()
     optimizer.step()
+    if aux is not None:
+        aux_optimizer.step()
     return metrics
 
 
@@ -142,6 +161,56 @@ def parse_args(argv=None):
         "agent's own search, no game knowledge.",
     )
     p.add_argument(
+        "--late_start_fraction",
+        type=float,
+        default=0.0,
+        help="0 (default): every self-play game starts from the opening. With f > 0, "
+        "that share of games starts instead from a late position of one of the "
+        "previous iteration's games (between --late_start_from and --late_start_to "
+        "of its length), so the agent practises more endgames. Uses only its own "
+        "games. Needs --selfplay_device.",
+    )
+    p.add_argument("--late_start_from", type=float, default=0.5)
+    p.add_argument(
+        "--reanalyse_games",
+        type=int,
+        default=0,
+        help="0 (default): off. With R > 0, each iteration also replays R games "
+        "from the last --reanalyse_window iterations and searches every position "
+        "again with the current network (MuZero's Reanalyse); those positions are "
+        "added with fresh policy targets and the original results. Needs "
+        "--selfplay_device.",
+    )
+    p.add_argument("--reanalyse_window", type=int, default=5)
+    p.add_argument("--late_start_to", type=float, default=0.9)
+    p.add_argument(
+        "--fast_simulations",
+        type=int,
+        default=None,
+        help="off by default. If set (for example 30), each move gets the full "
+        "--simulations search and is recorded with probability --full_fraction, "
+        "and otherwise a fast search with this many simulations that is not "
+        "recorded (KataGo's playout cap randomization).",
+    )
+    p.add_argument("--full_fraction", type=float, default=1.0)
+    p.add_argument(
+        "--gumbel",
+        action="store_true",
+        help="off by default. Self-play uses the Gumbel root search "
+        "(mcts/gumbel.py) instead of Dirichlet noise and visit counts.",
+    )
+    p.add_argument("--gumbel_actions", type=int, default=16,
+                   help="moves the Gumbel search considers at the root")  # fmt: skip
+    p.add_argument(
+        "--opponent_checkpoints",
+        default=None,
+        help="off by default. Comma-separated earlier checkpoints. With "
+        "--opponent_fraction f, that share of games is played against one of "
+        "them (a different one each iteration, alternating colors), and only "
+        "the current network's moves are recorded. Needs --selfplay_device.",
+    )
+    p.add_argument("--opponent_fraction", type=float, default=0.0)
+    p.add_argument(
         "--resign_threshold",
         type=float,
         default=None,
@@ -172,6 +241,28 @@ def parse_args(argv=None):
         help="L2 regularization, applied through Adam's weight_decay",
     )
     p.add_argument("--buffer_capacity", type=int, default=20000)
+    p.add_argument(
+        "--moves_left_weight",
+        type=float,
+        default=0.0,
+        help="0 (default): off. With w > 0, a small extra head (used only in "
+        "training) learns to predict how many plies each game still lasts, and "
+        "w x its loss is added, so the shared backbone learns it too (KataGo's "
+        "moves-left head). Saved networks are unchanged.",
+    )
+    p.add_argument(
+        "--decisive_weight",
+        type=float,
+        default=1.0,
+        help="1 (default): sample every stored position equally. With w > 1, "
+        "positions from won or lost games are sampled w times as often.",
+    )
+    p.add_argument(
+        "--mirror",
+        action="store_true",
+        help="off by default. Flip half of the sampled training positions left "
+        "to right (files a <-> h), a symmetry of the rules.",
+    )
     p.add_argument(
         "--min_buffer",
         type=int,
@@ -261,6 +352,14 @@ def parse_args(argv=None):
         p.error("--q_mix must be between 0 and 1")
     if args.bootstrap_iters and not args.bootstrap_model:
         p.error("--bootstrap_iters needs --bootstrap_model")
+    if args.opponent_fraction and not (args.opponent_checkpoints and args.selfplay_device):
+        p.error("--opponent_fraction needs --opponent_checkpoints and --selfplay_device")
+    if args.reanalyse_games and not args.selfplay_device:
+        p.error("--reanalyse_games needs --selfplay_device")
+    if args.late_start_fraction and not args.selfplay_device:
+        p.error("--late_start_fraction needs --selfplay_device")
+    if not 0.0 < args.full_fraction <= 1.0:
+        p.error("--full_fraction must be in (0, 1]")
     return args
 
 
@@ -316,6 +415,10 @@ _SELF_PLAY_KEYS = (
     "resign_after",
     "resign_check_fraction",
     "q_mix",
+    "fast_simulations",
+    "full_fraction",
+    "gumbel",
+    "gumbel_actions",
 )
 
 # Per-process state of a self-play worker: the network it is currently
@@ -362,6 +465,10 @@ def _play_one_game(task):
         material_scale=settings["material_scale"],
         avoid_repetition=settings["avoid_repetition"],
         q_mix=settings["q_mix"],
+        fast_simulations=settings["fast_simulations"],
+        full_fraction=settings["full_fraction"],
+        gumbel=settings["gumbel"],
+        gumbel_actions=settings["gumbel_actions"],
         **_resign_settings(settings, _check_rng(seed)),
     )
     compact = [compact_example(t, p, v) for t, p, v in examples]
@@ -384,8 +491,15 @@ def _check_rng(seed):
     return np.random.default_rng([*seed, 1])
 
 
-def _game_steps(settings, seed):
+def _game_steps(settings, seed, start_moves=None, record_moves=False, opponent_color=None):
     return self_play_game_steps(
+        opponent_color=opponent_color,
+        start_moves=start_moves,
+        record_moves=record_moves,
+        fast_simulations=settings["fast_simulations"],
+        full_fraction=settings["full_fraction"],
+        gumbel=settings["gumbel"],
+        gumbel_actions=settings["gumbel_actions"],
         num_simulations=settings["simulations"],
         c_puct=settings["c_puct"],
         temperature_moves=settings["temperature_moves"],
@@ -406,7 +520,8 @@ def _play_game_batch(task):
     Worker side of batched self-play: play several games side by side,
     evaluating their positions together on the given device.
     """
-    game_indices, seeds, state_dict, config, settings, device, cpu_below, groups, total = task
+    (game_indices, seeds, state_dict, config, settings, device, cpu_below, groups, total,
+     starts, record_moves, opponent_path, opponent_colors, reanalyse) = task
     model = ChaturangaNet(**config)
     model.load_state_dict(state_dict)
     batch_fn = make_batch_network_fn(model, device=device, cpu_below=cpu_below)
@@ -423,12 +538,64 @@ def _play_game_batch(task):
         )
         return [compact_example(t, p, v) for t, p, v in examples], info
 
-    games = [_game_steps(settings, seed) for seed in seeds]
-    results = play_games_batched(games, batch_fn, groups=groups, on_done=done)
+    games = [_game_steps(settings, seed, start, record_moves, opp)
+             for seed, start, opp in zip(seeds, starts, opponent_colors)]  # fmt: skip
+    for _, moves in reanalyse:
+        games.append(reanalyse_game_steps(moves, settings["simulations"], settings["c_puct"],
+                                          settings["draw_value"], settings["avoid_repetition"]))  # fmt: skip
+    game_indices = list(game_indices) + [g for g, _ in reanalyse]
+    if opponent_path is None:
+        results = play_games_batched(games, batch_fn, groups=groups, on_done=done)
+    else:
+        from training.self_play import _tagged
+
+        old_model, _, _, _ = load_checkpoint(opponent_path)
+        networks = {"cur": batch_fn,
+                    "old": make_batch_network_fn(old_model, device=device, cpu_below=cpu_below)}  # fmt: skip
+        games = [g if opp is not None else _tagged("cur", g) for g, opp in zip(games, opponent_colors)]
+        results = play_keyed_games_batched(games, networks, on_done=done)
     return [(g, examples, info) for g, (examples, info) in zip(game_indices, results)]
 
 
-def run_self_play_batched(model, args, pool, iteration, run_seed):
+def choose_start_moves(recent_games, n, run_seed, iteration, fraction, lo, hi):
+    """
+    For each of n games, None (start from the opening) or the first moves of
+    one of recent_games, cut at a random point between lo and hi of its
+    length. Seeded by (run_seed, iteration), so runs are repeatable.
+    """
+    starts = [None] * n
+    if not fraction or not recent_games:
+        return starts
+    rng = np.random.default_rng([int(run_seed), int(iteration), 7])
+    for g in range(n):
+        if rng.random() < fraction:
+            moves = recent_games[int(rng.integers(len(recent_games)))]
+            cut = int(rng.integers(int(lo * len(moves)), max(int(hi * len(moves)), int(lo * len(moves)) + 1)))
+            starts[g] = moves[:cut]
+    return starts
+
+
+def choose_opponents(args, n, run_seed, iteration):
+    """
+    (checkpoint, colors): this iteration's earlier checkpoint (taking turns
+    through --opponent_checkpoints) and, for each game, the color it plays
+    or None for ordinary self-play. Seeded by (run_seed, iteration).
+    """
+    if not args.opponent_fraction:
+        return None, [None] * n
+    from chaturanga.types import Color
+
+    paths = [p for p in args.opponent_checkpoints.split(",") if p]
+    rng = np.random.default_rng([int(run_seed), int(iteration), 11])
+    colors = [
+        (Color.BLACK if g % 2 == 0 else Color.WHITE) if rng.random() < args.opponent_fraction else None
+        for g in range(n)
+    ]
+    return paths[iteration % len(paths)], colors
+
+
+def run_self_play_batched(model, args, pool, iteration, run_seed, recent_games=None,
+                          reanalyse_pool=None):  # fmt: skip
     """
     Batched self-play: the iteration's games are dealt out to the workers
     (or all played here without a pool), and each worker plays its games
@@ -439,6 +606,16 @@ def run_self_play_batched(model, args, pool, iteration, run_seed):
     settings = {k: getattr(args, k) for k in _SELF_PLAY_KEYS}
     config = model_config(model)
     n = args.games_per_iter
+    starts = choose_start_moves(recent_games, n, run_seed, iteration, args.late_start_fraction,
+                                args.late_start_from, args.late_start_to)  # fmt: skip
+    record_moves = args.late_start_fraction > 0 or args.reanalyse_games > 0
+    reanalyse = []
+    if args.reanalyse_games and reanalyse_pool:
+        rng = np.random.default_rng([int(run_seed), int(iteration), 13])
+        picks = rng.choice(len(reanalyse_pool), size=min(args.reanalyse_games, len(reanalyse_pool)),
+                           replace=False)  # fmt: skip
+        reanalyse = [(n + k, reanalyse_pool[int(i)]) for k, i in enumerate(picks)]
+    opponent_path, opponent_colors = choose_opponents(args, n, run_seed, iteration)
     chunks = [list(range(w, n, max(1, args.workers))) for w in range(max(1, args.workers))]
     tasks = [
         (
@@ -451,11 +628,16 @@ def run_self_play_batched(model, args, pool, iteration, run_seed):
             args.cpu_below,
             args.batch_groups,
             n,
+            [starts[g] for g in chunk],
+            record_moves,
+            opponent_path,
+            [opponent_colors[g] for g in chunk],
+            reanalyse[w::len(chunks)],
         )
-        for chunk in chunks
+        for w, chunk in enumerate(chunks)
         if chunk
     ]
-    results = [None] * n
+    results = [None] * (n + len(reanalyse))
     outputs = pool.imap_unordered(_play_game_batch, tasks) if pool else map(_play_game_batch, tasks)
     for chunk_result in outputs:
         for g, examples, info in chunk_result:
@@ -513,6 +695,10 @@ def run_self_play(model, args, rng):
             material_scale=args.material_scale,
             avoid_repetition=args.avoid_repetition,
             q_mix=args.q_mix,
+            fast_simulations=args.fast_simulations,
+            full_fraction=args.full_fraction,
+            gumbel=args.gumbel,
+            gumbel_actions=args.gumbel_actions,
             **_resign_settings(settings, rng),
         )
         examples_per_game.append(examples)
@@ -525,11 +711,11 @@ def run_self_play(model, args, rng):
     return examples_per_game, infos
 
 
-def run_training(model, optimizer, loss_fn, buffer, args):
+def run_training(model, optimizer, loss_fn, buffer, args, aux=None):
     totals = {"loss": 0.0, "policy_loss": 0.0, "value_loss": 0.0}
     for _ in range(args.train_steps):
         batch = buffer.sample(args.batch_size)
-        metrics = train_step(model, optimizer, loss_fn, batch, device=args.device)
+        metrics = train_step(model, optimizer, loss_fn, batch, device=args.device, aux=aux)
         for k in totals:
             totals[k] += metrics[k]
     return {k: v / args.train_steps for k, v in totals.items()}
@@ -587,7 +773,15 @@ def main(argv=None):
     )
 
     loss_fn = AlphaZeroLoss()
-    buffer = ReplayBuffer(capacity=args.buffer_capacity, seed=run_seed)
+    buffer = ReplayBuffer(capacity=args.buffer_capacity, seed=run_seed,
+                          decisive_weight=args.decisive_weight, mirror=args.mirror,
+                          moves_left=args.moves_left_weight > 0)  # fmt: skip
+    aux = None
+    if args.moves_left_weight > 0:
+        from network.model import MovesLeftHead
+
+        head = MovesLeftHead(model.num_filters).to(args.device)
+        aux = (head, torch.optim.Adam(head.parameters(), lr=args.lr), args.moves_left_weight)
 
     if start_iter >= args.iterations:
         print(
@@ -611,7 +805,7 @@ def main(argv=None):
     try:
         _train_loop(
             model, optimizer, loss_fn, buffer, args, rng, run_seed, start_iter, pool,
-            bootstrap,
+            bootstrap, aux,
         )
     finally:
         if pool is not None:
@@ -620,8 +814,10 @@ def main(argv=None):
 
 
 def _train_loop(model, optimizer, loss_fn, buffer, args, rng, run_seed, start_iter, pool,
-                bootstrap=None):  # fmt: skip
+                bootstrap=None, aux=None):  # fmt: skip
     run_start = time.time()
+    recent_games = []  # move lists of the last iteration's games, for --late_start_fraction
+    reanalyse_window = []  # move lists of the last few iterations' games, for --reanalyse_games
     for done, iteration in enumerate(
         range(start_iter + 1, args.iterations + 1), start=1
     ):
@@ -633,8 +829,15 @@ def _train_loop(model, optimizer, loss_fn, buffer, args, rng, run_seed, start_it
         t0 = time.time()
         if args.selfplay_device:
             compact_games, infos = run_self_play_batched(
-                player, args, pool, iteration, run_seed
+                player, args, pool, iteration, run_seed, recent_games,
+                [m for games in reanalyse_window for m in games],
             )
+            reanalysed = sum(1 for i in infos if i.get("reanalysed"))
+            infos = [i for i in infos if not i.get("reanalysed")]
+            recent_games = [i.pop("moves") for i in infos if len(i.get("moves", ())) >= 20]
+            if args.reanalyse_games:
+                reanalyse_window = (reanalyse_window + [recent_games])[-args.reanalyse_window:]
+                print(f"  reanalysed {reanalysed} earlier games", flush=True)
             for entries in compact_games:
                 buffer.add_compact_game(entries)
             del compact_games
@@ -658,7 +861,7 @@ def _train_loop(model, optimizer, loss_fn, buffer, args, rng, run_seed, start_it
             losses = {
                 k: round(v, 6)
                 for k, v in run_training(
-                    model, optimizer, loss_fn, buffer, args
+                    model, optimizer, loss_fn, buffer, args, aux
                 ).items()
             }
             steps = args.train_steps

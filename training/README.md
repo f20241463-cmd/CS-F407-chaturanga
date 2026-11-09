@@ -158,6 +158,14 @@ OMP_NUM_THREADS=1 python -m training.train --res_blocks 6 --filters 128 \
 | `--material_scale` | off | Value targets from material balance for drawn games. Uses piece values, which is human domain knowledge, so it is **outside the official plan** and kept only as a labeled experiment. |
 | `--draw_value` | 0.0 | Value target for drawn and unfinished games. |
 | `--q_mix` | 0.0 | Mix the search's own value of each position into its value target: (1 - w) x result + w x search value. |
+| `--late_start_fraction` | 0.0 | Share of games that start from a late position (between `--late_start_from` and `--late_start_to` of its length, default 0.5 to 0.9) of one of the previous iteration's games, for more endgame practice. |
+| `--fast_simulations`, `--full_fraction` | off, 1.0 | Playout cap randomization (KataGo): each move gets the full search and is recorded with probability `--full_fraction`, otherwise a fast unrecorded search with this many simulations. |
+| `--decisive_weight` | 1.0 | Positions from won or lost games are sampled this many times as often in training. |
+| `--mirror` | off | Flip half the sampled training positions left to right (files a and h swapped), a symmetry of the rules. |
+| `--opponent_checkpoints`, `--opponent_fraction` | off, 0.0 | Share of games played against earlier checkpoints (comma-separated, one per iteration in turn); only the current network's moves are recorded. |
+| `--gumbel`, `--gumbel_actions` | off, 16 | Gumbel root search in self-play (`mcts/gumbel.py`): Sequential Halving over sampled moves, improved-policy targets, no Dirichlet noise. |
+| `--moves_left_weight` | 0.0 | A training-only head predicts how many plies each game still lasts; its loss, times this weight, also trains the shared backbone. Saved networks are unchanged. |
+| `--reanalyse_games`, `--reanalyse_window` | 0, 5 | Each iteration also re-searches this many games from the last few iterations with the current network (MuZero Reanalyse) and adds them with fresh policy targets. |
 
 ## Evaluating checkpoints
 
