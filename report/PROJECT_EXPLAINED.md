@@ -2066,10 +2066,16 @@ means "as strong as the final model". The files are in
 | Search setting c_puct 1.0 (play only) | The search explores less than with the usual 1.5 | 9 | 10 | 177 | 0.497 |
 | Search setting c_puct 2.0 (play only) | The search explores more | 15 | 14 | 171 | 0.502 |
 | Search setting c_puct 3.0 (play only) | The search explores much more | 6 | 13 | 176 | 0.482 |
+| More root noise (training) | Practice games mix more randomness into the first choice of each search | 8 | 19 | 168 | 0.472 |
 
 **Search setting.** "c_puct" decides how much the search tries moves the
 network does not like yet, compared with following its favourites. 1.5,
 the value we used everywhere, is as good as any other we tried.
+
+**More root noise.** In practice games, random "noise" is mixed into the
+network's move preferences at the start of each search, so the agent tries
+new openings. We raised its weight from 0.25 to 0.4. The model came out
+slightly weaker (0.472), so more randomness does not help.
 
 ## Why we stopped training
 
