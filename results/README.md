@@ -533,11 +533,19 @@ simulations per move against 800 (100 games):
 | Match | Games | Wins | Losses | Draws | Unfinished | Score |
 |---|---|---|---|---|---|---|
 | final at 1600 vs final at 800 | 100 | 15 | 3 | 82 | 0 | 0.560 +/- 0.040 |
+| final at 3200 vs final at 1600 | 100 | 7 | 6 | 87 | 0 | 0.505 +/- 0.035 |
 
-1600 is measurably better (above 0.5 even at the bottom of the margin), but the
-gain is smaller than from 50 to 800 (0.616): each doubling of search helps less.
+1600 is measurably better than 800 (above 0.5 even at the bottom of the
+margin), but the gain is smaller than from 50 to 800 (0.616), and 3200 is no
+better than 1600: each doubling of search helps less, and past 1600 not at all.
 A move takes about 0.55 seconds at 1600, so `play_web.py` now uses 1600 by
 default. The human games above were played at 800, before this change.
+
+**Keeping the search tree between moves** (`mcts/reuse.py`; on by default in
+the browser game, `--reuse_a`/`--reuse_b` in `evaluation.parallel_match`). In a
+60-move test game at 1600 simulations, 58 searches started from the kept
+subtree of the reply played, but it carried only about 76 visits on average
+(about 5% more search), too little to measure, so no match was run.
 
 ## Limitations
 
@@ -572,4 +580,4 @@ The stub-network results measure what search depth alone contributes, with no le
 - `smaller_lr/`: the continuation at learning rate 2e-5 (training log and matches against the final model)
 - `qmix/`: the continuation with search-value targets (training log and matches against the final model)
 - `shortcap/`: the continuation with self-play capped at 300 plies (training log and matches against the final model)
-- `soup_and_sims/`: the averaged-weights model against the final model, the script that made it, and the final model at 1600 against 800 simulations
+- `soup_and_sims/`: the averaged-weights model against the final model, the script that made it, and the final model at 1600 against 800 and 3200 against 1600 simulations
