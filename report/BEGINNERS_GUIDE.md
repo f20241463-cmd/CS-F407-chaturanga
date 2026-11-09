@@ -168,7 +168,7 @@ In plain terms, the finished project has:
    older versions of itself, so we can tell whether it is improving.
 6. **Two ways to play against it**: by typing moves in a text window, and by
    clicking on a board in the web browser.
-7. **129 automatic checks** (called **tests**) that make sure every part
+7. **134 automatic checks** (called **tests**) that make sure every part
    works correctly. If anyone breaks something, a test fails and shows
    exactly what.
 
@@ -282,8 +282,9 @@ We tried several more ideas. Here is each one, simply.
 practice. When playing for real, we let it imagine 800 times per move instead
 of 50. Against its normal self, it won **23 games and lost 0**. Later we
 tried 1600 against 800: 1600 won **15 games and lost 3**. So thinking longer
-still helps, but each doubling helps less than the one before. A move at
-1600 takes about half a second, so **1600 is now the setting when people
+still helps, but each doubling helps less than the one before. Then 3200
+against 1600 was even (7 wins, 6 losses), so thinking longer than 1600 no
+longer helps at all. A move at 1600 takes about half a second, so **1600 is now the setting when people
 play against it** in the browser.
 
 **2. Tell it draws are slightly bad.** We hoped this would make it try harder
@@ -449,6 +450,7 @@ within the rules, for example by making practice games shorter.
 **What is the difference between thinking 50 times and 800 times?** It
 imagines more possible futures before each move, so it makes fewer mistakes.
 At 800 it beat its 50 self 23 to 0, and at 1600 it beat its 800 self 15 to 3.
+At 3200 it was no better than at 1600, so 1600 is where the gain stops.
 
 **Is the program you're showing the same one in the report?** Yes, the same
 final version. The browser game now thinks 1600 times per move; the ten

@@ -43,7 +43,7 @@ material at the end:
   replayed move by move**, **the other nine games replayed** with their key
   moments, and **the patterns across all ten games**.
 - **The decision log**, **every training option**, a **tour of the code**,
-  **real code snippets explained line by line**, **every one of the 129
+  **real code snippets explained line by line**, **every one of the 134
   tests in plain words**, and a guide to **presenting the project**.
 - **Our project compared with the original AlphaZero.**
 - **What it all means**, **limitations**, and the **key numbers**.
@@ -85,7 +85,7 @@ learns entirely by playing against itself.
    matches between versions of the AI, analysis of how games end, and a
    system for logging games against humans.
 6. A **terminal game** and a **browser game** to play against the AI.
-7. **129 automated tests** that check every part.
+7. **134 automated tests** that check every part.
 
 **What happened.**
 
@@ -107,7 +107,8 @@ learns entirely by playing against itself.
   averaging several trained versions into one. **None of them made it stronger within the project rules.** The one
   thing that clearly helps is letting it **think longer when playing**: with
   800 search steps per move instead of 50, it beats its normal self 23 to 0,
-  and 1600 steps beat 800 by 15 wins to 3. The browser game now uses 1600.
+  and 1600 steps beat 800 by 15 wins to 3. 3200 was no better than 1600, so
+  the browser game now uses 1600.
 - We moved self-play to the laptop's GPU, making it about **2.2 to 2.4 times
   faster** again.
 - An experienced chess player from outside the team (FIDE blitz rating
@@ -299,7 +300,7 @@ A **unit test** is a small program that checks that one piece of code does
 what it should, for example "a horse on b1 can move to a3 and c3 and nowhere
 else" or "after checkmate, the result is a loss for the side to move". Tests
 are run with `python -m pytest -q`. If someone changes code and breaks
-something, a test fails and shows exactly what broke. The project has 129
+something, a test fails and shows exactly what broke. The project has 134
 tests, and all of them pass.
 
 ## Random seeds and reproducibility
@@ -1808,7 +1809,7 @@ At 800 simulations the model won 23 games and lost none, a bigger gain than
 the last 100 iterations of training. Most games are still drawn, so the extra
 search mainly avoids mistakes and punishes the opponent's, rather than
 converting slow advantages. A move takes about 0.3 seconds, which is fine
-against a person. A later test (see "Averaging checkpoints, and thinking
+against a person. A later test (see "Averaging checkpoints, thinking
 longer again") showed that 1600 is better still, so **the browser game now
 uses 1600 simulations**.
 
@@ -1990,7 +1991,7 @@ suggests the limit is what the network can learn from these games at this
 size and search depth, not only how many decisive games it sees. The files
 are in `results/shortcap/`.
 
-## Averaging checkpoints, and thinking longer again
+## Averaging checkpoints, thinking longer again, and keeping the search
 
 **Averaging checkpoints (a "model soup").** Every continuation ended up close
 to the final model, each with slightly different weights. Averaging the
@@ -2012,13 +2013,31 @@ whether thinking even longer still helps, the final model played itself with
 | Match | Games | Wins | Losses | Draws | Score |
 |---|---|---|---|---|---|
 | Final at 1600 vs final at 800 | 100 | 15 | 3 | 82 | 0.560 +/- 0.040 |
+| Final at 3200 vs final at 1600 | 100 | 7 | 6 | 87 | 0.505 +/- 0.035 |
 
-1600 is measurably better: even at the bottom of the margin (0.52) it is
-above 0.5. But the gain is smaller than going from 50 to 800 (0.616), so each
-doubling of thinking time helps less than the one before. A move takes
-about 0.55 seconds at 1600 instead of 0.3 at 800, so the browser game
-(`play_web.py`) now uses 1600 by default. The ten human games were played at
-800, before this change. The files are in `results/soup_and_sims/`.
+1600 is measurably better than 800: even at the bottom of the margin (0.52)
+it is above 0.5. But the gain is smaller than going from 50 to 800 (0.616),
+and 3200 is even with 1600. So each doubling of thinking time helps less
+than the one before, and past 1600 it stops helping: more search cannot
+make up for a "who is winning" judgment that does not recognize won
+positions. A move takes about 0.55 seconds at 1600 instead of 0.3 at 800, so
+the browser game (`play_web.py`) now uses 1600 by default. The ten human
+games were played at 800, before this change. The files are in
+`results/soup_and_sims/`.
+
+**Keeping the search between moves.** Normally the search starts from
+nothing on every move. But after the agent moves, its tree already contains
+searches of the opponent's likely replies. Now the agent keeps that part of
+the tree, and after the opponent replies it continues from the branch for
+that reply (`mcts/reuse.py`). The browser game does this by default, and
+the match tool can turn it on for either side (`--reuse_a`, `--reuse_b`).
+With the final model at 1600 steps, 58 of 60 searches in a test game started
+from a kept branch, but each brought only about 76 steps with it. The search
+spreads widely, so the chosen move gets only 15 to 20% of the steps and the
+opponent's actual reply even fewer. That is about 5% more thinking per
+move, which is too small to measure when even doubling (3200 against 1600)
+gave nothing, so we did not run a match for it. It is free and does no harm,
+so we kept it.
 
 ## Why we stopped training
 
@@ -2531,7 +2550,8 @@ the "why" behind the whole project.
 | 21b | Could drawn games teach the value head something? | Blend the result with the search's own value (`--q_mix 0.5`), 100 iterations | Uses only the rules and the search | No measurable gain (0.518); not kept |
 | 21c | Could more decisive games per hour help? | Stop practice games at 300 plies, 100 iterations | Decisive games are short, draws are long | 2.4 times more decisive games per hour, but no gain (0.500); not kept |
 | 21d | Could averaging trained versions help? | Average the weights of seven late checkpoints | Free: needs no training | No measurable gain (0.515); not kept |
-| 21e | Does thinking even longer still help? | 1600 against 800 simulations | 800 had helped a lot | Yes, a little: 15 wins to 3 (0.560); the browser game now uses 1600 |
+| 21e | Does thinking even longer still help? | 1600 against 800, then 3200 against 1600 simulations | 800 had helped a lot | 1600 a little better (0.560), 3200 no better (0.505); the browser game uses 1600 |
+| 21f | Could the search keep its work between moves? | Continue from the branch of the reply actually played | Free extra thinking, uses only the search | Works, but carries only about 5% of the search; kept in the browser game |
 | 22 | Pay for cloud computing? | No | No university machine was available, and the expected gain was small | Training ended; the model stayed at iteration 560 |
 | 23 | How to demonstrate the AI to professors? | A clickable browser board running on the laptop | Easier to watch than typed moves, and needs no internet | `play_web.py` |
 | 24 | How to evaluate against humans? | Logged human games through the browser board, 5 with each color | The project plan asks for agent-vs-human evaluation | 10 games: 5 human wins, 2 AI wins, 3 draws |
@@ -2827,9 +2847,9 @@ for conv_name, bn_name in _CONV_BN_PAIRS:
 
 # Every test, explained
 
-*In short: All 129 automated tests, in plain words.*
+*In short: All 134 automated tests, in plain words.*
 
-There are 129 automated tests in 10 files. Each test name describes what it
+There are 134 automated tests in 11 files. Each test name describes what it
 checks. Here they are, translated into plain words.
 
 ## Rules engine: `test_chaturanga.py` (36 tests)
@@ -2968,6 +2988,16 @@ checks. Here they are, translated into plain words.
 - Games are logged, including resigned and unfinished games.
 - The web server serves the page and answers move requests correctly.
 
+## Keeping the search: `test_tree_reuse.py` (5 tests)
+
+- After a move, the branch for the opponent's reply comes back with its
+  visits, and the next search adds its steps on top of them.
+- A reply the search never looked at, or a position from a different game,
+  gets nothing back.
+- Old branches are dropped, so memory does not grow.
+- A player that keeps its search finishes legal games.
+- The browser game continues from its last search after the human replies.
+
 # Presenting the project
 
 *In short: A two-minute summary, a slide outline, the live demo steps and what to emphasize.*
@@ -2999,7 +3029,7 @@ draws."
    diagram).
 4. **The constraints**: rules only, 30 to 50 simulations, 4 to 6 blocks,
    4096 actions.
-5. **What we built**: the five parts and 129 tests.
+5. **What we built**: the five parts and 134 tests.
 6. **First runs**: no improvement, with the benchmark graph.
 7. **Diagnosis**: too little data, draws starve the value head, long games.
 8. **Speed-up**: 259 to 19 ms per move, workers, GPU.
@@ -3141,7 +3171,7 @@ one clear gain left is outside training: more search at play time.
 | Search | PUCT MCTS, c_puct 1.5, 50 simulations in training, Dirichlet noise alpha 0.3 weight 0.25 |
 | Action space | 4096 (64 x 64) |
 | Position encoding | 13 planes of 8 x 8 |
-| Automated tests | 129 |
+| Automated tests | 134 |
 | First runs | 2 x 400 games, about 7 hours each, no measurable gain |
 | Speed-up | 259 to 19 ms per move (about 11 times faster per move), plus 6 workers, plus GPU self-play (about 2.2 to 2.4 times faster again) |
 | Long run | 540 iterations, 54,000 games, about 23.7 million positions, about 144 hours |
@@ -3152,6 +3182,7 @@ one clear gain left is outside training: more search at play time.
 | Final vs greedy capture | 0 wins, 1 loss, 99 draws (0.495) |
 | 800 vs 50 simulations | 23 wins, 0 losses (0.616) |
 | 1600 vs 800 simulations | 15 wins, 3 losses (0.560) |
+| 3200 vs 1600 simulations | 7 wins, 6 losses (0.505), no gain |
 | Bigger network (best) | Even with the final model (0.495), never better |
 | Draw penalty | Weaker (0.454) |
 | Smaller learning rate (2e-5) | No gain (0.515) |
@@ -3254,7 +3285,7 @@ evaluation/   baseline players, benchmark, matches, game endings, human log, res
 results/      every training log, benchmark CSV, match log, plot and the results write-up
 models/       the final trained network (chaturangzero_final.pt)
 web/          the board page for the browser game
-tests/        129 automated tests
+tests/        134 automated tests
 report/       the report (REPORT.md and REPORT.docx) and this document
 ```
 
@@ -3350,7 +3381,7 @@ git pull
 python -m pytest -q
 ```
 
-This runs all 129 tests and should end with "129 passed". It takes about a
+This runs all 134 tests and should end with "134 passed". It takes about a
 minute.
 
 ## Step 5: play against the AI
@@ -3377,7 +3408,7 @@ The browser opens with the board. Press Ctrl+C in the terminal to stop.
 *In short: The commands for the tests, the games, a small training run and a match.*
 
 ```
-python -m pytest -q                                   # all 129 tests
+python -m pytest -q                                   # all 134 tests
 python play_web.py --player NAME                      # play in the browser
 python play_vs_ai.py --checkpoint models/chaturangzero_final.pt --player NAME --simulations 1600
 python play_vs_ai.py --summary --checkpoint models/chaturangzero_final.pt

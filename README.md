@@ -20,7 +20,7 @@ evaluation/   baseline players, per-iteration benchmark, game endings, human-gam
 results/      training logs, benchmark CSVs, plots, and the results write-up
 models/       the final trained network (chaturangzero_final.pt)
 web/          the board page for play_web.py (play the final model in the browser)
-tests/        129 automated tests
+tests/        134 automated tests
 ```
 
 | Part | What it does | Details |
@@ -75,7 +75,8 @@ most games end by the 100-ply no-progress rule. A bigger 6 x 128 network was
 also tried and stopped, since it stayed behind after 61 iterations. Thinking
 longer when playing helps: with 800 simulations per move the final model beats
 itself at 50 by 23 wins to 0 (0.616), and 1600 beats 800 by 15 to 3 (0.560),
-so the browser game now uses 1600. Training on with draws counted as
+but 3200 is no better than 1600 (0.505), so the browser game now uses 1600
+(and keeps its search tree between moves). Training on with draws counted as
 slightly bad made it weaker (0.454), and 140 more iterations at a smaller
 learning rate gave no measurable gain (0.515), and neither did 100 iterations
 that also trained on the search's own values (`--q_mix 0.5`, 0.518) or with
