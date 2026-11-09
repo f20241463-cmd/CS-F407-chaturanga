@@ -164,7 +164,7 @@ The code is plain Python with NumPy and PyTorch, organized by component:
 | `training/` | self-play, replay buffer, training loop |
 | `evaluation/` | baseline players, benchmark, parallel matches, game-ending classifier, human-game log |
 
-134 automated tests cover the rules (36 tests, including check, checkmate,
+157 automated tests cover the rules (36 tests, including check, checkmate,
 stalemate, promotion and the draw rules), the search (including a toy game
 with a known best move), the network, value-target signs, policy targets, a
 complete small training run including resuming from a checkpoint, the
@@ -653,6 +653,25 @@ average: the search spreads widely, so the move played gets only about 15 to
 more search per move, far too little to measure when doubling the search
 from 1600 to 3200 gave nothing, so we did not run a match for it.
 
+## 6.19 A last round of ideas
+
+To make sure no obvious idea was left untried, we tested every remaining
+improvement we know of that stays within the course rules. Ideas that change
+only how the final model plays are measured with 200 games against it.
+Training ideas continue the final model from iteration 560 for 60 iterations
+with the settings of Section 6.17 (except the idea itself, and the 800-ply
+cap) and then play 200 games against iteration 560. All games use the
+benchmark protocol (50 simulations, temperature 0.3). The options are in
+`training/README.md` and the match files in `results/last_ideas/`.
+
+| Idea | What changes | Wins | Losses | Draws | Score vs 560 |
+|---|---|---|---|---|---|
+| Search constant c_puct 1.0 (play only) | Less exploration in the search than the usual 1.5 | 9 | 10 | 177 | 0.497 +/- 0.022 |
+| Search constant c_puct 2.0 (play only) | More exploration | 15 | 14 | 171 | 0.502 +/- 0.026 |
+| Search constant c_puct 3.0 (play only) | Much more exploration | 6 | 13 | 176 | 0.482 +/- 0.022 |
+
+The search constant of 1.5 used throughout is as good as any we tried.
+
 # 7. Discussion
 
 **The first runs.** We first checked for a bug. The tests confirm the value
@@ -791,7 +810,7 @@ What we expect would help most, in order:
 # 9. Conclusion
 
 We implemented every part of an AlphaZero-style system for Chaturanga under the
-course constraints and verified it with 134 tests. With 400 self-play games per
+course constraints and verified it with 157 tests. With 400 self-play games per
 run the agent did not improve, and we measured why: draws starve the value
 head, and the data was far too small. After making self-play about 11 times
 faster, a run of 54,000 games with the same method produced a clearly stronger

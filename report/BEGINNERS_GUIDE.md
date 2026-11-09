@@ -168,7 +168,7 @@ In plain terms, the finished project has:
    older versions of itself, so we can tell whether it is improving.
 6. **Two ways to play against it**: by typing moves in a text window, and by
    clicking on a board in the web browser.
-7. **134 automatic checks** (called **tests**) that make sure every part
+7. **157 automatic checks** (called **tests**) that make sure every part
    works correctly. If anyone breaks something, a test fails and shows
    exactly what.
 
@@ -322,6 +322,12 @@ After 100 more rounds it was exactly even with round 560 (10 wins, 10 losses,
 all about as strong as round 560 and averaged their numbers into one. This
 needs no practice at all, only a few seconds. It was about even with round
 560 (16 wins, 10 losses, 173 draws), so **no improvement**.
+
+**5e. A last round of ideas.** We then tried every other idea we know of
+that keeps to the rules, one at a time (see the full explanation for the
+list). First: changing how adventurous the search is (its "c_puct"
+setting) from 1.5 to 1.0, 2.0 or 3.0. All three were about even with 1.5,
+so **no improvement**.
 
 **6. Faster practice on the graphics chip.** We rebuilt the practice system
 so many games share the graphics chip at once. Practice got about 2.2 to 2.4
