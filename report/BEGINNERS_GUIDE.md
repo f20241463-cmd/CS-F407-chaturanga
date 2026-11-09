@@ -327,7 +327,10 @@ needs no practice at all, only a few seconds. It was about even with round
 that keeps to the rules, one at a time (see the full explanation for the
 list). First: changing how adventurous the search is (its "c_puct"
 setting) from 1.5 to 1.0, 2.0 or 3.0. All three were about even with 1.5,
-so **no improvement**. Next: adding more randomness to the practice games
+so **no improvement**. Next: letting three of our best
+networks vote on every move. It won a few more games than it lost, but
+so few that it could be luck, and it thinks three times slower, so we
+**kept the single model**. Next: adding more randomness to the practice games
 so the agent tries more new openings. It came out slightly weaker, so
 **no improvement** either.
 
