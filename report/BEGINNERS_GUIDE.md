@@ -332,7 +332,9 @@ networks vote on every move. It won a few more games than it lost, but
 so few that it could be luck, and it thinks three times slower, so we
 **kept the single model**. Next: adding more randomness to the practice games
 so the agent tries more new openings. It came out slightly weaker, so
-**no improvement** either.
+**no improvement** either. Then: starting some practice games from the
+middle of earlier games, so the agent practises more endgames. It came out
+exactly as strong, so **no improvement**.
 
 **6. Faster practice on the graphics chip.** We rebuilt the practice system
 so many games share the graphics chip at once. Practice got about 2.2 to 2.4
