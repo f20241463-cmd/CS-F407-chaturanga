@@ -672,6 +672,7 @@ benchmark protocol (50 simulations, temperature 0.3). The options are in
 | Three networks averaged (play only), 400 games | Final model + q_mix 660 + short-games 660 (Sections 6.16, 6.17), priors and values averaged | 30 | 18 | 347 | 0.515 +/- 0.017 |
 | More root noise in self-play | Dirichlet weight 0.4 instead of 0.25 | 8 | 19 | 168 | 0.472 +/- 0.026 |
 | Late starts | 30% of self-play games start from a position 50-90% of the way through a game of the previous iteration | 10 | 9 | 180 | 0.503 +/- 0.021 |
+| Mixed searches | Half of the moves get the full 50-simulation search and are trained on; the rest a fast 30-simulation search that is not; 160 games per iteration | 5 | 11 | 179 | 0.485 +/- 0.020 |
 
 The search constant of 1.5 used throughout is as good as any we tried.
 Averaging the final model with the two strongest continuations is the only
@@ -681,7 +682,9 @@ move costs three network evaluations instead of one. We did not adopt it.
 More root noise during self-play, to explore more openings, made the model
 slightly weaker, if anything. Starting some self-play games late, so that more
 training positions come from endgames where games are decided, gave an even
-score.
+score. Mixing fast, untrained searches into self-play (playout cap
+randomization), which gives more games for the same time, did not help
+either.
 
 # 7. Discussion
 

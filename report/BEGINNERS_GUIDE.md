@@ -334,7 +334,9 @@ so few that it could be luck, and it thinks three times slower, so we
 so the agent tries more new openings. It came out slightly weaker, so
 **no improvement** either. Then: starting some practice games from the
 middle of earlier games, so the agent practises more endgames. It came out
-exactly as strong, so **no improvement**.
+exactly as strong, so **no improvement**. Then: thinking quickly on half
+of the practice moves, so it could play more practice games. Again **no
+improvement**.
 
 **6. Faster practice on the graphics chip.** We rebuilt the practice system
 so many games share the graphics chip at once. Practice got about 2.2 to 2.4
