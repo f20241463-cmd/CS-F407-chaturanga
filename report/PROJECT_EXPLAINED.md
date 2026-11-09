@@ -103,9 +103,11 @@ learns entirely by playing against itself.
   player and rarely finishes games with checkmate.
 - We tried many ways to make it stronger: a bigger network (twice), counting
   draws as slightly bad, resigning hopeless games, even smaller learning
-  steps, learning from the search's own values, and shorter practice games. **None of them made it stronger within the project rules.** The one
+  steps, learning from the search's own values, shorter practice games, and
+  averaging several trained versions into one. **None of them made it stronger within the project rules.** The one
   thing that clearly helps is letting it **think longer when playing**: with
-  800 search steps per move instead of 50, it beats its normal self 23 to 0.
+  800 search steps per move instead of 50, it beats its normal self 23 to 0,
+  and 1600 steps beat 800 by 15 wins to 3. The browser game now uses 1600.
 - We moved self-play to the laptop's GPU, making it about **2.2 to 2.4 times
   faster** again.
 - An experienced chess player from outside the team (FIDE blitz rating
@@ -1414,7 +1416,7 @@ positions.
 2. You click a destination. The page sends the move (for example "g1h3") to
    the small Python server running on the laptop.
 3. The server checks it is legal and applies it to the game state.
-4. The page asks the server for the AI's move. The server runs an 800-
+4. The page asks the server for the AI's move. The server runs a 1600-
    simulation search with the final model. It removes any move that would
    cause a threefold repetition (unless all moves would), and picks the most
    visited move.
@@ -1805,10 +1807,10 @@ games each:
 At 800 simulations the model won 23 games and lost none, a bigger gain than
 the last 100 iterations of training. Most games are still drawn, so the extra
 search mainly avoids mistakes and punishes the opponent's, rather than
-converting slow advantages. A move takes well under a second to about 2
-seconds, which is fine against a person, so **800 simulations is the
-recommended setting for playing against the final model**, and the browser
-game uses it.
+converting slow advantages. A move takes about 0.3 seconds, which is fine
+against a person. A later test (see "Averaging checkpoints, and thinking
+longer again") showed that 1600 is better still, so **the browser game now
+uses 1600 simulations**.
 
 ## Counting draws as slightly bad
 
@@ -1988,10 +1990,41 @@ suggests the limit is what the network can learn from these games at this
 size and search depth, not only how many decisive games it sees. The files
 are in `results/shortcap/`.
 
+## Averaging checkpoints, and thinking longer again
+
+**Averaging checkpoints (a "model soup").** Every continuation ended up close
+to the final model, each with slightly different weights. Averaging the
+weights of several such networks sometimes gives a network better than any
+of them, and it needs no training at all, only a few seconds. We averaged
+seven: iteration 560 and iterations 620, 640 and 660 of both the q_mix and
+the shorter-games runs.
+
+| Match (50 simulations) | Games | Wins | Losses | Draws | Score |
+|---|---|---|---|---|---|
+| Averaged model vs final (560) | 200 | 16 | 10 | 173 | 0.515 +/- 0.025 |
+
+Slightly ahead, but inside the margin, so iteration 560 stays the final model.
+
+**1600 search steps against 800.** 800 steps had beaten 50 by 23 to 0. To see
+whether thinking even longer still helps, the final model played itself with
+1600 steps per move against 800 (100 games):
+
+| Match | Games | Wins | Losses | Draws | Score |
+|---|---|---|---|---|---|
+| Final at 1600 vs final at 800 | 100 | 15 | 3 | 82 | 0.560 +/- 0.040 |
+
+1600 is measurably better: even at the bottom of the margin (0.52) it is
+above 0.5. But the gain is smaller than going from 50 to 800 (0.616), so each
+doubling of thinking time helps less than the one before. A move takes
+about 0.55 seconds at 1600 instead of 0.3 at 800, so the browser game
+(`play_web.py`) now uses 1600 by default. The ten human games were played at
+800, before this change. The files are in `results/soup_and_sims/`.
+
 ## Why we stopped training
 
 - Every extra idea within the rules (more training, smaller steps, a bigger
-  network, draw penalties, resignation, search-value targets, shorter games) either did not help or made things
+  network, draw penalties, resignation, search-value targets, shorter games,
+  averaging checkpoints) either did not help or made things
   worse.
 - No university machine was available, and paying for cloud computing was
   not worth it for the small expected gain.
@@ -2032,8 +2065,8 @@ The browser opens at http://127.0.0.1:8000. The page shows:
   with percentages;
 - the move list and a guide to how each piece moves.
 
-It uses the final model at 800 simulations per move and answers in under a
-second. Games are saved to `results/human_games.csv` like the terminal
+It uses the final model at 1600 simulations per move and answers in about
+half a second. Games are saved to `results/human_games.csv` like the terminal
 version. Four tests cover it.
 
 ## Ten games against the final model
@@ -2497,6 +2530,8 @@ the "why" behind the whole project.
 | 21 | Would even smaller learning steps help? | 140 more iterations at 2e-5 | Smaller steps had helped before | No measurable gain; stopped |
 | 21b | Could drawn games teach the value head something? | Blend the result with the search's own value (`--q_mix 0.5`), 100 iterations | Uses only the rules and the search | No measurable gain (0.518); not kept |
 | 21c | Could more decisive games per hour help? | Stop practice games at 300 plies, 100 iterations | Decisive games are short, draws are long | 2.4 times more decisive games per hour, but no gain (0.500); not kept |
+| 21d | Could averaging trained versions help? | Average the weights of seven late checkpoints | Free: needs no training | No measurable gain (0.515); not kept |
+| 21e | Does thinking even longer still help? | 1600 against 800 simulations | 800 had helped a lot | Yes, a little: 15 wins to 3 (0.560); the browser game now uses 1600 |
 | 22 | Pay for cloud computing? | No | No university machine was available, and the expected gain was small | Training ended; the model stayed at iteration 560 |
 | 23 | How to demonstrate the AI to professors? | A clickable browser board running on the laptop | Easier to watch than typed moves, and needs no internet | `play_web.py` |
 | 24 | How to evaluate against humans? | Logged human games through the browser board, 5 with each color | The project plan asks for agent-vs-human evaluation | 10 games: 5 human wins, 2 AI wins, 3 draws |
@@ -2984,7 +3019,7 @@ draws."
    are not added to the results file).
 2. The browser opens at http://127.0.0.1:8000. Keep the terminal open.
 3. During the demo, point out: clicking a piece shows its legal moves, the AI
-   answers in under a second even at 800 simulations, and the "What the
+   answers in about half a second even at 1600 simulations, and the "What the
    agent thinks" panel shows its evaluation and the moves it considered.
 4. To restart, click **New game as White** (or Black). Press Ctrl+C in the
    terminal to stop.
@@ -3116,11 +3151,13 @@ one clear gain left is outside training: more search at play time.
 | Final vs untrained | 17 wins, 4 losses (0.572) |
 | Final vs greedy capture | 0 wins, 1 loss, 99 draws (0.495) |
 | 800 vs 50 simulations | 23 wins, 0 losses (0.616) |
+| 1600 vs 800 simulations | 15 wins, 3 losses (0.560) |
 | Bigger network (best) | Even with the final model (0.495), never better |
 | Draw penalty | Weaker (0.454) |
 | Smaller learning rate (2e-5) | No gain (0.515) |
 | Search-value targets (q_mix 0.5) | No gain (0.518) |
 | Shorter practice games (300 plies) | No gain (0.500) |
+| Averaged checkpoints (model soup) | No gain (0.515) |
 | Resignation | No safe threshold |
 | Human (FIDE blitz 1641) vs final model | 5 human wins, 2 AI wins, 3 draws (AI score 0.350) |
 | Human (beginner) vs final B | 3 human wins, 0 AI wins, 3 draws (AI score 0.250) |
@@ -3342,7 +3379,7 @@ The browser opens with the board. Press Ctrl+C in the terminal to stop.
 ```
 python -m pytest -q                                   # all 129 tests
 python play_web.py --player NAME                      # play in the browser
-python play_vs_ai.py --checkpoint models/chaturangzero_final.pt --player NAME --simulations 800
+python play_vs_ai.py --checkpoint models/chaturangzero_final.pt --player NAME --simulations 1600
 python play_vs_ai.py --summary --checkpoint models/chaturangzero_final.pt
 ```
 
@@ -3377,7 +3414,7 @@ why they are clearly labeled as outside the rules and are not part of the
 final model. Repetition avoidance uses only the repetition rule.
 
 **Did you follow the simulation limit?** Yes. All training used 50
-simulations per move. Play-time tests used up to 800, because the limit
+simulations per move. Play-time tests used up to 1600, because the limit
 applies to training.
 
 **Why did the first runs not improve?** Too little data (400 games) and too
@@ -3556,7 +3593,7 @@ These questions check your understanding. The answers follow.
     rule.
 11. Its value judgment stays near 0 until just before mate, so almost every
     resignation would have been in a game that was actually drawn.
-12. No. It applies to training. We play at 800 simulations.
+12. No. It applies to training. The browser game plays at 1600 simulations.
 13. Even: the two sides are equally strong in that match.
 14. The 95% range: the true score is very likely within 0.049 of the
     measured one.
