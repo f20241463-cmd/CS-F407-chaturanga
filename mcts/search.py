@@ -223,6 +223,7 @@ def mcts_search(
     dirichlet_eps=0.0,
     rng=None,
     stats=None,
+    root=None,
 ):
     """
     The search itself, written as a generator so many searches can share
@@ -233,15 +234,20 @@ def mcts_search(
 
     stats: optional dict; after the search, stats["root_value"] is the
     root's mean value, from the side to move's point of view (used to
-    decide resignations in self-play).
-    """
-    root = MCTSNode(root_state)
+    decide resignations in self-play), and stats["root"] is the root node
+    (used to keep the tree for the next move, see mcts/reuse.py).
 
-    # Root is always expanded immediately, even before the simulation
-    # loop starts, so there's something to select among on simulation 1.
-    yield from _evaluate_and_expand(
-        root, state_to_tensor_fn, legal_action_mask_fn, action_to_move_fn
-    )
+    root: optional node for root_state that an earlier search already
+    expanded (from a TreeCache). The search then adds num_simulations to
+    the visits it already has instead of starting from nothing.
+    """
+    if root is None or not root.is_expanded:
+        root = MCTSNode(root_state)
+        # Root is always expanded immediately, even before the simulation
+        # loop starts, so there's something to select among on simulation 1.
+        yield from _evaluate_and_expand(
+            root, state_to_tensor_fn, legal_action_mask_fn, action_to_move_fn
+        )
 
     if not root.children:
         # No legal moves at all from the root -- game is already over.
@@ -295,5 +301,6 @@ def mcts_search(
     best_move = action_to_move_fn(best_action)
     if stats is not None:
         stats["root_value"] = root.value
+        stats["root"] = root
 
     return visit_counts, best_move

@@ -40,7 +40,7 @@ _players = {}
 
 
 def mcts_spec(network, seed=0, simulations=50, c_puct=1.5, temperature=0.3,
-              avoid_repetition=True):  # fmt: skip
+              avoid_repetition=True, reuse_tree=False):  # fmt: skip
     """Spec of the benchmark-protocol MCTS agent for a checkpoint path or 'untrained'."""
     return {
         "kind": "mcts",
@@ -50,6 +50,7 @@ def mcts_spec(network, seed=0, simulations=50, c_puct=1.5, temperature=0.3,
         "c_puct": c_puct,
         "temperature": temperature,
         "avoid_repetition": avoid_repetition,
+        "reuse_tree": reuse_tree,
     }
 
 
@@ -92,6 +93,7 @@ def build_player(spec):
             c_puct=spec["c_puct"],
             temperature=spec["temperature"],
             avoid_repetition=spec["avoid_repetition"],
+            reuse_tree=spec.get("reuse_tree", False),
         )
     else:
         raise ValueError(f"unknown player kind: {kind!r}")
@@ -212,6 +214,10 @@ def main(argv=None):
                    help="simulations per move for A only (default --simulations)")
     p.add_argument("--simulations_b", type=int, default=None,
                    help="simulations per move for B only (default --simulations)")
+    p.add_argument("--reuse_a", action="store_true",
+                   help="A keeps its search tree between moves")
+    p.add_argument("--reuse_b", action="store_true",
+                   help="B keeps its search tree between moves")
     p.add_argument("--temperature", type=float, default=0.3)
     p.add_argument("--max_plies", type=int, default=800)
     p.add_argument("--seed", type=int, default=0)
@@ -224,11 +230,14 @@ def main(argv=None):
     sims_a = args.simulations_a or args.simulations
     sims_b = args.simulations_b or args.simulations
 
-    def spec(network, simulations):
+    def spec(network, simulations, reuse):
         return mcts_spec(network, seed=args.seed, simulations=simulations,
-                         temperature=args.temperature)  # fmt: skip
+                         temperature=args.temperature, reuse_tree=reuse)  # fmt: skip
 
     sims = f"{sims_a} sims" if sims_a == sims_b else f"A {sims_a} sims, B {sims_b} sims"
+    for side, reuse in (("A", args.reuse_a), ("B", args.reuse_b)):
+        if reuse:
+            sims += f", {side} keeps its tree"
     print(
         f"A = {args.a}\nB = {args.b}\n{args.games} games, {sims}, "
         f"temperature {args.temperature}, repetition avoidance on, "
@@ -242,7 +251,7 @@ def main(argv=None):
 
     pool = make_pool(args.workers) if args.workers > 1 else None
     try:
-        c = play_match_parallel(spec(args.a, sims_a), spec(args.b, sims_b), args.games, args.seed,
+        c = play_match_parallel(spec(args.a, sims_a, args.reuse_a), spec(args.b, sims_b, args.reuse_b), args.games, args.seed,
                                 args.max_plies, pool, show, device=args.device)  # fmt: skip
     finally:
         if pool is not None:

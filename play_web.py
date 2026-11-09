@@ -30,6 +30,7 @@ from chaturanga.stub_network import random_stub_network
 from chaturanga.types import Color, PieceType
 from evaluation.game_endings import classify_ending
 from evaluation.human_log import append_game, format_summary, summarize
+from mcts.reuse import TreeCache
 from mcts.search import drive, mcts_search
 from training.self_play import filter_repeating_moves
 
@@ -49,7 +50,7 @@ class WebGame:
     """One game between a person and the agent, driven by the web page."""
 
     def __init__(self, network_fn, simulations, c_puct=1.5, checkpoint=None,
-                 player="human", log=None, avoid_repetition=True):  # fmt: skip
+                 player="human", log=None, avoid_repetition=True, reuse_tree=True):  # fmt: skip
         self.network_fn = network_fn
         self.simulations = simulations
         self.c_puct = c_puct
@@ -57,6 +58,8 @@ class WebGame:
         self.player = player
         self.log = log
         self.avoid_repetition = avoid_repetition
+        # Keep the search tree between the agent's moves (mcts/reuse.py).
+        self.tree_cache = TreeCache() if reuse_tree else None
         self.new(Color.WHITE)
 
     # ---- game flow --------------------------------------------------
@@ -65,6 +68,8 @@ class WebGame:
         if self._in_progress():
             self._record("unfinished", "quit")
         self.human_color = human_color
+        if self.tree_cache is not None:
+            self.tree_cache.clear()
         self.state = GameState()
         self.moves = []
         self.last_move = None
@@ -93,12 +98,15 @@ class WebGame:
                 legal_action_mask_fn=encoding.legal_action_mask,
                 action_to_move_fn=encoding.action_to_move,
                 stats=stats,
+                root=self.tree_cache.take(self.state) if self.tree_cache else None,
             ),
             self.network_fn,
         )
         if self.avoid_repetition:
             visit_counts, _ = filter_repeating_moves(self.state, visit_counts)
             move = encoding.action_to_move(int(np.argmax(visit_counts)))
+        if self.tree_cache is not None and "root" in stats:
+            self.tree_cache.keep(stats["root"], encoding.move_to_action(move))
         total = float(np.sum(visit_counts)) or 1.0
         top = np.argsort(visit_counts)[::-1][:3]
         self.thinking = {
@@ -241,6 +249,8 @@ def main(argv=None):
     p.add_argument("--simulations", type=int, default=1600,
                    help="search steps per agent move (1600: about half a second)")  # fmt: skip
     p.add_argument("--c_puct", type=float, default=1.5)
+    p.add_argument("--no_tree_reuse", action="store_true",
+                   help="start every search from nothing instead of keeping the last tree")
     p.add_argument("--player", default="human", help="your name, for the game log")
     p.add_argument("--log", default="results/human_games.csv")
     p.add_argument("--no_log", action="store_true", help="do not record games")
@@ -255,7 +265,8 @@ def main(argv=None):
 
         network_fn, checkpoint = make_real_network_fn(checkpoint=args.checkpoint), args.checkpoint
     game = WebGame(network_fn, args.simulations, args.c_puct, checkpoint,
-                   args.player, None if args.no_log else args.log)  # fmt: skip
+                   args.player, None if args.no_log else args.log,
+                   reuse_tree=not args.no_tree_reuse)  # fmt: skip
     server = ThreadingHTTPServer(("127.0.0.1", args.port), make_handler(game, threading.Lock()))
     url = f"http://127.0.0.1:{args.port}/"
     print(f"ChaturangZero is ready at {url}  (press Ctrl+C to stop)", flush=True)

@@ -60,6 +60,21 @@ action_id = select_action_from_visits(visit_counts, temperature=0.0, rng=None)
   proportional to `visits ** (1 / temperature)`. It never picks an
   unvisited action, and raises `ValueError` if nothing was visited.
 
+### `mcts/reuse.py`: `TreeCache` (play time only)
+
+```python
+cache = TreeCache()
+root = cache.take(state)          # kept subtree for this position, or None
+visits, move = drive(mcts_search(state, ..., stats=stats, root=root), network_fn)
+cache.keep(stats["root"], action) # keep the tree below the move played
+```
+
+Keeps the search tree between the agent's moves, so the next search
+starts from the subtree of the opponent's actual reply instead of from
+nothing. Trees are filed under the full game history, so one cache can
+serve many games played side by side. Used by the browser game and by
+`make_mcts_player(..., reuse_tree=True)`; self-play does not use it.
+
 ## Design notes
 
 - **Perspective convention.** `value` is always "how good for whoever's
