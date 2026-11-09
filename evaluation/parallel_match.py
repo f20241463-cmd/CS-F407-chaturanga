@@ -58,6 +58,11 @@ def _key(spec):
     return tuple(sorted(spec.items()))
 
 
+def _models(spec):
+    """The networks of an MCTS spec; several checkpoints joined by '+' play as one."""
+    return [_model({**spec, "network": n}) for n in spec["network"].split("+")]
+
+
 def _model(spec):
     """The network of an MCTS spec: a checkpoint, or a seeded fresh network."""
     import torch
@@ -84,9 +89,10 @@ def build_player(spec):
     elif kind == "greedy":
         player = greedy_capture_player
     elif kind == "mcts":
-        from network.agent import make_network_fn
+        from network.agent import make_ensemble_network_fn, make_network_fn
 
-        network_fn = make_network_fn(_model(spec))
+        models = _models(spec)
+        network_fn = make_network_fn(models[0]) if len(models) == 1 else make_ensemble_network_fn(models)
         player = make_mcts_player(
             network_fn,
             simulations=spec["simulations"],
@@ -124,7 +130,7 @@ def _play_batch(task):
     Several games side by side, with each MCTS side's positions evaluated
     in one batch on device. The same games as _play, game by game.
     """
-    from network.agent import make_batch_network_fn
+    from network.agent import EnsembleNetwork, make_batch_network_fn
     from training.batched_self_play import play_keyed_games_batched
 
     indices, spec_a, spec_b, seed, max_plies, device = task
@@ -132,7 +138,8 @@ def _play_batch(task):
     networks = {}
     for key, spec in (("a", spec_a), ("b", spec_b)):
         if spec["kind"] == "mcts":
-            networks[key] = make_batch_network_fn(_model(spec), device=device, cpu_below=4)
+            nets = [make_batch_network_fn(m, device=device, cpu_below=4) for m in _models(spec)]
+            networks[key] = nets[0] if len(nets) == 1 else EnsembleNetwork(nets)
     games = []
     for g in indices:
         a_is_white = g % 2 == 0
@@ -205,7 +212,8 @@ def main(argv=None):
     p = argparse.ArgumentParser(
         description="Checkpoint A vs checkpoint B under the benchmark protocol, in parallel"
     )
-    p.add_argument("--a", required=True, help="checkpoint path, or 'untrained'")
+    p.add_argument("--a", required=True, help="checkpoint path, or 'untrained'; join several "
+                   "checkpoints with '+' to play them as one averaged network")
     p.add_argument("--b", required=True, help="checkpoint path, or 'untrained'")
     p.add_argument("--games", type=int, default=100)
     p.add_argument("--workers", type=int, default=6)
@@ -214,6 +222,8 @@ def main(argv=None):
                    help="simulations per move for A only (default --simulations)")
     p.add_argument("--simulations_b", type=int, default=None,
                    help="simulations per move for B only (default --simulations)")
+    p.add_argument("--c_puct_a", type=float, default=1.5, help="search exploration constant for A")
+    p.add_argument("--c_puct_b", type=float, default=1.5, help="search exploration constant for B")
     p.add_argument("--reuse_a", action="store_true",
                    help="A keeps its search tree between moves")
     p.add_argument("--reuse_b", action="store_true",
@@ -230,14 +240,16 @@ def main(argv=None):
     sims_a = args.simulations_a or args.simulations
     sims_b = args.simulations_b or args.simulations
 
-    def spec(network, simulations, reuse):
-        return mcts_spec(network, seed=args.seed, simulations=simulations,
+    def spec(network, simulations, reuse, c_puct):
+        return mcts_spec(network, seed=args.seed, simulations=simulations, c_puct=c_puct,
                          temperature=args.temperature, reuse_tree=reuse)  # fmt: skip
 
     sims = f"{sims_a} sims" if sims_a == sims_b else f"A {sims_a} sims, B {sims_b} sims"
     for side, reuse in (("A", args.reuse_a), ("B", args.reuse_b)):
         if reuse:
             sims += f", {side} keeps its tree"
+    if (args.c_puct_a, args.c_puct_b) != (1.5, 1.5):
+        sims += f", c_puct A {args.c_puct_a} B {args.c_puct_b}"
     print(
         f"A = {args.a}\nB = {args.b}\n{args.games} games, {sims}, "
         f"temperature {args.temperature}, repetition avoidance on, "
@@ -251,7 +263,8 @@ def main(argv=None):
 
     pool = make_pool(args.workers) if args.workers > 1 else None
     try:
-        c = play_match_parallel(spec(args.a, sims_a, args.reuse_a), spec(args.b, sims_b, args.reuse_b), args.games, args.seed,
+        c = play_match_parallel(spec(args.a, sims_a, args.reuse_a, args.c_puct_a),
+                                spec(args.b, sims_b, args.reuse_b, args.c_puct_b), args.games, args.seed,
                                 args.max_plies, pool, show, device=args.device)  # fmt: skip
     finally:
         if pool is not None:

@@ -75,6 +75,14 @@ nothing. Trees are filed under the full game history, so one cache can
 serve many games played side by side. Used by the browser game and by
 `make_mcts_player(..., reuse_tree=True)`; self-play does not use it.
 
+### `mcts/gumbel.py`: `gumbel_search` (self-play option)
+
+The Gumbel root search of Danihelka et al. (2022) for few simulations:
+Gumbel-top-k sampling of up to 16 root moves, Sequential Halving between
+them, and the improved policy softmax(logit + sigma(completed q)) as the
+training target. Below the root it uses the ordinary PUCT selection. Turned
+on with `training.train --gumbel`.
+
 ## Design notes
 
 - **Perspective convention.** `value` is always "how good for whoever's

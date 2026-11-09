@@ -25,6 +25,7 @@ import numpy as np
 from chaturanga import encoding
 from chaturanga.game import GameState
 from chaturanga.types import Color, PieceType
+from mcts.gumbel import gumbel_search
 from mcts.search import drive, mcts_search, select_action_from_visits
 
 # Rough piece values for material adjudication. Mantri (one step
@@ -58,6 +59,16 @@ def filter_repeating_moves(state, visit_counts):
     if filtered.sum() == 0:
         return np.asarray(visit_counts, dtype=np.float32), False
     return filtered, bool((filtered != visit_counts).any())
+
+
+def _tagged(key, steps):
+    """Pass a search's requests on as (key, request), and the answers back."""
+    try:
+        request = next(steps)
+        while True:
+            request = steps.send((yield key, request))
+    except StopIteration as stop:
+        return stop.value
 
 
 def material_balance(state, color):
@@ -113,6 +124,7 @@ def play_self_play_game(
     resign_disabled=False,
     value_trace=None,
     q_mix=0.0,
+    **options,
 ):
     """
     Returns (examples, info).
@@ -159,6 +171,9 @@ def play_self_play_game(
     point of view). A drawn game then still says which positions the
     search found good or bad. It uses only the agent's own search, no game
     knowledge.
+
+    options: start_moves, fast_simulations, full_fraction, record_moves; see
+    self_play_game_steps.
     """
     return drive(
         self_play_game_steps(
@@ -177,6 +192,7 @@ def play_self_play_game(
             resign_disabled=resign_disabled,
             value_trace=value_trace,
             q_mix=q_mix,
+            **options,
         ),
         network_fn,
     )
@@ -198,40 +214,97 @@ def self_play_game_steps(
     resign_disabled=False,
     value_trace=None,
     q_mix=0.0,
+    start_moves=None,
+    fast_simulations=None,
+    full_fraction=1.0,
+    record_moves=False,
+    opponent_color=None,
+    gumbel=False,
+    gumbel_actions=16,
 ):
     """
     play_self_play_game as a generator: yields a state tensor whenever the
     search needs the network, expects (policy_logits, value) sent back,
-    and returns (examples, info). Arguments as in play_self_play_game.
+    and returns (examples, info). Arguments as in play_self_play_game, plus:
+
+    start_moves: optional list of action ids. The game starts from the
+    position after these moves (for example a late position of an earlier
+    self-play game) instead of the opening; they count towards max_plies
+    but are not recorded as examples.
+
+    fast_simulations, full_fraction: with fast_simulations set, each move
+    gets a full search (num_simulations, root noise, recorded as an
+    example) with probability full_fraction, and otherwise a fast search
+    (fast_simulations, no root noise, not recorded). More moves per hour,
+    and every training example still comes from a full search
+    ("playout cap randomization", from KataGo).
+
+    record_moves: if True, info["moves"] is the list of action ids of the
+    whole game (used to start later games from its late positions).
+
+    opponent_color: None (default) for normal self-play. If set, the
+    generator yields ("old", tensor) for that side's searches and
+    ("cur", tensor) for the other side's, so two networks can play each
+    other (training.batched_self_play.play_keyed_games_batched), and only
+    the "cur" side's moves become examples.
+
+    gumbel: False (default) uses the AlphaZero root (Dirichlet noise, visit
+    counts as the policy target, moves sampled at the temperature). If True,
+    full searches use mcts.gumbel.gumbel_search instead: the move is the
+    one its Sequential Halving picks among gumbel_actions sampled moves,
+    and the policy target is its improved policy. No Dirichlet noise or
+    temperature: the Gumbel sampling is the exploration.
     """
     if num_simulations < 1:
         raise ValueError("num_simulations must be at least 1")
     rng = rng if rng is not None else np.random.default_rng()
 
     state = GameState()
+    moves = []
+    for action in start_moves or ():
+        state = state.apply_move(encoding.action_to_move(int(action)))
+        moves.append(int(action))
     records = []  # (tensor, policy, side_to_move) per ply
     root_values = []  # the search's value of each recorded position
-    plies = 0
+    plies = len(moves)
     low_streak = {Color.WHITE: 0, Color.BLACK: 0}
     would_resign = None  # first side whose evaluation crossed the threshold
     resigned = None
 
     while not state.is_game_over() and plies < max_plies:
+        full = fast_simulations is None or rng.random() < full_fraction
+        use_gumbel = gumbel and full and opponent_color is None
         stats = {}
-        visit_counts, _ = yield from mcts_search(
+        search = gumbel_search(
+            state, num_simulations, c_puct, encoding.state_to_tensor, encoding.legal_action_mask,
+            encoding.action_to_move, rng, max_considered=gumbel_actions, stats=stats,
+        ) if use_gumbel else mcts_search(
             state,
-            num_simulations,
+            num_simulations if full else fast_simulations,
             c_puct,
             encoding.state_to_tensor,
             encoding.legal_action_mask,
             encoding.action_to_move,
             dirichlet_alpha=dirichlet_alpha,
-            dirichlet_eps=dirichlet_eps,
+            dirichlet_eps=dirichlet_eps if full else 0.0,
             rng=rng,
             stats=stats,
         )
+        if opponent_color is None:
+            visit_counts, gumbel_action = yield from search
+        else:
+            old = state.side_to_move == opponent_color
+            visit_counts, _ = yield from _tagged("old" if old else "cur", search)
+            full = full and not old
         if avoid_repetition:
             visit_counts, _ = filter_repeating_moves(state, visit_counts)
+        if not full:
+            temperature = 1.0 if plies < temperature_moves else 0.0
+            action = select_action_from_visits(visit_counts, temperature, rng)
+            state = state.apply_move(encoding.action_to_move(action))
+            moves.append(int(action))
+            plies += 1
+            continue
         policy = (visit_counts / visit_counts.sum()).astype(np.float32)
         mover = state.side_to_move
         records.append((encoding.state_to_tensor(state), policy, mover))
@@ -250,9 +323,14 @@ def self_play_game_steps(
                     resigned = mover
                     break
 
-        temperature = 1.0 if plies < temperature_moves else 0.0
-        action = select_action_from_visits(visit_counts, temperature, rng)
+        if use_gumbel:
+            # The Gumbel choice, unless repetition avoidance removed it.
+            action = gumbel_action if visit_counts[gumbel_action] > 0 else int(np.argmax(visit_counts))
+        else:
+            temperature = 1.0 if plies < temperature_moves else 0.0
+            action = select_action_from_visits(visit_counts, temperature, rng)
         state = state.apply_move(encoding.action_to_move(action))
+        moves.append(int(action))
         plies += 1
 
     movers = [mover for _, _, mover in records]
@@ -278,6 +356,8 @@ def self_play_game_steps(
         (tensor, policy, value) for (tensor, policy, _), value in zip(records, values)
     ]
     info = {"plies": plies, "outcome": outcome}
+    if record_moves:
+        info["moves"] = moves
     if resign_threshold is not None:
         info["resigned"] = resigned is not None
         info["would_resign"] = (
@@ -285,3 +365,40 @@ def self_play_game_steps(
             else "white" if would_resign == Color.WHITE else "black"
         )  # fmt: skip
     return examples, info
+
+
+def reanalyse_game_steps(moves, num_simulations=50, c_puct=1.5, draw_value=0.0,
+                         avoid_repetition=False):  # fmt: skip
+    """
+    Reanalyse (from MuZero): replay an earlier self-play game, given as its
+    list of action ids, and search every position again with the current
+    network (no root noise). Returns (examples, info) like
+    self_play_game_steps: the policy targets are the new search's visit
+    counts, the value targets the game's original result. A generator in
+    the same way, so it can share batched network calls with self-play.
+    """
+    states = [GameState()]
+    for action in moves:
+        states.append(states[-1].apply_move(encoding.action_to_move(int(action))))
+    final = states[-1]
+    records = []
+    for state in states[:-1]:
+        visit_counts, _ = yield from mcts_search(
+            state, num_simulations, c_puct, encoding.state_to_tensor,
+            encoding.legal_action_mask, encoding.action_to_move,
+        )
+        if avoid_repetition:
+            visit_counts, _ = filter_repeating_moves(state, visit_counts)
+        policy = (visit_counts / visit_counts.sum()).astype(np.float32)
+        records.append((encoding.state_to_tensor(state), policy, state.side_to_move))
+    movers = [mover for _, _, mover in records]
+    result = final.result() if final.is_game_over() else None
+    if result is None or result == 0:
+        values = [float(draw_value)] * len(records)
+        outcome = "unfinished" if result is None else "draw"
+    else:
+        values = outcome_values(movers, result, final.side_to_move)
+        winner = final.side_to_move if result > 0 else final.side_to_move.opponent
+        outcome = "white" if winner == Color.WHITE else "black"
+    examples = [(t, p, v) for (t, p, _), v in zip(records, values)]
+    return examples, {"plies": len(moves), "outcome": outcome, "reanalysed": True}

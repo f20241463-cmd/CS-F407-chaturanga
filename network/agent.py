@@ -146,6 +146,45 @@ def make_batch_network_fn(
     return BatchNetwork(model, device=device, cpu_below=cpu_below)
 
 
+def _log_softmax(logits: np.ndarray) -> np.ndarray:
+    x = logits - logits.max(axis=-1, keepdims=True)
+    return x - np.log(np.exp(x).sum(axis=-1, keepdims=True))
+
+
+class EnsembleNetwork:
+    """
+    Several networks used as one at play time: the move priors are the
+    average of their log-probabilities and the value is the average of
+    their values. Same submit/fetch/__call__ interface as BatchNetwork.
+    """
+
+    def __init__(self, networks):
+        self.networks = list(networks)
+
+    def submit(self, states: np.ndarray):
+        return [net.submit(states) for net in self.networks]
+
+    def fetch(self, handles) -> Tuple[np.ndarray, np.ndarray]:
+        outputs = [net.fetch(h) for net, h in zip(self.networks, handles)]
+        logits = np.mean([_log_softmax(np.asarray(p, dtype=np.float64)) for p, _ in outputs], axis=0)
+        values = np.mean([np.asarray(v, dtype=np.float64) for _, v in outputs], axis=0)
+        return logits.astype(np.float32), values.astype(np.float32)
+
+    def __call__(self, states: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        return self.fetch(self.submit(states))
+
+
+def make_ensemble_network_fn(models, device: str = "cpu"):
+    """Single-position fn (like make_network_fn) for an EnsembleNetwork of models."""
+    ensemble = EnsembleNetwork([BatchNetwork(m, device=device) for m in models])
+
+    def network_fn(state_tensor: np.ndarray) -> Tuple[np.ndarray, float]:
+        logits, values = ensemble(state_tensor[None])
+        return logits[0], float(values[0])
+
+    return network_fn
+
+
 def choose_network_move(
     state: GameState,
     model: ChaturangaNet,
