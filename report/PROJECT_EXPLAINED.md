@@ -2070,7 +2070,6 @@ means "as strong as the final model". The files are in
 | More root noise (training) | Practice games mix more randomness into the first choice of each search | 8 | 19 | 168 | 0.472 |
 | Late starts (training) | Some practice games begin from a position deep into an earlier game | 10 | 9 | 180 | 0.503 |
 | Mixed searches (training) | Half of the moves in practice games get a quick search and are not learned from, so more games fit in the same time | 5 | 11 | 179 | 0.485 |
-| Decisive games weighted (training) | Positions from games with a winner are picked three times as often for learning | 9 | 10 | 176 | 0.497 |
 
 **Search setting.** "c_puct" decides how much the search tries moves the
 network does not like yet, compared with following its favourites. 1.5,
@@ -2102,11 +2101,6 @@ sees more late positions. It came out exactly as strong as the final model
 quick 30-simulation search, just to move the game along. That made room for
 160 games per round instead of 100 in about the same time. It came out
 slightly weaker (0.485), well inside the margin, so no gain.
-
-**Decisive games weighted.** Only about 15% of practice games have a winner,
-and those are the only ones that teach the network what winning and losing
-look like. Here positions from those games were picked three times as often
-when learning. It came out even (0.497).
 
 ## Why we stopped training
 

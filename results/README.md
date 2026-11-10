@@ -562,7 +562,6 @@ iterations and are measured at iteration 620; play-only ideas need no training.
 | Root noise weight 0.4 instead of 0.25 (training) | 8 | 19 | 168 | 0.472 +/- 0.026 |
 | Late starts: 30% of games start 50-90% into a previous game (training) | 10 | 9 | 180 | 0.503 +/- 0.021 |
 | Mixed searches: half of the moves full 50 sims (trained on), half fast 30 sims (not), 160 games (training) | 5 | 11 | 179 | 0.485 +/- 0.020 |
-| Decisive games sampled 3x as often (training) | 9 | 10 | 176 | 0.497 +/- 0.022 |
 
 ## Limitations
 
