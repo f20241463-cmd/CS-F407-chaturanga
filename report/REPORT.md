@@ -676,7 +676,7 @@ benchmark protocol (50 simulations, temperature 0.3). The options are in
 | Decisive games weighted | Positions from won or lost games are sampled 3 times as often in training | 9 | 10 | 176 | 0.497 +/- 0.022 |
 | Mirror augmentation | Each sampled position is flipped left to right with probability 0.5 (a symmetry of the rules, checked by a test) | 13 | 9 | 177 | 0.510 +/- 0.023 |
 | Older opponents | A quarter of self-play games are against iteration 300, 420, 520 or 540 (in turn); only the current network's moves are trained on | 9 | 10 | 178 | 0.497 +/- 0.022 |
-| Gumbel self-play | Self-play uses Gumbel root search (Sequential Halving over 16 sampled moves) and trains on its improved policy instead of visit counts; matches still use plain PUCT | 17 | 5 | 178 | 0.530 +/- 0.023 |
+| Gumbel self-play, 400 games | Self-play uses Gumbel root search (Sequential Halving over 16 sampled moves) and trains on its improved policy instead of visit counts; matches still use plain PUCT | 40 | 8 | 351 | 0.540 +/- 0.017 |
 | Moves-left head | A training-only head predicts how many plies the game still lasts (loss weight 0.1), so the shared layers learn it too | 7 | 14 | 178 | 0.482 +/- 0.022 |
 
 The search constant of 1.5 used throughout is as good as any we tried.
@@ -701,8 +701,9 @@ simulations, visit counts are a coarse policy target, and a move that is never
 visited gets no credit. The Gumbel search instead trains on
 softmax(logits + sigma(completed Q)), which gives every legal move a target
 from its prior and, where it was searched, its value. It is the only idea
-whose margin stays above 0.5 (17 wins against 5 losses). A second 200-game
-match with new seeds is running to confirm it. Its policy loss is lower
+whose margin stays above 0.5: 17 wins against 5 losses (0.530 +/- 0.023) in
+the first 200 games, and 23 against 3 (0.550 +/- 0.024) in a second 200 with
+new seeds, so 0.540 +/- 0.017 over 400 games. Its policy loss is lower
 (1.90 against about 2.35) only because the target is different, so the
 losses are not comparable.
 
