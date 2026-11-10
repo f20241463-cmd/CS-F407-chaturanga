@@ -339,7 +339,8 @@ of the practice moves, so it could play more practice games. Again **no
 improvement**. Then: studying the games that had a winner three times as
 often as the draws. Even again, so **no improvement**. Then: also learning from mirror images
 of the practice positions. A tiny bit above even, but too small to count,
-so **no improvement**.
+so **no improvement**. Then: playing a quarter of the practice games against
+older versions of itself. Even, so **no improvement**.
 
 **6. Faster practice on the graphics chip.** We rebuilt the practice system
 so many games share the graphics chip at once. Practice got about 2.2 to 2.4
