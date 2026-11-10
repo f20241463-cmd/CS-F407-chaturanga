@@ -678,6 +678,7 @@ benchmark protocol (50 simulations, temperature 0.3). The options are in
 | Older opponents | A quarter of self-play games are against iteration 300, 420, 520 or 540 (in turn); only the current network's moves are trained on | 9 | 10 | 178 | 0.497 +/- 0.022 |
 | Gumbel self-play, 400 games | Self-play uses Gumbel root search (Sequential Halving over 16 sampled moves) and trains on its improved policy instead of visit counts; matches still use plain PUCT | 40 | 8 | 351 | 0.540 +/- 0.017 |
 | Moves-left head | A training-only head predicts how many plies the game still lasts (loss weight 0.1), so the shared layers learn it too | 7 | 14 | 178 | 0.482 +/- 0.022 |
+| Reanalyse | Each iteration also searches every position of 50 games from the last 5 iterations again with the current network and adds them with fresh policy targets | 4 | 12 | 179 | 0.479 +/- 0.020 |
 
 The search constant of 1.5 used throughout is as good as any we tried.
 Averaging the final model with the two strongest continuations is the only
@@ -709,7 +710,8 @@ losses are not comparable.
 
 A moves-left head (as in KataGo), which gives the shared layers a dense
 signal about how close a game is to its end even in drawn games, did not
-help (0.482).
+help (0.482). Nor did MuZero's Reanalyse, which re-searches recent games with
+the current network to refresh their policy targets (0.479).
 
 # 7. Discussion
 
