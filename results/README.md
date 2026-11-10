@@ -565,7 +565,7 @@ iterations and are measured at iteration 620; play-only ideas need no training.
 | Decisive games sampled 3x as often (training) | 9 | 10 | 176 | 0.497 +/- 0.022 |
 | Mirror augmentation: positions flipped left to right half the time (training) | 13 | 9 | 177 | 0.510 +/- 0.023 |
 | Older opponents: 25% of games vs iterations 300/420/520/540 (training) | 9 | 10 | 178 | 0.497 +/- 0.022 |
-| Gumbel self-play: Gumbel root search, 16 moves, trains on the improved policy (training) | 17 | 5 | 178 | 0.530 +/- 0.023 |
+| Gumbel self-play: Gumbel root search, 16 moves, trains on the improved policy (training, 400 games) | 40 | 8 | 351 | 0.540 +/- 0.017 |
 | Moves-left head, weight 0.1 (training) | 7 | 14 | 178 | 0.482 +/- 0.022 |
 
 ## Limitations

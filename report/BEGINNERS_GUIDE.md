@@ -343,8 +343,8 @@ so **no improvement**. Then: playing a quarter of the practice games against
 older versions of itself. Even, so **no improvement**. Then: a smarter way to spend the 50 thoughts
 per move in practice games (called Gumbel search), which also gives the
 agent a better lesson from each move. This one **beat the final model**: 17
-wins against 5 losses. We are playing 200 more games to make sure it was
-not luck. Then: also teaching the agent to guess how many moves a game has
+wins against 5 losses. 200 more games went even better (23 wins against
+3 losses), so it was not luck. Then: also teaching the agent to guess how many moves a game has
 left. **No improvement**.
 
 **6. Faster practice on the graphics chip.** We rebuilt the practice system
