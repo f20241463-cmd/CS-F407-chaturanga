@@ -564,6 +564,7 @@ iterations and are measured at iteration 620; play-only ideas need no training.
 | Mixed searches: half of the moves full 50 sims (trained on), half fast 30 sims (not), 160 games (training) | 5 | 11 | 179 | 0.485 +/- 0.020 |
 | Decisive games sampled 3x as often (training) | 9 | 10 | 176 | 0.497 +/- 0.022 |
 | Mirror augmentation: positions flipped left to right half the time (training) | 13 | 9 | 177 | 0.510 +/- 0.023 |
+| Older opponents: 25% of games vs iterations 300/420/520/540 (training) | 9 | 10 | 178 | 0.497 +/- 0.022 |
 
 ## Limitations
 

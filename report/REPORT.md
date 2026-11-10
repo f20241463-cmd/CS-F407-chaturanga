@@ -675,6 +675,7 @@ benchmark protocol (50 simulations, temperature 0.3). The options are in
 | Mixed searches | Half of the moves get the full 50-simulation search and are trained on; the rest a fast 30-simulation search that is not; 160 games per iteration | 5 | 11 | 179 | 0.485 +/- 0.020 |
 | Decisive games weighted | Positions from won or lost games are sampled 3 times as often in training | 9 | 10 | 176 | 0.497 +/- 0.022 |
 | Mirror augmentation | Each sampled position is flipped left to right with probability 0.5 (a symmetry of the rules, checked by a test) | 13 | 9 | 177 | 0.510 +/- 0.023 |
+| Older opponents | A quarter of self-play games are against iteration 300, 420, 520 or 540 (in turn); only the current network's moves are trained on | 9 | 10 | 178 | 0.497 +/- 0.022 |
 
 The search constant of 1.5 used throughout is as good as any we tried.
 Averaging the final model with the two strongest continuations is the only
@@ -689,7 +690,9 @@ randomization), which gives more games for the same time, did not help
 either. Nor did sampling positions from decisive games three times as often,
 which gives the value head more non-zero targets. Flipping training positions
 left to right, which doubles the variety of the data for free, was slightly
-above even but well inside the margin.
+above even but well inside the margin. Playing a quarter of the self-play games
+against earlier versions, to keep the network from forgetting how to beat
+them, gave an even score.
 
 # 7. Discussion
 

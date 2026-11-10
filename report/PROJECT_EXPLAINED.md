@@ -2072,6 +2072,7 @@ means "as strong as the final model". The files are in
 | Mixed searches (training) | Half of the moves in practice games get a quick search and are not learned from, so more games fit in the same time | 5 | 11 | 179 | 0.485 |
 | Decisive games weighted (training) | Positions from games with a winner are picked three times as often for learning | 9 | 10 | 176 | 0.497 |
 | Mirrored boards (training) | Half of the positions it learns from are flipped left to right | 13 | 9 | 177 | 0.510 |
+| Older opponents (training) | A quarter of practice games are against earlier versions of itself | 9 | 10 | 178 | 0.497 |
 
 **Search setting.** "c_puct" decides how much the search tries moves the
 network does not like yet, compared with following its favourites. 1.5,
@@ -2115,6 +2116,12 @@ flipped with it) is just as good a training example, with the same result. A tes
 the rules. So each position can be learned from twice, once as played and
 once mirrored. Half of the positions were flipped when learning. It came out
 slightly above even (0.510), but well inside the margin, so no clear gain.
+
+**Older opponents.** Normally the agent only ever plays its current self. A
+risk is that it forgets how to beat styles it no longer plays. Here a quarter
+of practice games were against one of four earlier versions (iterations 300,
+420, 520 and 540, taking turns), and only the current version's moves were
+learned from. It came out even (0.497).
 
 ## Why we stopped training
 
