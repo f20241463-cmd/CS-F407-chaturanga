@@ -2147,6 +2147,13 @@ learned to guess that number while training (it is not used when playing),
 in the hope that the shared layers would understand positions better. It
 came out slightly weaker (0.482), inside the margin, so no gain.
 
+**Reanalysing old games.** The lessons in the training data were written
+by older versions of the network, which searched less well. Here, every
+round, 50 games from the last five rounds were searched again, position by
+position, with the current network, and added to the training data with
+the new search's move preferences (an idea from DeepMind's MuZero). It came
+out slightly weaker (0.479), inside the margin, so no gain.
+
 ## Why we stopped training
 
 - Every extra idea within the rules (more training, smaller steps, a bigger
