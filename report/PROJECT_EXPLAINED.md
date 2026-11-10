@@ -2073,6 +2073,7 @@ means "as strong as the final model". The files are in
 | Decisive games weighted (training) | Positions from games with a winner are picked three times as often for learning | 9 | 10 | 176 | 0.497 |
 | Mirrored boards (training) | Half of the positions it learns from are flipped left to right | 13 | 9 | 177 | 0.510 |
 | Older opponents (training) | A quarter of practice games are against earlier versions of itself | 9 | 10 | 178 | 0.497 |
+| Gumbel search in practice (training) | Practice games use a different way of spending the 50 simulations, and learn from a smarter target | 17 | 5 | 178 | 0.530 |
 
 **Search setting.** "c_puct" decides how much the search tries moves the
 network does not like yet, compared with following its favourites. 1.5,
@@ -2122,6 +2123,19 @@ risk is that it forgets how to beat styles it no longer plays. Here a quarter
 of practice games were against one of four earlier versions (iterations 300,
 420, 520 and 540, taking turns), and only the current version's moves were
 learned from. It came out even (0.497).
+
+**Gumbel search in practice.** Normally the network learns to copy how
+often the search visited each move. With only 50 simulations that is a
+rough target: a move the search never looked at gets no credit at all,
+even if the network liked it. Gumbel search (from DeepMind, 2022) spends
+the 50 simulations differently. It picks 16 candidate moves (the network's
+favourites, with some randomness), then keeps halving the list, each time
+dropping the moves that searched worst, until one is left. The network then
+learns from a target built from its own preferences plus what the search
+found for each move. This is the first idea that came out ahead of the
+final model by more than luck: 17 wins against 5 losses, a score of 0.530
+(+/- 0.023). We are playing 200 more games with new random seeds to make
+sure.
 
 ## Why we stopped training
 

@@ -676,6 +676,7 @@ benchmark protocol (50 simulations, temperature 0.3). The options are in
 | Decisive games weighted | Positions from won or lost games are sampled 3 times as often in training | 9 | 10 | 176 | 0.497 +/- 0.022 |
 | Mirror augmentation | Each sampled position is flipped left to right with probability 0.5 (a symmetry of the rules, checked by a test) | 13 | 9 | 177 | 0.510 +/- 0.023 |
 | Older opponents | A quarter of self-play games are against iteration 300, 420, 520 or 540 (in turn); only the current network's moves are trained on | 9 | 10 | 178 | 0.497 +/- 0.022 |
+| Gumbel self-play | Self-play uses Gumbel root search (Sequential Halving over 16 sampled moves) and trains on its improved policy instead of visit counts; matches still use plain PUCT | 17 | 5 | 178 | 0.530 +/- 0.023 |
 
 The search constant of 1.5 used throughout is as good as any we tried.
 Averaging the final model with the two strongest continuations is the only
@@ -693,6 +694,16 @@ left to right, which doubles the variety of the data for free, was slightly
 above even but well inside the margin. Playing a quarter of the self-play games
 against earlier versions, to keep the network from forgetting how to beat
 them, gave an even score.
+
+The one exception is Gumbel self-play (Danihelka et al., 2022). With only 50
+simulations, visit counts are a coarse policy target, and a move that is never
+visited gets no credit. The Gumbel search instead trains on
+softmax(logits + sigma(completed Q)), which gives every legal move a target
+from its prior and, where it was searched, its value. It is the only idea
+whose margin stays above 0.5 (17 wins against 5 losses). A second 200-game
+match with new seeds is running to confirm it. Its policy loss is lower
+(1.90 against about 2.35) only because the target is different, so the
+losses are not comparable.
 
 # 7. Discussion
 
