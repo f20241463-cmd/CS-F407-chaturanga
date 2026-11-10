@@ -2074,6 +2074,7 @@ means "as strong as the final model". The files are in
 | Mirrored boards (training) | Half of the positions it learns from are flipped left to right | 13 | 9 | 177 | 0.510 |
 | Older opponents (training) | A quarter of practice games are against earlier versions of itself | 9 | 10 | 178 | 0.497 |
 | Gumbel search in practice (training) | Practice games use a different way of spending the 50 simulations, and learn from a smarter target | 17 | 5 | 178 | 0.530 |
+| Predicting moves left (training) | While learning, the network also guesses how many moves the game has left | 7 | 14 | 178 | 0.482 |
 
 **Search setting.** "c_puct" decides how much the search tries moves the
 network does not like yet, compared with following its favourites. 1.5,
@@ -2136,6 +2137,13 @@ found for each move. This is the first idea that came out ahead of the
 final model by more than luck: 17 wins against 5 losses, a score of 0.530
 (+/- 0.023). We are playing 200 more games with new random seeds to make
 sure.
+
+**Predicting moves left.** Most practice games are draws, which tell the
+value head almost nothing. But every game, drawn or not, says how many moves
+were left from each position. Here a small extra part of the network
+learned to guess that number while training (it is not used when playing),
+in the hope that the shared layers would understand positions better. It
+came out slightly weaker (0.482), inside the margin, so no gain.
 
 ## Why we stopped training
 

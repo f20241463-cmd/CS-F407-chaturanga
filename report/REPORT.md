@@ -677,6 +677,7 @@ benchmark protocol (50 simulations, temperature 0.3). The options are in
 | Mirror augmentation | Each sampled position is flipped left to right with probability 0.5 (a symmetry of the rules, checked by a test) | 13 | 9 | 177 | 0.510 +/- 0.023 |
 | Older opponents | A quarter of self-play games are against iteration 300, 420, 520 or 540 (in turn); only the current network's moves are trained on | 9 | 10 | 178 | 0.497 +/- 0.022 |
 | Gumbel self-play | Self-play uses Gumbel root search (Sequential Halving over 16 sampled moves) and trains on its improved policy instead of visit counts; matches still use plain PUCT | 17 | 5 | 178 | 0.530 +/- 0.023 |
+| Moves-left head | A training-only head predicts how many plies the game still lasts (loss weight 0.1), so the shared layers learn it too | 7 | 14 | 178 | 0.482 +/- 0.022 |
 
 The search constant of 1.5 used throughout is as good as any we tried.
 Averaging the final model with the two strongest continuations is the only
@@ -704,6 +705,10 @@ whose margin stays above 0.5 (17 wins against 5 losses). A second 200-game
 match with new seeds is running to confirm it. Its policy loss is lower
 (1.90 against about 2.35) only because the target is different, so the
 losses are not comparable.
+
+A moves-left head (as in KataGo), which gives the shared layers a dense
+signal about how close a game is to its end even in drawn games, did not
+help (0.482).
 
 # 7. Discussion
 
