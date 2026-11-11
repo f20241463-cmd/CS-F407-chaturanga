@@ -174,12 +174,53 @@ class EnsembleNetwork:
         return self.fetch(self.submit(states))
 
 
+def _mirror_square(sq):
+    return (sq // 8) * 8 + (7 - sq % 8)
+
+
+# Action id of each move's left-right mirror image (files a <-> h); its own inverse.
+MIRROR_ACTION = np.array(
+    [_mirror_square(a // 64) * 64 + _mirror_square(a % 64) for a in range(4096)], dtype=np.int64
+)
+
+
+class MirrorNetwork:
+    """
+    One network that looks at each position twice, as it is and mirrored
+    left to right (a symmetry of the rules), and averages the two answers:
+    log-probabilities move by move (the mirrored answer mapped back) and
+    values. Twice the work per position. Same interface as BatchNetwork.
+    """
+
+    def __init__(self, network):
+        self.network = network
+
+    def submit(self, states: np.ndarray):
+        states = np.asarray(states, dtype=np.float32)
+        return len(states), self.network.submit(np.concatenate([states, states[..., ::-1]]))
+
+    def fetch(self, handle) -> Tuple[np.ndarray, np.ndarray]:
+        n, inner = handle
+        logits, values = self.network.fetch(inner)
+        logp = _log_softmax(np.asarray(logits, dtype=np.float64))
+        merged = (logp[:n] + logp[n:][:, MIRROR_ACTION]) / 2
+        values = np.asarray(values, dtype=np.float64)
+        return merged.astype(np.float32), ((values[:n] + values[n:]) / 2).astype(np.float32)
+
+    def __call__(self, states: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        return self.fetch(self.submit(states))
+
+
 def make_ensemble_network_fn(models, device: str = "cpu"):
     """Single-position fn (like make_network_fn) for an EnsembleNetwork of models."""
-    ensemble = EnsembleNetwork([BatchNetwork(m, device=device) for m in models])
+    return batch_to_single_fn(EnsembleNetwork([BatchNetwork(m, device=device) for m in models]))
+
+
+def batch_to_single_fn(net):
+    """Single-position fn (like make_network_fn) for a batch network such as an ensemble."""
 
     def network_fn(state_tensor: np.ndarray) -> Tuple[np.ndarray, float]:
-        logits, values = ensemble(state_tensor[None])
+        logits, values = net(state_tensor[None])
         return logits[0], float(values[0])
 
     return network_fn

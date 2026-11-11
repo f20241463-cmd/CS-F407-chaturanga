@@ -20,6 +20,7 @@ import numpy as np
 from chaturanga import encoding
 from chaturanga.game import GameState
 from chaturanga.types import Color
+from mcts.gumbel import gumbel_search
 from mcts.reuse import TreeCache
 from mcts.search import drive, mcts_search, select_action_from_visits
 from training.self_play import PIECE_VALUES, filter_repeating_moves  # noqa: F401
@@ -77,9 +78,29 @@ def mcts_move_steps(state, rng, simulations=50, c_puct=1.5, temperature=0.3,
     return encoding.action_to_move(action)
 
 
+def gumbel_move_steps(state, rng, simulations=50, c_puct=1.5, avoid_repetition=True,
+                      max_considered=16):  # fmt: skip
+    """
+    Like mcts_move_steps, but the move is chosen by the Gumbel search
+    (mcts/gumbel.py) without noise: deterministic, the best of the top
+    max_considered moves by prior plus searched value. With
+    avoid_repetition, a move that causes a threefold-repetition draw is
+    replaced by the best other move of the search's improved policy.
+    """
+    policy, action = yield from gumbel_search(
+        state, simulations, c_puct, encoding.state_to_tensor, encoding.legal_action_mask,
+        encoding.action_to_move, rng, max_considered=max_considered, noise=False,
+    )
+    if avoid_repetition:
+        filtered, avoided = filter_repeating_moves(state, policy)
+        if avoided and filtered[action] == 0:
+            action = int(np.argmax(filtered))
+    return encoding.action_to_move(action)
+
+
 def make_mcts_player(
     network_fn, simulations=50, c_puct=1.5, temperature=0.3, avoid_repetition=True,
-    reuse_tree=False,
+    reuse_tree=False, gumbel=False,
 ):
     """
     MCTS player with no Dirichlet noise. The move is sampled from the
@@ -93,10 +114,15 @@ def make_mcts_player(
 
     reuse_tree: keep the search tree between the player's moves
     (mcts/reuse.py), so each search builds on the last one.
+
+    gumbel: choose moves with the Gumbel search instead (gumbel_move_steps;
+    temperature and reuse_tree do not apply).
     """
     tree_cache = TreeCache() if reuse_tree else None
 
     def steps(state, rng):
+        if gumbel:
+            return gumbel_move_steps(state, rng, simulations, c_puct, avoid_repetition)
         return mcts_move_steps(state, rng, simulations, c_puct, temperature,
                                avoid_repetition, tree_cache)  # fmt: skip
 
