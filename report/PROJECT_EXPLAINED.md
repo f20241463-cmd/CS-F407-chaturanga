@@ -2077,6 +2077,7 @@ means "as strong as the final model". The files are in
 | Gumbel, 60 more rounds (training) | The Gumbel model kept training from round 620 to 680 | 40 | 3 | 156 | 0.593 |
 | Gumbel, 120 more rounds (training) | The Gumbel model kept training from round 680 to 740 | 69 | 5 | 124 | 0.662 |
 | Gumbel, 180 more rounds (training) | The Gumbel model kept training from round 740 to 800 | 88 | 3 | 108 | 0.714 |
+| Gumbel, 240 more rounds (training) | The Gumbel model kept training from round 800 to 860 | 120 | 2 | 77 | 0.796 |
 | Gumbel plus three other ideas (training) | Like the row above, with mirrored boards, extra weight on games with a winner and late starts switched on too | 40 | 7 | 148 | 0.585 |
 | Predicting moves left (training) | While learning, the network also guesses how many moves the game has left | 7 | 14 | 178 | 0.482 |
 | Reanalysing old games (training) | Each round, 50 recent games are searched again with the newer network to give fresher lessons | 4 | 12 | 179 | 0.479 |
@@ -2156,7 +2157,9 @@ quarter now have a winner, against about 15% before, which gives the value
 head more to learn from.
 
 Round 800 was better again: 88 wins to 3 against the final model (0.714)
-and 39 wins to 16 against Gumbel 740. We keep training in steps of 60
+and 39 wins to 16 against Gumbel 740. Round 860 made the biggest jump yet:
+120 wins to 2 against the final model (0.796) and 68 wins to 12 against
+Gumbel 800. We keep training in steps of 60
 rounds as long as each step beats the one before.
 
 **Is Gumbel within the project rules?** Yes. The proposal asks for an MCTS
