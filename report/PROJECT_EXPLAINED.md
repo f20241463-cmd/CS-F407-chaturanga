@@ -2075,6 +2075,7 @@ means "as strong as the final model". The files are in
 | Older opponents (training) | A quarter of practice games are against earlier versions of itself | 9 | 10 | 178 | 0.497 |
 | Gumbel search in practice (training, 400 games) | Practice games use a different way of spending the 50 simulations, and learn from a smarter target | 40 | 8 | 351 | 0.540 |
 | Predicting moves left (training) | While learning, the network also guesses how many moves the game has left | 7 | 14 | 178 | 0.482 |
+| Reanalysing old games (training) | Each round, 50 recent games are searched again with the newer network to give fresher lessons | 4 | 12 | 179 | 0.479 |
 
 **Search setting.** "c_puct" decides how much the search tries moves the
 network does not like yet, compared with following its favourites. 1.5,
@@ -2145,6 +2146,13 @@ were left from each position. Here a small extra part of the network
 learned to guess that number while training (it is not used when playing),
 in the hope that the shared layers would understand positions better. It
 came out slightly weaker (0.482), inside the margin, so no gain.
+
+**Reanalysing old games.** The lessons in the training data were written
+by older versions of the network, which searched less well. Here, every
+round, 50 games from the last five rounds were searched again, position by
+position, with the current network, and added to the training data with
+the new search's move preferences (an idea from DeepMind's MuZero). It came
+out slightly weaker (0.479), inside the margin, so no gain.
 
 ## Why we stopped training
 
