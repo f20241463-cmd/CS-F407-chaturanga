@@ -40,7 +40,7 @@ _players = {}
 
 
 def mcts_spec(network, seed=0, simulations=50, c_puct=1.5, temperature=0.3,
-              avoid_repetition=True, reuse_tree=False):  # fmt: skip
+              avoid_repetition=True, reuse_tree=False, gumbel=False, mirror=False):  # fmt: skip
     """Spec of the benchmark-protocol MCTS agent for a checkpoint path or 'untrained'."""
     return {
         "kind": "mcts",
@@ -51,6 +51,8 @@ def mcts_spec(network, seed=0, simulations=50, c_puct=1.5, temperature=0.3,
         "temperature": temperature,
         "avoid_repetition": avoid_repetition,
         "reuse_tree": reuse_tree,
+        "gumbel": gumbel,
+        "mirror": mirror,
     }
 
 
@@ -89,10 +91,18 @@ def build_player(spec):
     elif kind == "greedy":
         player = greedy_capture_player
     elif kind == "mcts":
-        from network.agent import make_ensemble_network_fn, make_network_fn
+        from network.agent import (BatchNetwork, EnsembleNetwork, MirrorNetwork,
+                                   batch_to_single_fn, make_ensemble_network_fn, make_network_fn)
 
         models = _models(spec)
-        network_fn = make_network_fn(models[0]) if len(models) == 1 else make_ensemble_network_fn(models)
+        if spec.get("mirror"):
+            nets = [BatchNetwork(m) for m in models]
+            net = nets[0] if len(nets) == 1 else EnsembleNetwork(nets)
+            network_fn = batch_to_single_fn(MirrorNetwork(net))
+        elif len(models) == 1:
+            network_fn = make_network_fn(models[0])
+        else:
+            network_fn = make_ensemble_network_fn(models)
         player = make_mcts_player(
             network_fn,
             simulations=spec["simulations"],
@@ -100,6 +110,7 @@ def build_player(spec):
             temperature=spec["temperature"],
             avoid_repetition=spec["avoid_repetition"],
             reuse_tree=spec.get("reuse_tree", False),
+            gumbel=spec.get("gumbel", False),
         )
     else:
         raise ValueError(f"unknown player kind: {kind!r}")
@@ -130,7 +141,7 @@ def _play_batch(task):
     Several games side by side, with each MCTS side's positions evaluated
     in one batch on device. The same games as _play, game by game.
     """
-    from network.agent import EnsembleNetwork, make_batch_network_fn
+    from network.agent import EnsembleNetwork, MirrorNetwork, make_batch_network_fn
     from training.batched_self_play import play_keyed_games_batched
 
     indices, spec_a, spec_b, seed, max_plies, device = task
@@ -140,6 +151,8 @@ def _play_batch(task):
         if spec["kind"] == "mcts":
             nets = [make_batch_network_fn(m, device=device, cpu_below=4) for m in _models(spec)]
             networks[key] = nets[0] if len(nets) == 1 else EnsembleNetwork(nets)
+            if spec.get("mirror"):
+                networks[key] = MirrorNetwork(networks[key])
     games = []
     for g in indices:
         a_is_white = g % 2 == 0
@@ -228,6 +241,12 @@ def main(argv=None):
                    help="A keeps its search tree between moves")
     p.add_argument("--reuse_b", action="store_true",
                    help="B keeps its search tree between moves")
+    p.add_argument("--gumbel_a", action="store_true",
+                   help="A chooses moves with the Gumbel search (no noise) instead of PUCT")
+    p.add_argument("--gumbel_b", action="store_true", help="the same for B")
+    p.add_argument("--mirror_a", action="store_true",
+                   help="A averages each evaluation with the left-right mirrored board")
+    p.add_argument("--mirror_b", action="store_true", help="the same for B")
     p.add_argument("--temperature", type=float, default=0.3)
     p.add_argument("--max_plies", type=int, default=800)
     p.add_argument("--seed", type=int, default=0)
@@ -240,14 +259,20 @@ def main(argv=None):
     sims_a = args.simulations_a or args.simulations
     sims_b = args.simulations_b or args.simulations
 
-    def spec(network, simulations, reuse, c_puct):
+    def spec(network, simulations, reuse, c_puct, gumbel=False, mirror=False):
         return mcts_spec(network, seed=args.seed, simulations=simulations, c_puct=c_puct,
-                         temperature=args.temperature, reuse_tree=reuse)  # fmt: skip
+                         temperature=args.temperature, reuse_tree=reuse, gumbel=gumbel,
+                         mirror=mirror)  # fmt: skip
 
     sims = f"{sims_a} sims" if sims_a == sims_b else f"A {sims_a} sims, B {sims_b} sims"
     for side, reuse in (("A", args.reuse_a), ("B", args.reuse_b)):
         if reuse:
             sims += f", {side} keeps its tree"
+    for side, g, m in (("A", args.gumbel_a, args.mirror_a), ("B", args.gumbel_b, args.mirror_b)):
+        if g:
+            sims += f", {side} plays with the Gumbel search"
+        if m:
+            sims += f", {side} averages with the mirrored board"
     if (args.c_puct_a, args.c_puct_b) != (1.5, 1.5):
         sims += f", c_puct A {args.c_puct_a} B {args.c_puct_b}"
     print(
@@ -263,8 +288,9 @@ def main(argv=None):
 
     pool = make_pool(args.workers) if args.workers > 1 else None
     try:
-        c = play_match_parallel(spec(args.a, sims_a, args.reuse_a, args.c_puct_a),
-                                spec(args.b, sims_b, args.reuse_b, args.c_puct_b), args.games, args.seed,
+        c = play_match_parallel(spec(args.a, sims_a, args.reuse_a, args.c_puct_a, args.gumbel_a, args.mirror_a),
+                                spec(args.b, sims_b, args.reuse_b, args.c_puct_b, args.gumbel_b, args.mirror_b),
+                                args.games, args.seed,
                                 args.max_plies, pool, show, device=args.device)  # fmt: skip
     finally:
         if pool is not None:

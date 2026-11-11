@@ -201,6 +201,9 @@ def parse_args(argv=None):
     )
     p.add_argument("--gumbel_actions", type=int, default=16,
                    help="moves the Gumbel search considers at the root")  # fmt: skip
+    p.add_argument("--gumbel_scale", type=float, default=0.1,
+                   help="weight of searched values against the prior in the Gumbel "
+                   "search (mctx value_scale)")  # fmt: skip
     p.add_argument(
         "--opponent_checkpoints",
         default=None,
@@ -419,6 +422,7 @@ _SELF_PLAY_KEYS = (
     "full_fraction",
     "gumbel",
     "gumbel_actions",
+    "gumbel_scale",
 )
 
 # Per-process state of a self-play worker: the network it is currently
@@ -469,6 +473,7 @@ def _play_one_game(task):
         full_fraction=settings["full_fraction"],
         gumbel=settings["gumbel"],
         gumbel_actions=settings["gumbel_actions"],
+        gumbel_scale=settings["gumbel_scale"],
         **_resign_settings(settings, _check_rng(seed)),
     )
     compact = [compact_example(t, p, v) for t, p, v in examples]
@@ -500,6 +505,7 @@ def _game_steps(settings, seed, start_moves=None, record_moves=False, opponent_c
         full_fraction=settings["full_fraction"],
         gumbel=settings["gumbel"],
         gumbel_actions=settings["gumbel_actions"],
+        gumbel_scale=settings["gumbel_scale"],
         num_simulations=settings["simulations"],
         c_puct=settings["c_puct"],
         temperature_moves=settings["temperature_moves"],
@@ -699,6 +705,7 @@ def run_self_play(model, args, rng):
             full_fraction=args.full_fraction,
             gumbel=args.gumbel,
             gumbel_actions=args.gumbel_actions,
+            gumbel_scale=args.gumbel_scale,
             **_resign_settings(settings, rng),
         )
         examples_per_game.append(examples)

@@ -164,6 +164,7 @@ OMP_NUM_THREADS=1 python -m training.train --res_blocks 6 --filters 128 \
 | `--mirror` | off | Flip half the sampled training positions left to right (files a and h swapped), a symmetry of the rules. |
 | `--opponent_checkpoints`, `--opponent_fraction` | off, 0.0 | Share of games played against earlier checkpoints (comma-separated, one per iteration in turn); only the current network's moves are recorded. |
 | `--gumbel`, `--gumbel_actions` | off, 16 | Gumbel root search in self-play (`mcts/gumbel.py`): Sequential Halving over sampled moves, improved-policy targets, no Dirichlet noise. |
+| `--gumbel_scale` | 0.1 | Weight of the searched values against the prior in the Gumbel search (mctx `value_scale`). |
 | `--moves_left_weight` | 0.0 | A training-only head predicts how many plies each game still lasts; its loss, times this weight, also trains the shared backbone. Saved networks are unchanged. |
 | `--reanalyse_games`, `--reanalyse_window` | 0, 5 | Each iteration also re-searches this many games from the last few iterations with the current network (MuZero Reanalyse) and adds them with fresh policy targets. |
 

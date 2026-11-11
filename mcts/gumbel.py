@@ -33,8 +33,8 @@ C_VISIT = 50.0
 C_SCALE = 0.1
 
 
-def _sigma(q, max_visits):
-    return (C_VISIT + max_visits) * C_SCALE * q
+def _sigma(q, max_visits, c_scale=C_SCALE):
+    return (C_VISIT + max_visits) * c_scale * q
 
 
 def completed_q(prior, q, visits, root_value):
@@ -57,12 +57,17 @@ def completed_q(prior, q, visits, root_value):
 
 def gumbel_search(root_state, num_simulations, c_puct, state_to_tensor_fn,
                   legal_action_mask_fn, action_to_move_fn, rng, max_considered=16,
-                  stats=None):  # fmt: skip
+                  stats=None, c_scale=C_SCALE, noise=True):  # fmt: skip
     """
     Generator like mcts_search (yields state tensors, takes (logits, value)).
     Returns (policy_target float32[4096], action id to play), or
     (zeros, None) if the game is already over. stats["root_value"] is set
     as in mcts_search.
+
+    c_scale: weight of the searched values against the prior (mctx's
+    value_scale, 0.1 by default). noise: False plays without Gumbel noise
+    (for matches), so the search is deterministic: the top moves by prior
+    are considered and the best by prior plus searched value is played.
     """
     root = MCTSNode(root_state)
     raw_value = yield from _evaluate_and_expand(root, state_to_tensor_fn, legal_action_mask_fn,
@@ -73,7 +78,7 @@ def gumbel_search(root_state, num_simulations, c_puct, state_to_tensor_fn,
     actions = np.array(list(children), dtype=np.int64)
     prior = np.array([children[a].prior for a in actions], dtype=np.float64)
     logits = np.log(np.maximum(prior, 1e-12))  # log-prior: the logits up to a constant
-    gumbel = rng.gumbel(size=len(actions))
+    gumbel = rng.gumbel(size=len(actions)) if noise else np.zeros(len(actions))
 
     def simulate(index):
         node = children[int(actions[index])]
@@ -113,15 +118,15 @@ def gumbel_search(root_state, num_simulations, c_puct, state_to_tensor_fn,
         if last:
             break
         q, visits = q_and_visits()
-        score = gumbel + logits + _sigma(completed_q(prior, q, visits, raw_value), visits.max())
+        score = gumbel + logits + _sigma(completed_q(prior, q, visits, raw_value), visits.max(), c_scale)
         considered = sorted(considered, key=lambda i: -score[i])[: max(1, len(considered) // 2)]
 
     q, visits = q_and_visits()
     cq = completed_q(prior, q, visits, raw_value)
-    improved = logits + _sigma(cq, visits.max())
+    improved = logits + _sigma(cq, visits.max(), c_scale)
     improved = np.exp(improved - improved.max())
     improved /= improved.sum()
-    score = gumbel + logits + _sigma(cq, visits.max())
+    score = gumbel + logits + _sigma(cq, visits.max(), c_scale)
     chosen = max(considered, key=lambda i: score[i])
 
     policy = np.zeros(4096, dtype=np.float32)
