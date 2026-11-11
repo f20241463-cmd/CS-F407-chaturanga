@@ -2075,6 +2075,7 @@ means "as strong as the final model". The files are in
 | Older opponents (training) | A quarter of practice games are against earlier versions of itself | 9 | 10 | 178 | 0.497 |
 | Gumbel search in practice (training, 400 games) | Practice games use a different way of spending the 50 simulations, and learn from a smarter target | 40 | 8 | 351 | 0.540 |
 | Gumbel, 60 more rounds (training) | The Gumbel model kept training from round 620 to 680 | 40 | 3 | 156 | 0.593 |
+| Gumbel, 120 more rounds (training) | The Gumbel model kept training from round 680 to 740 | 69 | 5 | 124 | 0.662 |
 | Gumbel plus three other ideas (training) | Like the row above, with mirrored boards, extra weight on games with a winner and late starts switched on too | 40 | 7 | 148 | 0.585 |
 | Predicting moves left (training) | While learning, the network also guesses how many moves the game has left | 7 | 14 | 178 | 0.482 |
 | Reanalysing old games (training) | Each round, 50 recent games are searched again with the newer network to give fresher lessons | 4 | 12 | 179 | 0.479 |
@@ -2147,6 +2148,20 @@ We then let the Gumbel model keep training for 60 more rounds (620 to
 model (0.593), and 16 wins against 10 losses against Gumbel round 620. Every
 earlier attempt to keep training the final model stalled, so this is the
 first sign of real progress since round 560. We are training it further.
+
+And it kept going. Round 740 beat the final model by 69 wins to 5 (0.662)
+and Gumbel 680 by 28 wins to 10. Its practice games also changed: about a
+quarter now have a winner, against about 15% before, which gives the value
+head more to learn from.
+
+**Is Gumbel within the project rules?** Yes. The proposal asks for an MCTS
+guided by the network's move preferences, with positions judged by the
+value head instead of random playouts, 30 to 50 simulations per move in
+training, the same network and loss, and no knowledge beyond the rules.
+Gumbel keeps all of that: it is the same tree search with 50 simulations,
+and only the top of the tree in practice games works differently. The PUCT
+formula the proposal names is still used below the top of the tree, and in
+every match and in the browser game.
 
 **Combining ideas.** A second run also started from Gumbel round 620 and
 trained to 680, but with mirrored boards, extra weight on games with a
