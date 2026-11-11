@@ -679,6 +679,7 @@ benchmark protocol (50 simulations, temperature 0.3). The options are in
 | Gumbel self-play, 400 games | Self-play uses Gumbel root search (Sequential Halving over 16 sampled moves) and trains on its improved policy instead of visit counts; matches still use plain PUCT | 40 | 8 | 351 | 0.540 +/- 0.017 |
 | Gumbel self-play, 60 more iterations (680) | The Gumbel model continued from 620 to 680 with the same settings | 40 | 3 | 156 | 0.593 +/- 0.030 |
 | Gumbel self-play, 120 more iterations (740) | The Gumbel model continued from 680 to 740 with the same settings | 69 | 5 | 124 | 0.662 +/- 0.036 |
+| Gumbel self-play, 180 more iterations (800) | The Gumbel model continued from 740 to 800 with the same settings | 88 | 3 | 108 | 0.714 +/- 0.036 |
 | Gumbel plus mirror, decisive weight and late starts (680) | Same start (Gumbel 620) and length as the row above, with the three ideas that came out even or slightly above added | 40 | 7 | 148 | 0.585 +/- 0.032 |
 | Moves-left head | A training-only head predicts how many plies the game still lasts (loss weight 0.1), so the shared layers learn it too | 7 | 14 | 178 | 0.482 +/- 0.022 |
 | Reanalyse | Each iteration also searches every position of 50 games from the last 5 iterations again with the current network and adds them with fresh policy targets | 4 | 12 | 179 | 0.479 +/- 0.020 |
@@ -715,7 +716,10 @@ every other continuation of the final model, this one is still improving,
 so we are training it further. Iteration 740 scored 0.662 +/- 0.036
 against 560 (69 wins, 5 losses) and 0.545 +/- 0.030 against Gumbel 680
 (28 wins, 10 losses), and 23.5% of its self-play games were decisive, against
-about 15% before.
+about 15% before. Iteration 800 improved again: 0.714 +/- 0.036 against 560
+(88 wins, 3 losses) and 0.557 +/- 0.035 against Gumbel 740 (39 wins,
+16 losses), with 28% of its self-play games decisive. Training continues in
+steps of 60 iterations for as long as each step beats the one before.
 
 Gumbel self-play stays within the project specification: it is still an MCTS
 guided by the network's policy priors with leaves evaluated by the value head
