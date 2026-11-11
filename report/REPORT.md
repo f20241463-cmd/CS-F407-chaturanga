@@ -678,6 +678,7 @@ benchmark protocol (50 simulations, temperature 0.3). The options are in
 | Older opponents | A quarter of self-play games are against iteration 300, 420, 520 or 540 (in turn); only the current network's moves are trained on | 9 | 10 | 178 | 0.497 +/- 0.022 |
 | Gumbel self-play, 400 games | Self-play uses Gumbel root search (Sequential Halving over 16 sampled moves) and trains on its improved policy instead of visit counts; matches still use plain PUCT | 40 | 8 | 351 | 0.540 +/- 0.017 |
 | Gumbel self-play, 60 more iterations (680) | The Gumbel model continued from 620 to 680 with the same settings | 40 | 3 | 156 | 0.593 +/- 0.030 |
+| Gumbel plus mirror, decisive weight and late starts (680) | Same start (Gumbel 620) and length as the row above, with the three ideas that came out even or slightly above added | 40 | 7 | 148 | 0.585 +/- 0.032 |
 | Moves-left head | A training-only head predicts how many plies the game still lasts (loss weight 0.1), so the shared layers learn it too | 7 | 14 | 178 | 0.482 +/- 0.022 |
 | Reanalyse | Each iteration also searches every position of 50 games from the last 5 iterations again with the current network and adds them with fresh policy targets | 4 | 12 | 179 | 0.479 +/- 0.020 |
 
@@ -710,7 +711,16 @@ the Gumbel run for 60 more iterations made it stronger again: iteration 680
 scored 0.593 +/- 0.030 against iteration 560 (40 wins, 3 losses) and
 0.515 +/- 0.025 against Gumbel iteration 620 (16 wins, 10 losses). Unlike
 every other continuation of the final model, this one is still improving,
-so we are training it further. Its policy loss is lower
+so we are training it further.
+
+To see whether the ideas that came out even or slightly above add anything on
+top of Gumbel, a second run from Gumbel 620 to 680 also used mirror
+augmentation, decisive-game weight 3 and late starts. It scored 0.585 against
+560, like Gumbel alone, and 0.495 +/- 0.030 against Gumbel 680 (18 wins,
+20 losses), so they add nothing. Averaging three networks (this run, Gumbel
+680 and Gumbel 620) scored 0.530 +/- 0.028 against Gumbel 680 (23 wins, 11
+losses), a small gain for three times the cost per move, which we again did
+not adopt. Its policy loss is lower
 (1.90 against about 2.35) only because the target is different, so the
 losses are not comparable.
 

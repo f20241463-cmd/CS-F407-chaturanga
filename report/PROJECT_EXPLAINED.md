@@ -2075,6 +2075,7 @@ means "as strong as the final model". The files are in
 | Older opponents (training) | A quarter of practice games are against earlier versions of itself | 9 | 10 | 178 | 0.497 |
 | Gumbel search in practice (training, 400 games) | Practice games use a different way of spending the 50 simulations, and learn from a smarter target | 40 | 8 | 351 | 0.540 |
 | Gumbel, 60 more rounds (training) | The Gumbel model kept training from round 620 to 680 | 40 | 3 | 156 | 0.593 |
+| Gumbel plus three other ideas (training) | Like the row above, with mirrored boards, extra weight on games with a winner and late starts switched on too | 40 | 7 | 148 | 0.585 |
 | Predicting moves left (training) | While learning, the network also guesses how many moves the game has left | 7 | 14 | 178 | 0.482 |
 | Reanalysing old games (training) | Each round, 50 recent games are searched again with the newer network to give fresher lessons | 4 | 12 | 179 | 0.479 |
 
@@ -2146,6 +2147,15 @@ We then let the Gumbel model keep training for 60 more rounds (620 to
 model (0.593), and 16 wins against 10 losses against Gumbel round 620. Every
 earlier attempt to keep training the final model stalled, so this is the
 first sign of real progress since round 560. We are training it further.
+
+**Combining ideas.** A second run also started from Gumbel round 620 and
+trained to 680, but with mirrored boards, extra weight on games with a
+winner, and late starts switched on as well. Against the final model it did
+as well as Gumbel alone (0.585), and against Gumbel 680 it was even (18
+wins, 20 losses). So the other ideas add nothing on top of Gumbel. Letting
+three of these networks vote on each move (this one, Gumbel 680 and Gumbel
+620) beat Gumbel 680 by 23 wins to 11, but it thinks three times slower, so
+we did not use it.
 
 **Predicting moves left.** Most practice games are draws, which tell the
 value head almost nothing. But every game, drawn or not, says how many moves

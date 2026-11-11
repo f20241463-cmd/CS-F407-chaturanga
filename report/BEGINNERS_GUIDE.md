@@ -346,7 +346,8 @@ agent a better lesson from each move. This one **beat the final model**: 17
 wins against 5 losses. 200 more games went even better (23 wins against
 3 losses), so it was not luck. After 60 more rounds of
 practice it was stronger still: **40 wins against 3 losses** against the
-final model. We are letting it practise more. Then: also teaching the agent to guess how many moves a game has
+final model. We are letting it practise more. Adding
+the other ideas on top of Gumbel made **no difference**. Then: also teaching the agent to guess how many moves a game has
 left. **No improvement**. Last: going back over recent practice games with
 the newer network to give fresher lessons. **No improvement** either.
 
