@@ -168,7 +168,7 @@ In plain terms, the finished project has:
    older versions of itself, so we can tell whether it is improving.
 6. **Two ways to play against it**: by typing moves in a text window, and by
    clicking on a board in the web browser.
-7. **157 automatic checks** (called **tests**) that make sure every part
+7. **164 automatic checks** (called **tests**) that make sure every part
    works correctly. If anyone breaks something, a test fails and shows
    exactly what.
 

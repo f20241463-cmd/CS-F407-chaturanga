@@ -81,7 +81,10 @@ The Gumbel root search of Danihelka et al. (2022) for few simulations:
 Gumbel-top-k sampling of up to 16 root moves, Sequential Halving between
 them, and the improved policy softmax(logit + sigma(completed q)) as the
 training target. Below the root it uses the ordinary PUCT selection. Turned
-on with `training.train --gumbel`.
+on with `training.train --gumbel` (`--gumbel_actions` moves, `--gumbel_scale`
+for the weight of searched values, 0.1 by default). With `noise=False` it is
+deterministic and can choose moves in matches (`evaluation.players.
+gumbel_move_steps`, `parallel_match --gumbel_a/--gumbel_b`).
 
 ## Design notes
 

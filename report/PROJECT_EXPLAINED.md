@@ -85,7 +85,7 @@ learns entirely by playing against itself.
    matches between versions of the AI, analysis of how games end, and a
    system for logging games against humans.
 6. A **terminal game** and a **browser game** to play against the AI.
-7. **157 automated tests** that check every part.
+7. **164 automated tests** that check every part.
 
 **What happened.**
 
@@ -300,7 +300,7 @@ A **unit test** is a small program that checks that one piece of code does
 what it should, for example "a horse on b1 can move to a3 and c3 and nowhere
 else" or "after checkmate, the result is a loss for the side to move". Tests
 are run with `python -m pytest -q`. If someone changes code and breaks
-something, a test fails and shows exactly what broke. The project has 157
+something, a test fails and shows exactly what broke. The project has 164
 tests, and all of them pass.
 
 ## Random seeds and reproducibility
@@ -2994,9 +2994,9 @@ for conv_name, bn_name in _CONV_BN_PAIRS:
 
 # Every test, explained
 
-*In short: All 157 automated tests, in plain words.*
+*In short: All 164 automated tests, in plain words.*
 
-There are 157 automated tests in 12 files. Each test name describes what it
+There are 164 automated tests in 13 files. Each test name describes what it
 checks. Here they are, translated into plain words.
 
 ## Rules engine: `test_chaturanga.py` (36 tests)
@@ -3156,6 +3156,17 @@ checks. Here they are, translated into plain words.
   run with several averaged networks.
 - Short training runs with each new option.
 
+## More Gumbel options: `test_gumbel_extras.py` (7 tests)
+
+- Mirror averaging: the answers for a position and its mirror image are
+  mirror images of each other; the mirror of a mirrored move is the move.
+- Gumbel without noise picks the same move whatever the random seed.
+- With the value scale at 0 the Gumbel target is exactly the network's own
+  move preferences.
+- A player using the Gumbel search finishes legal games, and matches run
+  with Gumbel and mirror-averaging sides.
+- The training option for the value scale reaches the practice games.
+
 ## Keeping the search: `test_tree_reuse.py` (5 tests)
 
 - After a move, the branch for the opponent's reply comes back with its
@@ -3201,7 +3212,7 @@ draws."
    diagram).
 4. **The constraints**: rules only, 30 to 50 simulations, 4 to 6 blocks,
    4096 actions.
-5. **What we built**: the five parts and 157 tests.
+5. **What we built**: the five parts and 164 tests.
 6. **First runs**: no improvement, with the benchmark graph.
 7. **Diagnosis**: too little data, draws starve the value head, long games.
 8. **Speed-up**: 259 to 19 ms per move, workers, GPU.
@@ -3349,7 +3360,7 @@ one clear gain left is outside training: more search at play time.
 | Search | PUCT MCTS, c_puct 1.5, 50 simulations in training, Dirichlet noise alpha 0.3 weight 0.25 |
 | Action space | 4096 (64 x 64) |
 | Position encoding | 13 planes of 8 x 8 |
-| Automated tests | 157 |
+| Automated tests | 164 |
 | First runs | 2 x 400 games, about 7 hours each, no measurable gain |
 | Speed-up | 259 to 19 ms per move (about 11 times faster per move), plus 6 workers, plus GPU self-play (about 2.2 to 2.4 times faster again) |
 | Long run | 540 iterations, 54,000 games, about 23.7 million positions, about 144 hours |
@@ -3463,7 +3474,7 @@ evaluation/   baseline players, benchmark, matches, game endings, human log, res
 results/      every training log, benchmark CSV, match log, plot and the results write-up
 models/       the final trained network (chaturangzero_final.pt)
 web/          the board page for the browser game
-tests/        157 automated tests
+tests/        164 automated tests
 report/       the report (REPORT.md and REPORT.docx) and this document
 ```
 
@@ -3559,7 +3570,7 @@ git pull
 python -m pytest -q
 ```
 
-This runs all 157 tests and should end with "157 passed". It takes about a
+This runs all 164 tests and should end with "164 passed". It takes about a
 minute.
 
 ## Step 5: play against the AI
@@ -3586,7 +3597,7 @@ The browser opens with the board. Press Ctrl+C in the terminal to stop.
 *In short: The commands for the tests, the games, a small training run and a match.*
 
 ```
-python -m pytest -q                                   # all 157 tests
+python -m pytest -q                                   # all 164 tests
 python play_web.py --player NAME                      # play in the browser
 python play_vs_ai.py --checkpoint models/chaturangzero_final.pt --player NAME --simulations 1600
 python play_vs_ai.py --summary --checkpoint models/chaturangzero_final.pt
