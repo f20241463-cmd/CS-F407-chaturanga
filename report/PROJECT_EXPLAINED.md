@@ -2074,6 +2074,7 @@ means "as strong as the final model". The files are in
 | Mirrored boards (training) | Half of the positions it learns from are flipped left to right | 13 | 9 | 177 | 0.510 |
 | Older opponents (training) | A quarter of practice games are against earlier versions of itself | 9 | 10 | 178 | 0.497 |
 | Gumbel search in practice (training, 400 games) | Practice games use a different way of spending the 50 simulations, and learn from a smarter target | 40 | 8 | 351 | 0.540 |
+| Gumbel, 60 more rounds (training) | The Gumbel model kept training from round 620 to 680 | 40 | 3 | 156 | 0.593 |
 | Predicting moves left (training) | While learning, the network also guesses how many moves the game has left | 7 | 14 | 178 | 0.482 |
 | Reanalysing old games (training) | Each round, 50 recent games are searched again with the newer network to give fresher lessons | 4 | 12 | 179 | 0.479 |
 
@@ -2139,6 +2140,12 @@ final model by more than luck: 17 wins against 5 losses, a score of 0.530
 (+/- 0.023). 200 more games with new random seeds went even better: 23 wins
 against 3 losses (0.550). Over all 400 games that is 40 wins against 8
 losses, 0.540 +/- 0.017, so it is not luck.
+
+We then let the Gumbel model keep training for 60 more rounds (620 to
+680). It got stronger again: 40 wins against 3 losses against the final
+model (0.593), and 16 wins against 10 losses against Gumbel round 620. Every
+earlier attempt to keep training the final model stalled, so this is the
+first sign of real progress since round 560. We are training it further.
 
 **Predicting moves left.** Most practice games are draws, which tell the
 value head almost nothing. But every game, drawn or not, says how many moves

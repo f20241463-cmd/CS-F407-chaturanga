@@ -677,6 +677,7 @@ benchmark protocol (50 simulations, temperature 0.3). The options are in
 | Mirror augmentation | Each sampled position is flipped left to right with probability 0.5 (a symmetry of the rules, checked by a test) | 13 | 9 | 177 | 0.510 +/- 0.023 |
 | Older opponents | A quarter of self-play games are against iteration 300, 420, 520 or 540 (in turn); only the current network's moves are trained on | 9 | 10 | 178 | 0.497 +/- 0.022 |
 | Gumbel self-play, 400 games | Self-play uses Gumbel root search (Sequential Halving over 16 sampled moves) and trains on its improved policy instead of visit counts; matches still use plain PUCT | 40 | 8 | 351 | 0.540 +/- 0.017 |
+| Gumbel self-play, 60 more iterations (680) | The Gumbel model continued from 620 to 680 with the same settings | 40 | 3 | 156 | 0.593 +/- 0.030 |
 | Moves-left head | A training-only head predicts how many plies the game still lasts (loss weight 0.1), so the shared layers learn it too | 7 | 14 | 178 | 0.482 +/- 0.022 |
 | Reanalyse | Each iteration also searches every position of 50 games from the last 5 iterations again with the current network and adds them with fresh policy targets | 4 | 12 | 179 | 0.479 +/- 0.020 |
 
@@ -704,7 +705,12 @@ softmax(logits + sigma(completed Q)), which gives every legal move a target
 from its prior and, where it was searched, its value. It is the only idea
 whose margin stays above 0.5: 17 wins against 5 losses (0.530 +/- 0.023) in
 the first 200 games, and 23 against 3 (0.550 +/- 0.024) in a second 200 with
-new seeds, so 0.540 +/- 0.017 over 400 games. Its policy loss is lower
+new seeds, so 0.540 +/- 0.017 over 400 games. Continuing
+the Gumbel run for 60 more iterations made it stronger again: iteration 680
+scored 0.593 +/- 0.030 against iteration 560 (40 wins, 3 losses) and
+0.515 +/- 0.025 against Gumbel iteration 620 (16 wins, 10 losses). Unlike
+every other continuation of the final model, this one is still improving,
+so we are training it further. Its policy loss is lower
 (1.90 against about 2.35) only because the target is different, so the
 losses are not comparable.
 
