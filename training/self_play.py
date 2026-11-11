@@ -221,6 +221,7 @@ def self_play_game_steps(
     opponent_color=None,
     gumbel=False,
     gumbel_actions=16,
+    gumbel_scale=0.1,
 ):
     """
     play_self_play_game as a generator: yields a state tensor whenever the
@@ -253,7 +254,8 @@ def self_play_game_steps(
     full searches use mcts.gumbel.gumbel_search instead: the move is the
     one its Sequential Halving picks among gumbel_actions sampled moves,
     and the policy target is its improved policy. No Dirichlet noise or
-    temperature: the Gumbel sampling is the exploration.
+    temperature: the Gumbel sampling is the exploration. gumbel_scale is
+    the search's c_scale (weight of searched values against the prior).
     """
     if num_simulations < 1:
         raise ValueError("num_simulations must be at least 1")
@@ -278,6 +280,7 @@ def self_play_game_steps(
         search = gumbel_search(
             state, num_simulations, c_puct, encoding.state_to_tensor, encoding.legal_action_mask,
             encoding.action_to_move, rng, max_considered=gumbel_actions, stats=stats,
+            c_scale=gumbel_scale,
         ) if use_gumbel else mcts_search(
             state,
             num_simulations if full else fast_simulations,
