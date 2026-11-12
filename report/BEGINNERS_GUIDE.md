@@ -353,7 +353,9 @@ rounds later it won **69 games and lost 5** against the final model, and
 only just beat the one before, and did a little worse against the final
 model. So the recent versions all played each other. The two newest
 (rounds 1040 and 1100) came out on top, tied with each other, and round
-1100 is now the best version. Adding
+1100 is now the best version. Then we tried small changes to how it
+practises. The first one, making it learn in **smaller steps**, worked:
+the new version beat round 1100 by **63 wins to 28**. Adding
 the other ideas on top of Gumbel made **no difference**. Then: also teaching the agent to guess how many moves a game has
 left. **No improvement**. Last: going back over recent practice games with
 the newer network to give fresher lessons. **No improvement** either.

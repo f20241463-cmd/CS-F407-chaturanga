@@ -590,6 +590,13 @@ Round robin of the Gumbel models from 800 on (200 games a pair; row model's scor
 | 860 | 0.590 | - | 0.470 | 0.500 | 0.398 | 0.482 | 0.488 |
 | 800 | - | 0.410 | 0.365 | 0.405 | 0.422 | 0.399 | 0.400 |
 
+Tuning the Gumbel run: each row continues 1100 for 60 iterations with one change (files in `last_ideas/tuning/`).
+
+| Change (60 more iterations from 1100) | Against 1100 (W-L-D) | Score against 1100 | Score against 560 |
+|---|---|---|---|
+| None: the last chain step, 1040 to 1100, for reference | 40-36-124 (against 1040) | 0.510 +/- 0.043 | 0.679 +/- 0.045 |
+| Learning rate 3e-5 instead of 1e-4 | 63-28-109 | 0.588 +/- 0.045 | 0.719 +/- 0.041 |
+
 ## Limitations
 
 The stub-network results measure what search depth alone contributes, with no learned signal involved. The simulation-depth sweep's per-depth samples (1 to 4 decided games each) are too small to support a confident claim about how win rate scales with simulation count specifically; the pooled across-depth result is the more defensible number from that data. The benchmarks of the 400-game runs use 20 games per checkpoint, so their margins are about +/- 0.1; the long-run matches and benchmarks use 100 games (200 for the last comparison), with margins of about +/- 0.03 to 0.06. Differences smaller than that cannot be resolved, and with most games drawn a score says little about how often the model can actually win. The human games are sixteen games by two players: six by a beginner against final B and ten by an experienced player (FIDE blitz rating 1641) against the final model.
