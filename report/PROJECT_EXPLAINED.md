@@ -2195,11 +2195,15 @@ several times, each time with one setting changed, and each result plays
 |---|---|---|---|
 | None: the last chain step, 1040 to 1100, for reference | 40-36-124 (against 1040) | 0.510 +/- 0.043 | 0.679 +/- 0.045 |
 | Learning rate 3e-5 instead of 1e-4 | 63-28-109 | 0.588 +/- 0.045 | 0.719 +/- 0.041 |
+| Learning rate 3e-5, 60 more iterations (1220) | 59-35-104 (against the 3e-5 model at 1160) | 0.561 +/- 0.047 | 0.814 +/- 0.036 |
 | 8 root moves considered instead of 16 | 30-86-84 | 0.360 +/- 0.049 | 0.693 +/- 0.040 |
 
 The first change, a smaller learning rate (the size of each correction),
 clearly helped: 63 wins to 28 against 1100, and 0.719 against the final
-model. Smaller steps seem to let the network keep what it already knows. Looking
+model. Smaller steps seem to let the network keep what it already knows. Training
+it 60 more rounds with the same small steps (to round 1220) helped again:
+59 wins to 35 against round 1160, and 128 wins to 3 against the final
+model (0.814), the best of any version so far. Looking
 at only 8 candidate moves at the start of each search, instead of 16,
 clearly hurt: 30 wins to 86 against 1100. With fewer candidates, good
 moves get missed.
