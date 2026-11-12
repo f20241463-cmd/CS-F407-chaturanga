@@ -1,0 +1,7 @@
+iter_1100 0.556
+iter_1040 0.556
+iter_0920 0.502
+iter_0980 0.498
+iter_0860 0.488
+iter_0800 0.4
+BEST checkpoints/ideas/gumbel_chain_1100/iter_1100.pt 1100

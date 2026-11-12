@@ -1,0 +1,1 @@
+checkpoints/ideas/gumbel_more3/iter_0800.pt checkpoints/ideas/gumbel_chain_0860/iter_0860.pt checkpoints/ideas/gumbel_chain_0920/iter_0920.pt checkpoints/ideas/gumbel_chain_0980/iter_0980.pt checkpoints/ideas/gumbel_chain_1040/iter_1040.pt checkpoints/ideas/gumbel_chain_1100/iter_1100.pt
