@@ -683,6 +683,7 @@ benchmark protocol (50 simulations, temperature 0.3). The options are in
 | Gumbel self-play, 240 more iterations (860) | The Gumbel model continued from 800 to 860 with the same settings | 120 | 2 | 77 | 0.796 +/- 0.036 |
 | Gumbel self-play, 300 more iterations (920) | The Gumbel model continued from 860 to 920 with the same settings | 112 | 6 | 82 | 0.765 +/- 0.039 |
 | Gumbel self-play, 360 more iterations (980) | The Gumbel model continued from 920 to 980 with the same settings | 107 | 11 | 82 | 0.740 +/- 0.042 |
+| Gumbel self-play, 420 more iterations (1040) | The Gumbel model continued from 980 to 1040 with the same settings | 89 | 7 | 103 | 0.706 +/- 0.039 |
 | Gumbel plus mirror, decisive weight and late starts (680) | Same start (Gumbel 620) and length as the row above, with the three ideas that came out even or slightly above added | 40 | 7 | 148 | 0.585 +/- 0.032 |
 | Moves-left head | A training-only head predicts how many plies the game still lasts (loss weight 0.1), so the shared layers learn it too | 7 | 14 | 178 | 0.482 +/- 0.022 |
 | Reanalyse | Each iteration also searches every position of 50 games from the last 5 iterations again with the current network and adds them with fresh policy targets | 4 | 12 | 179 | 0.479 +/- 0.020 |
@@ -728,8 +729,9 @@ stopped at iteration 806 by a laptop shutdown and resumed from the saved
 checkpoint, refilling the replay buffer first.) After that the gains became
 small. Iteration 920 scored 0.518 +/- 0.044 against Gumbel 860 (44 wins,
 37 losses) and 980 scored 0.552 +/- 0.045 against 920 (53 wins, 32 losses),
-but against iteration 560 the scores went down: 0.796 (860), 0.765 (920),
-0.740 (980). Each step beats the one before by a little, yet may not be
+and 1040 scored 0.515 +/- 0.042 against 980 (40 wins, 34 losses), but
+against iteration 560 the scores went down: 0.796 (860), 0.765 (920),
+0.740 (980), 0.706 (1040). Each step beats the one before by a little, yet may not be
 stronger overall, so the newest model is not automatically the best. To
 choose, every Gumbel model from 800 on plays every other in a round robin
 once the training ends.

@@ -2080,6 +2080,7 @@ means "as strong as the final model". The files are in
 | Gumbel, 240 more rounds (training) | The Gumbel model kept training from round 800 to 860 | 120 | 2 | 77 | 0.796 |
 | Gumbel, 300 more rounds (training) | The Gumbel model kept training from round 860 to 920 | 112 | 6 | 82 | 0.765 |
 | Gumbel, 360 more rounds (training) | The Gumbel model kept training from round 920 to 980 | 107 | 11 | 82 | 0.740 |
+| Gumbel, 420 more rounds (training) | The Gumbel model kept training from round 980 to 1040 | 89 | 7 | 103 | 0.706 |
 | Gumbel plus three other ideas (training) | Like the row above, with mirrored boards, extra weight on games with a winner and late starts switched on too | 40 | 7 | 148 | 0.585 |
 | Predicting moves left (training) | While learning, the network also guesses how many moves the game has left | 7 | 14 | 178 | 0.482 |
 | Reanalysing old games (training) | Each round, 50 recent games are searched again with the newer network to give fresher lessons | 4 | 12 | 179 | 0.479 |
@@ -2162,8 +2163,8 @@ Round 800 was better again: 88 wins to 3 against the final model (0.714)
 and 39 wins to 16 against Gumbel 740. Round 860 made the biggest jump yet:
 120 wins to 2 against the final model (0.796) and 68 wins to 12 against
 Gumbel 800. After that the steps got smaller: round 920 beat 860 only
-44 to 37, and 980 beat 920 53 to 32. Strangely, against the final model
-the scores went down (0.796, then 0.765, then 0.740). Beating the last
+44 to 37, 980 beat 920 53 to 32, and 1040 beat 980 40 to 34. Strangely, against the
+final model the scores went down (0.796, 0.765, 0.740, then 0.706). Beating the last
 version by a little does not prove a model is stronger overall, so at the
 end every Gumbel model from 800 on will play every other, and the one with
 the best total wins the spot. We keep training in steps of 60
