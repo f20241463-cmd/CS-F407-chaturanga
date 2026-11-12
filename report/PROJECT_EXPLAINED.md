@@ -2187,6 +2187,19 @@ Gumbel model. Why do they score lower against the final model? Probably
 because they got better at beating Gumbel-style play in particular. The
 last check, at 1600 simulations against the final model, tests this again.
 
+**Tuning the Gumbel run.** Next, round 1100 is trained for 60 more rounds
+several times, each time with one setting changed, and each result plays
+200 games against 1100 and 200 against the final model:
+
+| Change (60 more iterations from 1100) | Against 1100 (W-L-D) | Score against 1100 | Score against 560 |
+|---|---|---|---|
+| None: the last chain step, 1040 to 1100, for reference | 40-36-124 (against 1040) | 0.510 +/- 0.043 | 0.679 +/- 0.045 |
+| Learning rate 3e-5 instead of 1e-4 | 63-28-109 | 0.588 +/- 0.045 | 0.719 +/- 0.041 |
+
+The first change, a smaller learning rate (the size of each correction),
+clearly helped: 63 wins to 28 against 1100, and 0.719 against the final
+model. Smaller steps seem to let the network keep what it already knows.
+
 **Is Gumbel within the project rules?** Yes. The proposal asks for an MCTS
 guided by the network's move preferences, with positions judged by the
 value head instead of random playouts, 30 to 50 simulations per move in
