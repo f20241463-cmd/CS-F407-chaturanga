@@ -763,11 +763,15 @@ iterations with one setting changed, and plays 200 games against 1100 and
 |---|---|---|---|
 | None: the last chain step, 1040 to 1100, for reference | 40-36-124 (against 1040) | 0.510 +/- 0.043 | 0.679 +/- 0.045 |
 | Learning rate 3e-5 instead of 1e-4 | 63-28-109 | 0.588 +/- 0.045 | 0.719 +/- 0.041 |
+| 8 root moves considered instead of 16 | 30-86-84 | 0.360 +/- 0.049 | 0.693 +/- 0.040 |
 
 A lower learning rate is the first change that clearly beats the plain
 continuation: 0.588 against 1100, well outside the margin, and 0.719
 against 560, the best since iteration 920. With a smaller step the network
-keeps what it has learned instead of chasing the newest games.
+keeps what it has learned instead of chasing the newest games. Considering
+only 8 root moves in the Gumbel search clearly hurt (0.360 against 1100):
+with fewer candidates the search misses good moves more often, and the
+training targets get worse.
 
 Gumbel self-play stays within the project specification: it is still an MCTS
 guided by the network's policy priors with leaves evaluated by the value head

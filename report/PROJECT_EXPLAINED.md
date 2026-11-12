@@ -2195,10 +2195,14 @@ several times, each time with one setting changed, and each result plays
 |---|---|---|---|
 | None: the last chain step, 1040 to 1100, for reference | 40-36-124 (against 1040) | 0.510 +/- 0.043 | 0.679 +/- 0.045 |
 | Learning rate 3e-5 instead of 1e-4 | 63-28-109 | 0.588 +/- 0.045 | 0.719 +/- 0.041 |
+| 8 root moves considered instead of 16 | 30-86-84 | 0.360 +/- 0.049 | 0.693 +/- 0.040 |
 
 The first change, a smaller learning rate (the size of each correction),
 clearly helped: 63 wins to 28 against 1100, and 0.719 against the final
-model. Smaller steps seem to let the network keep what it already knows.
+model. Smaller steps seem to let the network keep what it already knows. Looking
+at only 8 candidate moves at the start of each search, instead of 16,
+clearly hurt: 30 wins to 86 against 1100. With fewer candidates, good
+moves get missed.
 
 **Is Gumbel within the project rules?** Yes. The proposal asks for an MCTS
 guided by the network's move preferences, with positions judged by the
