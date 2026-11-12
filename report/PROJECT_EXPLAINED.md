@@ -2168,9 +2168,24 @@ Gumbel 800. After that the steps got smaller: round 920 beat 860 only
 the final model the scores went down (0.796, 0.765, 0.740, 0.706, then
 0.679). Beating the last
 version by a little does not prove a model is stronger overall, so at the
-end every Gumbel model from 800 on will play every other, and the one with
-the best total wins the spot. We keep training in steps of 60
-rounds as long as each step beats the one before.
+end every Gumbel model from 800 on played every other (200 games per pair).
+Each number below is the row model's score against the column model:
+
+| Model | 800 | 860 | 920 | 980 | 1040 | 1100 | Average |
+|---|---|---|---|---|---|---|---|
+| 1100 | 0.601 | 0.518 | 0.583 | 0.580 | 0.500 | - | 0.556 |
+| 1040 | 0.578 | 0.602 | 0.543 | 0.557 | - | 0.500 | 0.556 |
+| 920 | 0.635 | 0.530 | - | 0.470 | 0.457 | 0.417 | 0.502 |
+| 980 | 0.595 | 0.500 | 0.530 | - | 0.443 | 0.420 | 0.498 |
+| 860 | 0.590 | - | 0.470 | 0.500 | 0.398 | 0.482 | 0.488 |
+| 800 | - | 0.410 | 0.365 | 0.405 | 0.422 | 0.399 | 0.400 |
+
+Played against each other, the newest models are the strongest. Rounds
+1040 and 1100 tied exactly (42 wins each) and have the same average, 0.556;
+1100 is ahead only in the fourth decimal, so round 1100 is now the best
+Gumbel model. Why do they score lower against the final model? Probably
+because they got better at beating Gumbel-style play in particular. The
+last check, at 1600 simulations against the final model, tests this again.
 
 **Is Gumbel within the project rules?** Yes. The proposal asks for an MCTS
 guided by the network's move preferences, with positions judged by the

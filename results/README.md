@@ -579,6 +579,17 @@ iterations and are measured at iteration 620; play-only ideas need no training.
 | Moves-left head, weight 0.1 (training) | 7 | 14 | 178 | 0.482 +/- 0.022 |
 | Reanalyse: 50 games from the last 5 iterations re-searched each iteration (training) | 4 | 12 | 179 | 0.479 +/- 0.020 |
 
+Round robin of the Gumbel models from 800 on (200 games a pair; row model's score against the column model; files in `last_ideas/round_robin/`). 1100 is the best Gumbel model:
+
+| Model | 800 | 860 | 920 | 980 | 1040 | 1100 | Average |
+|---|---|---|---|---|---|---|---|
+| 1100 | 0.601 | 0.518 | 0.583 | 0.580 | 0.500 | - | 0.556 |
+| 1040 | 0.578 | 0.602 | 0.543 | 0.557 | - | 0.500 | 0.556 |
+| 920 | 0.635 | 0.530 | - | 0.470 | 0.457 | 0.417 | 0.502 |
+| 980 | 0.595 | 0.500 | 0.530 | - | 0.443 | 0.420 | 0.498 |
+| 860 | 0.590 | - | 0.470 | 0.500 | 0.398 | 0.482 | 0.488 |
+| 800 | - | 0.410 | 0.365 | 0.405 | 0.422 | 0.399 | 0.400 |
+
 ## Limitations
 
 The stub-network results measure what search depth alone contributes, with no learned signal involved. The simulation-depth sweep's per-depth samples (1 to 4 decided games each) are too small to support a confident claim about how win rate scales with simulation count specifically; the pooled across-depth result is the more defensible number from that data. The benchmarks of the 400-game runs use 20 games per checkpoint, so their margins are about +/- 0.1; the long-run matches and benchmarks use 100 games (200 for the last comparison), with margins of about +/- 0.03 to 0.06. Differences smaller than that cannot be resolved, and with most games drawn a score says little about how often the model can actually win. The human games are sixteen games by two players: six by a beginner against final B and ten by an experienced player (FIDE blitz rating 1641) against the final model.

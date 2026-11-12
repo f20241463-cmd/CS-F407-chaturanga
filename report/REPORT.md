@@ -735,8 +735,25 @@ scored 0.510 +/- 0.043 against 1040 (40 wins, 36 losses), but against
 iteration 560 the scores went down: 0.796 (860), 0.765 (920), 0.740 (980),
 0.706 (1040), 0.679 (1100). Each step beats the one before by a little, yet may not be
 stronger overall, so the newest model is not automatically the best. To
-choose, every Gumbel model from 800 on plays every other in a round robin
-once the training ends.
+choose, every Gumbel model from 800 on played every other in a round robin
+(200 games a pair; each cell is the row model's score against the column
+model):
+
+| Model | 800 | 860 | 920 | 980 | 1040 | 1100 | Average |
+|---|---|---|---|---|---|---|---|
+| 1100 | 0.601 | 0.518 | 0.583 | 0.580 | 0.500 | - | 0.556 |
+| 1040 | 0.578 | 0.602 | 0.543 | 0.557 | - | 0.500 | 0.556 |
+| 920 | 0.635 | 0.530 | - | 0.470 | 0.457 | 0.417 | 0.502 |
+| 980 | 0.595 | 0.500 | 0.530 | - | 0.443 | 0.420 | 0.498 |
+| 860 | 0.590 | - | 0.470 | 0.500 | 0.398 | 0.482 | 0.488 |
+| 800 | - | 0.410 | 0.365 | 0.405 | 0.422 | 0.399 | 0.400 |
+
+Head to head the newest models are the strongest. Iterations 1040 and 1100
+tied with each other (42 wins each) and both average 0.556, with 1100 ahead
+only in the fourth decimal, so iteration 1100 is taken as the best Gumbel
+model. Their lower scores against 560 suggest the later models specialise
+against Gumbel-style play; the final 1600-simulation check against 560
+tests the chosen model again.
 
 Gumbel self-play stays within the project specification: it is still an MCTS
 guided by the network's policy priors with leaves evaluated by the value head
