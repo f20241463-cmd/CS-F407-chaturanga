@@ -349,7 +349,10 @@ practice it was stronger still: **40 wins against 3 losses** against the
 final model. We are letting it practise more. 60
 rounds later it won **69 games and lost 5** against the final model, and
 60 rounds after that **88 wins against 3 losses**, then **120 wins against
-2 losses**. Adding
+2 losses**. After that it stopped getting clearly better: each newer version
+only just beat the one before, and did a little worse against the final
+model. So at the end the recent versions will play each other to find the
+real best one. Adding
 the other ideas on top of Gumbel made **no difference**. Then: also teaching the agent to guess how many moves a game has
 left. **No improvement**. Last: going back over recent practice games with
 the newer network to give fresher lessons. **No improvement** either.
