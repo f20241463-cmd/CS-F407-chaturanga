@@ -570,6 +570,8 @@ iterations and are measured at iteration 620; play-only ideas need no training.
 | Gumbel, 120 more iterations (iteration 740; 0.545 +/- 0.030 against Gumbel 680) | 69 | 5 | 124 | 0.662 +/- 0.036 |
 | Gumbel, 180 more iterations (iteration 800; 0.557 +/- 0.035 against Gumbel 740) | 88 | 3 | 108 | 0.714 +/- 0.036 |
 | Gumbel, 240 more iterations (iteration 860; 0.640 +/- 0.039 against Gumbel 800) | 120 | 2 | 77 | 0.796 +/- 0.036 |
+| Gumbel, 300 more iterations (iteration 920; 0.518 +/- 0.044 against Gumbel 860) | 112 | 6 | 82 | 0.765 +/- 0.039 |
+| Gumbel, 360 more iterations (iteration 980; 0.552 +/- 0.045 against Gumbel 920) | 107 | 11 | 82 | 0.740 +/- 0.042 |
 | Gumbel + mirror + decisive 3 + late starts, 620 to 680 (0.495 +/- 0.030 against Gumbel 680) | 40 | 7 | 148 | 0.585 +/- 0.032 |
 | Three networks averaged (combo 680 + Gumbel 680 + Gumbel 620), against Gumbel 680, not 560 | 23 | 11 | 166 | 0.530 +/- 0.028 |
 | Moves-left head, weight 0.1 (training) | 7 | 14 | 178 | 0.482 +/- 0.022 |
