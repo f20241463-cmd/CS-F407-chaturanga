@@ -766,6 +766,7 @@ iterations with one setting changed, and plays 200 games against 1100 and
 | Learning rate 3e-5, 60 more iterations (1220) | 59-35-104 (against the 3e-5 model at 1160) | 0.561 +/- 0.047 | 0.814 +/- 0.036 |
 | Learning rate 3e-5, 60 more iterations (1280) | 44-48-108 (against 1220) | 0.490 +/- 0.047 | 0.770 +/- 0.038 |
 | 8 root moves considered instead of 16 | 30-86-84 | 0.360 +/- 0.049 | 0.693 +/- 0.040 |
+| 32 root moves instead of 16 (60 iterations from 1220 at learning rate 1e-4) | 38-53-109 (against 1220) | 0.463 +/- 0.046 | 0.711 +/- 0.038 |
 
 A lower learning rate is the first change that clearly beats the plain
 continuation: 0.588 against 1100, well outside the margin, and 0.719
@@ -802,7 +803,12 @@ Only c_puct 3.0 makes a clear difference, and it is worse. The others are
 within the margin, so the plain model with c_puct 1.5 is kept. Considering
 only 8 root moves in the Gumbel search clearly hurt (0.360 against 1100):
 with fewer candidates the search misses good moves more often, and the
-training targets get worse.
+training targets get worse. Considering 32 instead, continued from 1220
+at learning rate 1e-4, did not help either: 0.463 +/- 0.046 against 1220,
+within the margin but below even, and 0.711 against 560, below 1220's
+0.814. Because 1220 was trained at 3e-5, this run also changed the
+learning rate, so it is being repeated at 3e-5; the remaining tweaks from
+1220 all use 3e-5.
 
 Gumbel self-play stays within the project specification: it is still an MCTS
 guided by the network's policy priors with leaves evaluated by the value head

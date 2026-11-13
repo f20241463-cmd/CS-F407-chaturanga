@@ -2220,6 +2220,7 @@ several times, each time with one setting changed, and each result plays
 | Learning rate 3e-5, 60 more iterations (1220) | 59-35-104 (against the 3e-5 model at 1160) | 0.561 +/- 0.047 | 0.814 +/- 0.036 |
 | Learning rate 3e-5, 60 more iterations (1280) | 44-48-108 (against 1220) | 0.490 +/- 0.047 | 0.770 +/- 0.038 |
 | 8 root moves considered instead of 16 | 30-86-84 | 0.360 +/- 0.049 | 0.693 +/- 0.040 |
+| 32 root moves instead of 16 (60 iterations from 1220 at learning rate 1e-4) | 38-53-109 (against 1220) | 0.463 +/- 0.046 | 0.711 +/- 0.038 |
 
 The first change, a smaller learning rate (the size of each correction),
 clearly helped: 63 wins to 28 against 1100, and 0.719 against the final
@@ -2230,6 +2231,14 @@ model (0.814), the best of any version so far. The next 60 rounds (to
 1280) did not help (44 wins to 48 against 1220), so this run stopped at
 1220. In a final round robin (row model's score against the column model)
 1220 came out clearly on top, beating 1100 by 83 wins to 18.
+
+Considering more moves at the start of each search, 32 instead of 16
+(trained 60 rounds on from 1220), did not help: 38 wins to 53 against 1220
+(0.463, inside the margin but below even) and 0.711 against 560, lower than
+1220's 0.814. That run used the bigger learning step (1e-4), while 1220 was
+trained with the small one (3e-5), so it changed two things at once. It is
+being repeated with the small step, and the other tweaks from 1220 use the
+small step too.
 
 We also tried changes that only affect how 1220 plays, not how it was
 trained, each in 200 games against the plain 1220. None helped clearly;

@@ -603,6 +603,7 @@ Tuning the Gumbel run: each row continues 1100 for 60 iterations with one change
 | Learning rate 3e-5, 60 more iterations (1220) | 59-35-104 (against the 3e-5 model at 1160) | 0.561 +/- 0.047 | 0.814 +/- 0.036 |
 | Learning rate 3e-5, 60 more iterations (1280) | 44-48-108 (against 1220) | 0.490 +/- 0.047 | 0.770 +/- 0.038 |
 | 8 root moves considered instead of 16 | 30-86-84 | 0.360 +/- 0.049 | 0.693 +/- 0.040 |
+| 32 root moves instead of 16 (60 iterations from 1220 at learning rate 1e-4) | 38-53-109 (against 1220) | 0.463 +/- 0.046 | 0.711 +/- 0.038 |
 
 Final pick, round robin (row model's score against the column model; files in `last_ideas/pick_final/`). 3e-5 at 1220 is the best model:
 
