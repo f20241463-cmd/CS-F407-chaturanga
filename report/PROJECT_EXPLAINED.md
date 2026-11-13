@@ -2226,6 +2226,7 @@ several times, each time with one setting changed, and each result plays
 | Learning rate 3e-5, 60 more iterations (1280) | 44-48-108 (against 1220) | 0.490 +/- 0.047 | 0.770 +/- 0.038 |
 | 8 root moves considered instead of 16 | 30-86-84 | 0.360 +/- 0.049 | 0.693 +/- 0.040 |
 | 32 root moves instead of 16 (60 iterations from 1220 at learning rate 1e-4) | 38-53-109 (against 1220) | 0.463 +/- 0.046 | 0.711 +/- 0.038 |
+| 32 root moves instead of 16 (60 iterations from 1220 at learning rate 3e-5) | 60-28-112 (against 1220) | 0.580 +/- 0.045 | 0.812 +/- 0.037 |
 
 The first change, a smaller learning rate (the size of each correction),
 clearly helped: 63 wins to 28 against 1100, and 0.719 against the final
@@ -2241,9 +2242,13 @@ Considering more moves at the start of each search, 32 instead of 16
 (trained 60 rounds on from 1220), did not help: 38 wins to 53 against 1220
 (0.463, inside the margin but below even) and 0.711 against 560, lower than
 1220's 0.814. That run used the bigger learning step (1e-4), while 1220 was
-trained with the small one (3e-5), so it changed two things at once. It is
-being repeated with the small step, and the other tweaks from 1220 use the
-small step too.
+trained with the small one (3e-5), so it changed two things at once.
+Repeated with the small step, 32 moves did help: **60 wins to 28 against
+1220** (0.580 +/- 0.045), where the same 60 rounds with 16 moves gave only
+0.490, and 0.812 against 560. It is the first tweak to beat 1220 outside
+the margin. Before it could replace the final model it is being re-checked:
+against the plain 1280 model (only the number of moves differs) and against
+1220 at 1600 search steps.
 
 We also tried changes that only affect how 1220 plays, not how it was
 trained, each in 200 games against the plain 1220. None helped clearly;
