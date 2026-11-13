@@ -2247,9 +2247,10 @@ trained with the small one (3e-5), so it changed two things at once.
 Repeated with the small step, 32 moves did help: **60 wins to 28 against
 1220** (0.580 +/- 0.045), where the same 60 rounds with 16 moves gave only
 0.490, and 0.812 against 560. It is the first tweak to beat 1220 outside
-the margin. Before it could replace the final model it is being re-checked:
-against the plain 1280 model (only the number of moves differs) and against
-1220 at 1600 search steps.
+the margin. Two re-checks confirmed it: against the plain 1280 model (only
+the number of moves differs) it won **55 to 28** (0.568), and against 1220
+at 1600 search steps it won **30 to 13** (0.589). It is now being
+benchmarked as the candidate final model.
 
 Training twice as much on each round's games (1000 steps instead of 500)
 made it **worse**: 30 wins to 65 against 1220 (0.412) and 0.747 against
