@@ -784,7 +784,22 @@ best 3e-5 models (200 games a pair, row against column) confirms it:
 | 3e-5 at 1160 | 0.560 | - | 0.437 | 0.499 |
 | 1100 | - | 0.440 | 0.338 | 0.389 |
 
-Iteration 1220 beat 1100 by 83 wins to 18 and is the new best model. Considering
+Iteration 1220 beat 1100 by 83 wins to 18 and is the new best model.
+
+Finally, we tried changes at play time only, with no training, each in 200
+games of 1220 against itself:
+
+| Change at play time (1220 against plain 1220) | Wins | Losses | Draws | Score |
+|---|---|---|---|---|
+| c_puct 1.0 instead of 1.5 | 57 | 40 | 103 | 0.542 +/- 0.048 |
+| c_puct 2.0 | 44 | 51 | 104 | 0.482 +/- 0.048 |
+| c_puct 3.0 | 42 | 75 | 83 | 0.417 +/- 0.052 |
+| Gumbel move choice instead of PUCT visit counts | 53 | 53 | 94 | 0.500 +/- 0.050 |
+| Mirror-averaged network | 43 | 48 | 108 | 0.487 +/- 0.047 |
+| Weight average of iterations 1180 to 1220 | 60 | 49 | 91 | 0.527 +/- 0.051 |
+
+Only c_puct 3.0 makes a clear difference, and it is worse. The others are
+within the margin, so the plain model with c_puct 1.5 is kept. Considering
 only 8 root moves in the Gumbel search clearly hurt (0.360 against 1100):
 with fewer candidates the search misses good moves more often, and the
 training targets get worse.
