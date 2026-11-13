@@ -1,0 +1,3 @@
+checkpoints/ideas/gumbel_chain_1100/iter_1100.pt
+checkpoints/ideas/lowlr_chain_1220/iter_1220.pt
+checkpoints/ideas/g_lowlr/iter_1160.pt

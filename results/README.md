@@ -596,6 +596,28 @@ Tuning the Gumbel run: each row continues 1100 for 60 iterations with one change
 |---|---|---|---|
 | None: the last chain step, 1040 to 1100, for reference | 40-36-124 (against 1040) | 0.510 +/- 0.043 | 0.679 +/- 0.045 |
 | Learning rate 3e-5 instead of 1e-4 | 63-28-109 | 0.588 +/- 0.045 | 0.719 +/- 0.041 |
+| Learning rate 3e-5, 60 more iterations (1220) | 59-35-104 (against the 3e-5 model at 1160) | 0.561 +/- 0.047 | 0.814 +/- 0.036 |
+| Learning rate 3e-5, 60 more iterations (1280) | 44-48-108 (against 1220) | 0.490 +/- 0.047 | 0.770 +/- 0.038 |
+
+Final pick, round robin (row model's score against the column model; files in `last_ideas/pick_final/`). 3e-5 at 1220 is the best model:
+
+| Model | 1100 | 3e-5 at 1160 | 3e-5 at 1220 | Average |
+|---|---|---|---|---|
+| 3e-5 at 1220 | 0.662 | 0.563 | - | 0.612 |
+| 3e-5 at 1160 | 0.560 | - | 0.437 | 0.499 |
+| 1100 | - | 0.440 | 0.338 | 0.389 |
+
+Play-time changes on 1220, no training (files in `last_ideas/play_ideas/`):
+
+| Change at play time (1220 against plain 1220) | Wins | Losses | Draws | Score |
+|---|---|---|---|---|
+| c_puct 1.0 instead of 1.5 | 57 | 40 | 103 | 0.542 +/- 0.048 |
+| c_puct 2.0 | 44 | 51 | 104 | 0.482 +/- 0.048 |
+| c_puct 3.0 | 42 | 75 | 83 | 0.417 +/- 0.052 |
+| Gumbel move choice instead of PUCT visit counts | 53 | 53 | 94 | 0.500 +/- 0.050 |
+| Mirror-averaged network | 43 | 48 | 108 | 0.487 +/- 0.047 |
+| Weight average of iterations 1180 to 1220 | 60 | 49 | 91 | 0.527 +/- 0.051 |
+| 8 root moves considered instead of 16 | 30-86-84 | 0.360 +/- 0.049 | 0.693 +/- 0.040 |
 
 ## Limitations
 

@@ -763,11 +763,46 @@ iterations with one setting changed, and plays 200 games against 1100 and
 |---|---|---|---|
 | None: the last chain step, 1040 to 1100, for reference | 40-36-124 (against 1040) | 0.510 +/- 0.043 | 0.679 +/- 0.045 |
 | Learning rate 3e-5 instead of 1e-4 | 63-28-109 | 0.588 +/- 0.045 | 0.719 +/- 0.041 |
+| Learning rate 3e-5, 60 more iterations (1220) | 59-35-104 (against the 3e-5 model at 1160) | 0.561 +/- 0.047 | 0.814 +/- 0.036 |
+| Learning rate 3e-5, 60 more iterations (1280) | 44-48-108 (against 1220) | 0.490 +/- 0.047 | 0.770 +/- 0.038 |
+| 8 root moves considered instead of 16 | 30-86-84 | 0.360 +/- 0.049 | 0.693 +/- 0.040 |
 
 A lower learning rate is the first change that clearly beats the plain
 continuation: 0.588 against 1100, well outside the margin, and 0.719
 against 560, the best since iteration 920. With a smaller step the network
-keeps what it has learned instead of chasing the newest games.
+keeps what it has learned instead of chasing the newest games. Continuing
+at 3e-5 for 60 more iterations (to 1220) improved it again: 0.561 against
+the 3e-5 model at 1160 and 0.814 +/- 0.036 against 560 (128 wins,
+3 losses), the best score against 560 of any model so far. The next 60
+iterations (to 1280) did not improve it (0.490 against 1220, 0.770 against
+560), so the 3e-5 run stopped at 1220. A round robin of 1100 and the two
+best 3e-5 models (200 games a pair, row against column) confirms it:
+
+| Model | 1100 | 3e-5 at 1160 | 3e-5 at 1220 | Average |
+|---|---|---|---|---|
+| 3e-5 at 1220 | 0.662 | 0.563 | - | 0.612 |
+| 3e-5 at 1160 | 0.560 | - | 0.437 | 0.499 |
+| 1100 | - | 0.440 | 0.338 | 0.389 |
+
+Iteration 1220 beat 1100 by 83 wins to 18 and is the new best model.
+
+Finally, we tried changes at play time only, with no training, each in 200
+games of 1220 against itself:
+
+| Change at play time (1220 against plain 1220) | Wins | Losses | Draws | Score |
+|---|---|---|---|---|
+| c_puct 1.0 instead of 1.5 | 57 | 40 | 103 | 0.542 +/- 0.048 |
+| c_puct 2.0 | 44 | 51 | 104 | 0.482 +/- 0.048 |
+| c_puct 3.0 | 42 | 75 | 83 | 0.417 +/- 0.052 |
+| Gumbel move choice instead of PUCT visit counts | 53 | 53 | 94 | 0.500 +/- 0.050 |
+| Mirror-averaged network | 43 | 48 | 108 | 0.487 +/- 0.047 |
+| Weight average of iterations 1180 to 1220 | 60 | 49 | 91 | 0.527 +/- 0.051 |
+
+Only c_puct 3.0 makes a clear difference, and it is worse. The others are
+within the margin, so the plain model with c_puct 1.5 is kept. Considering
+only 8 root moves in the Gumbel search clearly hurt (0.360 against 1100):
+with fewer candidates the search misses good moves more often, and the
+training targets get worse.
 
 Gumbel self-play stays within the project specification: it is still an MCTS
 guided by the network's policy priors with leaves evaluated by the value head

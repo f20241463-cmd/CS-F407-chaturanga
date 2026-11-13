@@ -1,0 +1,4 @@
+lowlr_chain_1220_1220 0.612
+g_lowlr_1160 0.499
+gumbel_chain_1100_1100 0.389
+BEST checkpoints/ideas/lowlr_chain_1220/iter_1220.pt 1220
