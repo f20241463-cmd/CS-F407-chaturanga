@@ -1,0 +1,59 @@
+<header>
+  <h1>ChaturangZero</h1>
+  <p id="about">An AlphaZero-style agent for Chaturanga that learned by playing itself, knowing only the rules. Loading the network…</p>
+</header>
+<main>
+  <section>
+    <div class="board-wrap">
+      <div class="ranks" id="ranks"></div>
+      <div class="board" id="board" aria-label="Chaturanga board"></div>
+      <div class="files" id="files"></div>
+    </div>
+  </section>
+  <aside class="side">
+    <div class="panel">
+      <label for="player">Your name (saved with each game)</label>
+      <div class="namerow"><input id="player" autocomplete="name" placeholder="Type your name"></div>
+      <div class="status" id="status" style="margin-top:12px">Loading</div>
+      <div class="sub" id="substatus"></div>
+      <div class="controls">
+        <button class="primary" id="newWhite" disabled>New game as White</button>
+        <button id="newBlack" disabled>New game as Black</button>
+        <button id="resign" disabled>Resign</button>
+      </div>
+      <div class="error" id="error"></div>
+    </div>
+    <div class="panel">
+      <h2>What the agent thinks</h2>
+      <div id="thinkText" class="sub">It has not moved yet.</div>
+      <div class="meter" aria-hidden="true"><div id="meter"></div></div>
+      <div class="sub" style="display:flex;justify-content:space-between"><span>you are better</span><span>agent is better</span></div>
+      <div class="tops" id="tops"></div>
+    </div>
+    <div class="panel">
+      <h2>Moves</h2>
+      <div class="moves" id="moves"></div>
+    </div>
+    <div class="panel">
+      <h2>Your games</h2>
+      <div class="sub">You <span class="tally" id="tally">0 won, 0 lost, 0 drawn</span>. <span id="saveState">Finished games are saved online for the team.</span></div>
+      <div id="codeBox" hidden>
+        <p class="sub">If a game does not say "saved online", copy this text and send it to the person who gave you the link.</p>
+        <textarea id="codes" readonly aria-label="Game records"></textarea>
+        <div class="controls"><button id="copy">Copy all games</button></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Pieces</h2>
+      <div class="guide">
+        <span class="piece white">&#9818;&#xFE0E;</span><span><b>Raja</b> (king): one square in any direction</span>
+        <span class="piece white">&#9819;&#xFE0E;</span><span><b>Mantri</b> (counselor): one square diagonally</span>
+        <span class="piece white">&#9820;&#xFE0E;</span><span><b>Ratha</b> (chariot): any distance in a straight line, like a rook</span>
+        <span class="piece white">&#9821;&#xFE0E;</span><span><b>Gaja</b> (elephant): jumps exactly two squares diagonally</span>
+        <span class="piece white">&#9822;&#xFE0E;</span><span><b>Ashva</b> (horse): an L-shaped jump, like a knight</span>
+        <span class="piece white">&#9823;&#xFE0E;</span><span><b>Padati</b> (foot soldier): one step forward, captures diagonally, becomes a Mantri on the last rank</span>
+      </div>
+      <p class="sub">Checkmate wins. Stalemate, threefold repetition and 100 moves without a capture or soldier move are draws. There is no castling, no double pawn step and no en passant.</p>
+    </div>
+  </aside>
+</main>

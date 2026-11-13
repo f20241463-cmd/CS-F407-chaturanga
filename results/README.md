@@ -140,7 +140,9 @@ the final model (`models/chaturangzero_final.pt`, 800 simulations per move),
 five with each color, on the browser board (`python play_web.py`). An
 eleventh game, stopped after 4 plies, is recorded as unfinished and left out.
 These games were played on the team member's laptop, so `human_games.csv`
-lists the team member's name as the player for all sixteen games.
+lists the team member's name as the player for all sixteen games. Their
+checkpoint column says `models/chaturangzero_final.pt`, which was iteration
+560 at the time; that file is now `models/chaturangzero_560.pt`.
 
 | Game | Human plays | Result | Ending | Plies | Pieces left (human / agent) |
 |---|---|---|---|---|---|
@@ -164,6 +166,39 @@ the games it lost) and did better when the human played Black (2 wins, 1 draw,
 2 losses) than White (0 wins, 2 draws, 3 losses). It beats random, untrained
 and earlier agents, but an experienced player who attacks its king directly still
 usually wins, an attack it has rarely faced in self-play.
+
+**Against iteration 1220.** The same player played fourteen games against the
+final model, iteration 1220, at 800 simulations per move (eight as White, six
+as Black). The player was in another city and used the standalone web version
+(`web/standalone/`), which runs the same rules, search and network in the
+browser and was checked against the Python code with no differences. These
+rows are logged with the player `guest` and the checkpoint
+`models/chaturangzero_final.pt (iteration 1220, web)`, with times in IST.
+
+| Game | Human plays | Result | Ending | Plies | Pieces left (human / agent) |
+|---|---|---|---|---|---|
+| 1 | White | Human win | Checkmate | 143 | 9 / 1 |
+| 2 | Black | Human win | Checkmate | 90 | 11 / 1 |
+| 3 | White | Human win | Checkmate | 93 | 12 / 4 |
+| 4 | Black | Human win | Checkmate | 144 | 9 / 2 |
+| 5 | White | Human win | Checkmate | 61 | 13 / 7 |
+| 6 | Black | Human win | Checkmate | 80 | 12 / 1 |
+| 7 | White | Human win | Checkmate | 77 | 12 / 2 |
+| 8 | Black | Human win | Checkmate | 124 | 10 / 1 |
+| 9 | White | Human win | Checkmate | 55 | 15 / 8 |
+| 10 | Black | Human win | Checkmate | 68 | 15 / 10 |
+| 11 | White | Human win | Checkmate | 103 | 13 / 3 |
+| 12 | Black | Human win | Checkmate | 74 | 12 / 4 |
+| 13 | White | Human win | Checkmate | 67 | 13 / 7 |
+| 14 | White | Draw | Stalemate | 71 | 13 / 1 |
+
+Thirteen human wins, all by checkmate, and one stalemate: an agent score of
+0.036 (95% Wilson range 0.004 to 0.268), against 0.350 for iteration 560. The
+games were shorter (median 79 plies, against 135), and ten of the thirteen
+losses took under 110 plies. The player had already learned the agent's style
+from the ten 560 games, so this is not a controlled comparison, but 1220 is
+clearly no harder for a strong human to beat, although it beats 560 by 83 wins
+to 1 at 1600 simulations.
 
 ### Why most games are draws (measured)
 
@@ -656,12 +691,12 @@ How the games end, 30 games each:
 Greedy capture, which iteration 560 could only draw against, now loses 70
 games and wins none, and most games against both programs end in checkmate.
 In self-play, 44% of iteration 1220's games were decisive, against about 15%
-in the long run. The human games were against iteration 560 and were not
-repeated with 1220.
+in the long run. Against the experienced human it did not improve: 13 human
+wins and 1 draw in 14 games (see "Agent vs. Human" above).
 
 ## Limitations
 
-The stub-network results measure what search depth alone contributes, with no learned signal involved. The simulation-depth sweep's per-depth samples (1 to 4 decided games each) are too small to support a confident claim about how win rate scales with simulation count specifically; the pooled across-depth result is the more defensible number from that data. The benchmarks of the 400-game runs use 20 games per checkpoint, so their margins are about +/- 0.1; the long-run matches and benchmarks use 100 games (200 for the last comparison), with margins of about +/- 0.03 to 0.06. Differences smaller than that cannot be resolved, and with most games drawn a score says little about how often the model can actually win. The human games are sixteen games by two players: six by a beginner against final B and ten by an experienced player (FIDE blitz rating 1641) against iteration 560. The final model, iteration 1220, was not tested against people.
+The stub-network results measure what search depth alone contributes, with no learned signal involved. The simulation-depth sweep's per-depth samples (1 to 4 decided games each) are too small to support a confident claim about how win rate scales with simulation count specifically; the pooled across-depth result is the more defensible number from that data. The benchmarks of the 400-game runs use 20 games per checkpoint, so their margins are about +/- 0.1; the long-run matches and benchmarks use 100 games (200 for the last comparison), with margins of about +/- 0.03 to 0.06. Differences smaller than that cannot be resolved, and with most games drawn a score says little about how often the model can actually win. The human games are thirty games by two players: six by a beginner against final B, and ten against iteration 560 and fourteen against iteration 1220 by an experienced player (FIDE blitz rating 1641), who had already learned the agent's style before the 1220 games.
 
 ## Files in this folder
 
@@ -679,7 +714,7 @@ The stub-network results measure what search depth alone contributes, with no le
 - `benchmark_curve_finalB.png`, `benchmark_curve_final_vs_untrained.png`: benchmark score per iteration
 - `finalB_vs_finalA_iter20.log`: head-to-head match of the two final runs
 - `finalB_iter20_vs_iter10.log`: final B iteration 20 against its own iteration 10
-- `human_games.csv`: Agent vs. Human games against final B and the final model, with full move lists
+- `human_games.csv`: Agent vs. Human games against final B, iteration 560 and iteration 1220, with full move lists
 - `training_log_long.csv`: every iteration of the long run (1 to 20 are final B); `training_curves_long.png` plots it
 - `training_log_big_exploratory.csv`: the stopped 6 x 128 network
 - `benchmark_long_{random,greedy,untrained}.csv`, `benchmark_curve_long.png`: long-run benchmarks, 100 games per checkpoint

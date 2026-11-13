@@ -102,8 +102,10 @@ browser game. It:
 - ends most games against these programs in checkmate (16 of 30 against
   random, 22 of 30 against greedy capture, against 3 and 1 for 560).
 
-The human games above were against iteration 560 and were not repeated with
-the final model.
+It did not get better against people. The same experienced player played 14
+games against it at 800 simulations per move, on a standalone browser version
+(`web/standalone/`), and won 13, with one draw. Being stronger against
+programs did not help against a person who attacks its king directly.
 `results/README.md` has every number, the plots, the game endings, the human
 games and the diagnosis in full.
 
