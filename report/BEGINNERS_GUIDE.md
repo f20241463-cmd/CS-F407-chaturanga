@@ -259,8 +259,8 @@ moving around one level. We made its learning steps smaller (like taking
 smaller, more careful steps instead of big jumps), and it immediately got
 better. This was the single most helpful change.
 
-**The final version** (from round 560, saved as
-`models/chaturangzero_final.pt`) gave these results:
+**The round-560 version** (the final version at that point, now saved as
+`models/chaturangzero_560.pt`) gave these results:
 
 | Against | Wins | Losses | Draws | What it means |
 |---|---|---|---|---|
@@ -294,7 +294,7 @@ to win. It did play more games to a result, but it took bad risks and got
 **3. A bigger network** (a bigger gut feeling, the largest the course
 allowed). We tried twice. The second time, it first learned by studying our
 best version's games, and became just as good. But practicing on its own
-afterward, it **never got better** than our final version.
+afterward, it **never got better** than round 560.
 
 **4. Give up hopeless games early** (resigning), like the real AlphaZero
 does. Before trying it, we checked whether our program can tell when a game
@@ -342,25 +342,27 @@ of the practice positions. A tiny bit above even, but too small to count,
 so **no improvement**. Then: playing a quarter of the practice games against
 older versions of itself. Even, so **no improvement**. Then: a smarter way to spend the 50 thoughts
 per move in practice games (called Gumbel search), which also gives the
-agent a better lesson from each move. This one **beat the final model**: 17
+agent a better lesson from each move. This one **beat round 560**: 17
 wins against 5 losses. 200 more games went even better (23 wins against
 3 losses), so it was not luck. After 60 more rounds of
-practice it was stronger still: **40 wins against 3 losses** against the
-final model. We are letting it practise more. 60
-rounds later it won **69 games and lost 5** against the final model, and
+practice it was stronger still: **40 wins against 3 losses** against
+round 560. We let it practise more. 60
+rounds later it won **69 games and lost 5** against round 560, and
 60 rounds after that **88 wins against 3 losses**, then **120 wins against
 2 losses**. After that it stopped getting clearly better: each newer version
-only just beat the one before, and did a little worse against the final
-model. So the recent versions all played each other. The two newest
+only just beat the one before, and did a little worse against round
+560. So the recent versions all played each other. The two newest
 (rounds 1040 and 1100) came out on top, tied with each other, and round
-1100 is now the best version. Then we tried small changes to how it
+1100 was the best version. Then we tried small changes to how it
 practises. The first one, making it learn in **smaller steps**, worked:
 the new version beat round 1100 by **63 wins to 28**, and 60 rounds later
-it beat the final model **128 games to 3**, its best result ever. Making it consider
+(round 1220) it beat round 560 **128 games to 3**, its best result ever. Making it consider
 fewer moves while thinking made it **worse** (30 wins to 86). Adding
 the other ideas on top of Gumbel made **no difference**. Then: also teaching the agent to guess how many moves a game has
 left. **No improvement**. Last: going back over recent practice games with
 the newer network to give fresher lessons. **No improvement** either.
+Small changes to how round 1220 plays (no extra practice) made no
+difference either, so round 1220 became the **new final version**.
 
 **6. Faster practice on the graphics chip.** We rebuilt the practice system
 so many games share the graphics chip at once. Practice got about 2.2 to 2.4
@@ -368,7 +370,23 @@ times faster again, with exactly the same games.
 
 **The common thread:** every idea ran into the same wall. The program's "who
 is winning" feeling never learned to recognize a won or lost position,
-because almost all of its practice games were draws.
+because almost all of its practice games were draws. Gumbel search was the
+one exception: with it, 44% of the practice games ended in a win or loss
+instead of about 15%, so the program got many more real results to learn from.
+
+**The new final version (round 1220),** saved as
+`models/chaturangzero_final.pt` and used by the browser game, took 660 more
+rounds of Gumbel practice after round 560 (66,000 games, about 39 hours):
+
+| Against | Wins | Losses | Draws | What it means |
+|---|---|---|---|---|
+| Round 560 (thinking 1600 times per move) | 83 | **1** | 12 | Much stronger |
+| Random moves | 56 | **0** | 44 | Much stronger than round 560 (16 wins) |
+| Untrained version | 52 | 2 | 40 | Much stronger than round 560 (17 wins) |
+| Greedy capture | 70 | **0** | 30 | Round 560 drew almost every game; this one wins most |
+
+It also finishes games much better: against greedy capture 22 of 30 games
+ended in checkmate, against just 1 for round 560.
 
 # Playing against people
 
@@ -385,7 +403,7 @@ thinks**: who it believes is winning, and the three moves it considered most.
 
 A rated club chess player from outside the team, with a **FIDE blitz rating of
 1641** (the official international rating; 1641 is a solid club player, well
-above a beginner), played **10 games** against the final
+above a beginner), played **10 games** against the round-560
 version (thinking 800 times per move), 5 as White and 5 as Black:
 
 | | Human won | AI won | Draw |
@@ -394,10 +412,11 @@ version (thinking 800 times per move), 5 as White and 5 as Black:
 | Human as Black | 2 | 2 | 1 |
 | **Total** | **5** | **2** | **3** |
 
-The first version never beat even a beginner. The final version won 2
+The first version never beat even a beginner. The round-560 version won 2
 games and drew 3 against a much stronger player, and kept more of its
 pieces. But the club player still won half the games, four of them quickly
-(in under 110 moves).
+(in under 110 moves). The new final version (round 1220) has not played
+people yet.
 
 **What a typical loss looks like for the AI.** In one game, the AI jumped its
 horse right next to the human's king, where the king simply captured it.
@@ -491,9 +510,10 @@ imagines more possible futures before each move, so it makes fewer mistakes.
 At 800 it beat its 50 self 23 to 0, and at 1600 it beat its 800 self 15 to 3.
 At 3200 it was no better than at 1600, so 1600 is where the gain stops.
 
-**Is the program you're showing the same one in the report?** Yes, the same
-final version. The browser game now thinks 1600 times per move; the ten
-games against the chess player were played at 800, before that change.
+**Is the program you're showing the same one in the report?** Yes. The
+browser game uses the final version, round 1220, thinking 1600 times per
+move. The ten games against the chess player were played against round 560
+at 800, before both changes.
 
 # Small word list
 

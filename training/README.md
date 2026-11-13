@@ -90,7 +90,7 @@ Time for one batch of self-play games with 50 simulations (A18 Pro laptop):
 
 | Network | Games | 6 CPU workers | GPU self-play |
 |---|---|---|---|
-| 4 x 64 (the final model) | 120 | 544 s | 246 s (6 workers) |
+| 4 x 64 (iterations 560 and 1220) | 120 | 544 s | 246 s (6 workers) |
 | 6 x 128 | 60 | 830 s | 351 s (3 workers) |
 
 Both columns played the same games. `--batch_groups 2` splits each worker's
@@ -107,7 +107,7 @@ To continue a run, pass `--resume checkpoints/final_B/latest.pt` and a larger
 the replay buffer starts empty. The `--lr` given on the command line replaces
 the saved one, so a resumed run can continue at a lower learning rate.
 
-The final model came from this command run to iteration 420 (with one restart
+Iteration 560 came from this command run to iteration 420 (with one restart
 at 220), followed by three resumed stretches with the same options except:
 
 | Iterations | Resume from | `--lr` | `--seed` | `--checkpoint_dir` |
@@ -118,13 +118,28 @@ at 220), followed by three resumed stretches with the same options except:
 
 Each resumed stretch used `--min_buffer 150000`, so the first two iterations
 only refill the replay buffer before training starts again. Iteration 560 is
-saved in the repo as `models/chaturangzero_final.pt`. A later stretch from
+saved in the repo as `models/chaturangzero_560.pt`. A later stretch from
 iteration 560 at `--lr 2e-5` (seed 12, `--selfplay_device mps`, iterations
 561 to 702) was not measurably stronger and was not kept
 (`results/smaller_lr/`). Neither was a stretch from iteration 560 with
 `--q_mix 0.5 --lr 1e-4` (seed 21, iterations 561 to 660, `results/qmix/`), nor
 one with `--max_plies 300 --lr 1e-4` (seed 31, iterations 561 to 660,
 `results/shortcap/`).
+
+The final model, iteration 1220, continued iteration 560 with Gumbel
+self-play, in stretches of 60 iterations, each resuming from the last
+checkpoint of the one before, with the long-run options plus
+`--gumbel --gumbel_actions 16 --selfplay_device mps` (seeds are in each
+checkpoint's metadata):
+
+| Iterations | `--lr` | Checkpoint directories |
+|---|---|---|
+| 561 to 1100 | 1e-4 | `checkpoints/ideas/gumbel`, `gumbel_more`, `gumbel_more2`, `gumbel_more3`, `gumbel_chain_0860` to `gumbel_chain_1100` |
+| 1101 to 1220 | 3e-5 | `checkpoints/ideas/g_lowlr`, `checkpoints/ideas/lowlr_chain_1220` |
+
+Iteration 1220 is saved in the repo as `models/chaturangzero_final.pt`
+(without the optimizer state) and iteration 560 as
+`models/chaturangzero_560.pt`.
 
 ### A bigger network, started from an earlier agent's games
 
@@ -294,9 +309,9 @@ to count wrong resignations, which the log records. Before using it, check
 how often it would be wrong for a model:
 
 ```
-python -m evaluation.resign_check --checkpoint models/chaturangzero_final.pt \
+python -m evaluation.resign_check --checkpoint models/chaturangzero_560.pt \
     --games 160 --workers 4 --device mps
 ```
 
-For the final model almost every resignation would have been wrong
+For iteration 560 almost every resignation would have been wrong
 (`results/resign_check.txt`), so it was not used in training.
