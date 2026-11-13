@@ -775,7 +775,16 @@ at 3e-5 for 60 more iterations (to 1220) improved it again: 0.561 against
 the 3e-5 model at 1160 and 0.814 +/- 0.036 against 560 (128 wins,
 3 losses), the best score against 560 of any model so far. The next 60
 iterations (to 1280) did not improve it (0.490 against 1220, 0.770 against
-560), so the 3e-5 run stopped at 1220. Considering
+560), so the 3e-5 run stopped at 1220. A round robin of 1100 and the two
+best 3e-5 models (200 games a pair, row against column) confirms it:
+
+| Model | 1100 | 3e-5 at 1160 | 3e-5 at 1220 | Average |
+|---|---|---|---|---|
+| 3e-5 at 1220 | 0.662 | 0.563 | - | 0.612 |
+| 3e-5 at 1160 | 0.560 | - | 0.437 | 0.499 |
+| 1100 | - | 0.440 | 0.338 | 0.389 |
+
+Iteration 1220 beat 1100 by 83 wins to 18 and is the new best model. Considering
 only 8 root moves in the Gumbel search clearly hurt (0.360 against 1100):
 with fewer candidates the search misses good moves more often, and the
 training targets get worse.

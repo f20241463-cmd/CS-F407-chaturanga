@@ -2206,7 +2206,16 @@ it 60 more rounds with the same small steps (to round 1220) helped again:
 59 wins to 35 against round 1160, and 128 wins to 3 against the final
 model (0.814), the best of any version so far. The next 60 rounds (to
 1280) did not help (44 wins to 48 against 1220), so this run stopped at
-1220. Looking
+1220. In a final round robin (row model's score against the column model)
+1220 came out clearly on top, beating 1100 by 83 wins to 18:
+
+| Model | 1100 | 3e-5 at 1160 | 3e-5 at 1220 | Average |
+|---|---|---|---|---|
+| 3e-5 at 1220 | 0.662 | 0.563 | - | 0.612 |
+| 3e-5 at 1160 | 0.560 | - | 0.437 | 0.499 |
+| 1100 | - | 0.440 | 0.338 | 0.389 |
+
+Looking
 at only 8 candidate moves at the start of each search, instead of 16,
 clearly hurt: 30 wins to 86 against 1100. With fewer candidates, good
 moves get missed.
