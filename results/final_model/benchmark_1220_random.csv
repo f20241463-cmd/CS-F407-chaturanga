@@ -1,0 +1,2 @@
+iteration,checkpoint,opponent,games,wins,losses,draws,unfinished,score,margin,avg_plies,seconds
+1220,checkpoints/ideas/lowlr_chain_1220/iter_1220.pt,random,100,56,0,44,0,0.78,0.0486,384.3,84.2
