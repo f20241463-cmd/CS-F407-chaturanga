@@ -816,6 +816,7 @@ iterations with one setting changed, and plays 200 games against 1100 and
 | 8 root moves considered instead of 16 | 30-86-84 | 0.360 +/- 0.049 | 0.693 +/- 0.040 |
 | 32 root moves instead of 16 (60 iterations from 1220 at learning rate 1e-4) | 38-53-109 (against 1220) | 0.463 +/- 0.046 | 0.711 +/- 0.038 |
 | 32 root moves instead of 16 (60 iterations from 1220 at learning rate 3e-5) | 60-28-112 (against 1220) | 0.580 +/- 0.045 | 0.812 +/- 0.037 |
+| 1000 training steps per iteration instead of 500 (60 iterations from 1220, learning rate 3e-5) | 30-65-104, 1 unfinished (against 1220) | 0.412 +/- 0.046 | 0.747 +/- 0.038 |
 
 A lower learning rate is the first change that clearly beats the plain
 continuation: 0.588 against 1100, well outside the margin, and 0.719
@@ -862,6 +863,10 @@ moves gave 0.490 (the 1280 row), and 0.812 against 560. That is the first
 change from 1220 to beat it outside the margin. It is being re-checked
 against the plain 1280 model and against 1220 at 1600 simulations before
 any change of final model; the remaining tweaks from 1220 all use 3e-5.
+Training twice as hard on each iteration's data (1000 steps instead of
+500) made it worse: 0.412 +/- 0.046 against 1220 and 0.747 against 560,
+most likely because the network fits each batch of self-play games too
+closely.
 
 Gumbel self-play stays within the project specification: it is still an MCTS
 guided by the network's policy priors with leaves evaluated by the value head
