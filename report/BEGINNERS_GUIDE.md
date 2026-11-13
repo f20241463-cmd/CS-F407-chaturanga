@@ -38,7 +38,8 @@ The short story of what happened:
 5. We tried several more ideas to make it even stronger. Most did not help,
    but letting it "think longer" before each move did.
 6. A rated club chess player (FIDE blitz rating 1641) played 10 games against
-   it and won 5, lost 2 and drew 3.
+   it and won 5, lost 2 and drew 3. Against the newest, strongest version he
+   won 13 of 14 games and drew 1.
 
 # The game: Chaturanga
 
@@ -415,8 +416,20 @@ version (thinking 800 times per move), 5 as White and 5 as Black:
 The first version never beat even a beginner. The round-560 version won 2
 games and drew 3 against a much stronger player, and kept more of its
 pieces. But the club player still won half the games, four of them quickly
-(in under 110 moves). The new final version (round 1220) has not played
-people yet.
+(in under 110 moves).
+
+**Against the final version (round 1220).** Later the same player played
+**14 games** against round 1220, again thinking 800 times per move. He lives
+in another city and has no project files, so we rewrote the AI to run inside
+a web page (`web/standalone/`) and checked that it plays exactly the same
+moves as the original. He won **13 games and drew 1**. The AI did not win a
+single game, and most of its losses were quick checkmates.
+
+That sounds strange, because round 1220 beats round 560 by 83 wins to 1. Two
+things explain it. First, by then he knew the AI's habits from the first ten
+games. Second, and more important: round 1220 got better at beating
+computer programs and itself, but it still never practiced against the fast,
+direct attack on the king that a good human plays.
 
 **What a typical loss looks like for the AI.** In one game, the AI jumped its
 horse right next to the human's king, where the king simply captured it.
@@ -445,11 +458,11 @@ it does not recognize the danger in time.
 
 | | AlphaZero (chess) | ChaturangZero |
 |---|---|---|
-| Practice games | About 44 million | 54,000 |
+| Practice games | About 44 million | About 120,000 |
 | Imaginings per move in practice | 800 | 50 |
 | Computer | Thousands of special chips in a data center | One laptop |
 | Knowledge given | Only the rules | Only the rules |
-| Result | Better than any human | Better than random and its earlier selves; a rated club player (FIDE blitz 1641) still wins half the games |
+| Result | Better than any human | Better than random and its earlier selves; a rated club player (FIDE blitz 1641) still beats it almost every time |
 
 Same method, a tiny fraction of the resources. Given that, the fact that the
 long practice clearly worked, and that we could measure and explain its
@@ -462,10 +475,11 @@ limits, is the main achievement.
 "We built an AlphaZero-style AI for Chaturanga, the ancestor of chess. It only
 knows the rules and teaches itself by playing against itself. At first it did
 not improve, because almost every game was a draw and it had too little
-practice. We made it 11 times faster and trained it for 54,000 games. It then
-beat its starting version 27 to 0. It still struggles to checkmate, and a
-rated club player beat it in half of ten games, because it never learned to recognize when a game is
-won or lost."
+practice. We made it 11 times faster, trained it for 54,000 games, then
+switched to a better training method for 66,000 more. The final version
+beats the earlier one 83 to 1 and checkmates simple programs, but a rated
+club player still beat it in 13 of 14 games, because it never practiced
+against a real attack on its king."
 
 **Running the live demo:**
 
