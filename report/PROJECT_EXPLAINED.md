@@ -2227,6 +2227,7 @@ several times, each time with one setting changed, and each result plays
 | 8 root moves considered instead of 16 | 30-86-84 | 0.360 +/- 0.049 | 0.693 +/- 0.040 |
 | 32 root moves instead of 16 (60 iterations from 1220 at learning rate 1e-4) | 38-53-109 (against 1220) | 0.463 +/- 0.046 | 0.711 +/- 0.038 |
 | 32 root moves instead of 16 (60 iterations from 1220 at learning rate 3e-5) | 60-28-112 (against 1220) | 0.580 +/- 0.045 | 0.812 +/- 0.037 |
+| 1000 training steps per iteration instead of 500 (60 iterations from 1220, learning rate 3e-5) | 30-65-104, 1 unfinished (against 1220) | 0.412 +/- 0.046 | 0.747 +/- 0.038 |
 
 The first change, a smaller learning rate (the size of each correction),
 clearly helped: 63 wins to 28 against 1100, and 0.719 against the final
@@ -2249,6 +2250,11 @@ Repeated with the small step, 32 moves did help: **60 wins to 28 against
 the margin. Before it could replace the final model it is being re-checked:
 against the plain 1280 model (only the number of moves differs) and against
 1220 at 1600 search steps.
+
+Training twice as much on each round's games (1000 steps instead of 500)
+made it **worse**: 30 wins to 65 against 1220 (0.412) and 0.747 against
+560. Learning harder from the same games makes the network copy them too
+closely.
 
 We also tried changes that only affect how 1220 plays, not how it was
 trained, each in 200 games against the plain 1220. None helped clearly;
