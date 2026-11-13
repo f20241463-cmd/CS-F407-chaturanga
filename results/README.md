@@ -221,6 +221,10 @@ see `training/README.md`), and then trained much longer.
 
 ## The long run (final model)
 
+Iteration 560 of this run was the final model until Gumbel self-play replaced
+it with iteration 1220 (see "The final model: iteration 1220" below). Until
+then, "the final model" in this file means iteration 560.
+
 ### Setup
 
 The run continues from final B (iteration 20) under the same official
@@ -598,6 +602,7 @@ Tuning the Gumbel run: each row continues 1100 for 60 iterations with one change
 | Learning rate 3e-5 instead of 1e-4 | 63-28-109 | 0.588 +/- 0.045 | 0.719 +/- 0.041 |
 | Learning rate 3e-5, 60 more iterations (1220) | 59-35-104 (against the 3e-5 model at 1160) | 0.561 +/- 0.047 | 0.814 +/- 0.036 |
 | Learning rate 3e-5, 60 more iterations (1280) | 44-48-108 (against 1220) | 0.490 +/- 0.047 | 0.770 +/- 0.038 |
+| 8 root moves considered instead of 16 | 30-86-84 | 0.360 +/- 0.049 | 0.693 +/- 0.040 |
 
 Final pick, round robin (row model's score against the column model; files in `last_ideas/pick_final/`). 3e-5 at 1220 is the best model:
 
@@ -617,11 +622,45 @@ Play-time changes on 1220, no training (files in `last_ideas/play_ideas/`):
 | Gumbel move choice instead of PUCT visit counts | 53 | 53 | 94 | 0.500 +/- 0.050 |
 | Mirror-averaged network | 43 | 48 | 108 | 0.487 +/- 0.047 |
 | Weight average of iterations 1180 to 1220 | 60 | 49 | 91 | 0.527 +/- 0.051 |
-| 8 root moves considered instead of 16 | 30-86-84 | 0.360 +/- 0.049 | 0.693 +/- 0.040 |
+
+## The final model: iteration 1220
+
+Iteration 1220 of the Gumbel run (660 iterations from 560, 66,000 games,
+about 39 hours; learning rate 1e-4 to 1100, then 3e-5) is the final model,
+in `models/chaturangzero_final.pt`. Iteration 560 is kept as
+`models/chaturangzero_560.pt`.
+
+At the browser's settings (1600 simulations each, both keeping their search
+trees), 100 games against iteration 560: 83 wins, 1 loss, 12 draws,
+4 unfinished, score 0.927 +/- 0.038.
+
+Benchmarks (100 games each, 50 simulations, temperature 0.3):
+
+| Opponent | Iteration 560 | Iteration 1220 (final) |
+|---|---|---|
+| Random | 16 W, 0 L: 0.581 | **56 W, 0 L: 0.780 +/- 0.049** |
+| Untrained network | 17 W, 4 L: 0.572 | **52 W, 2 L: 0.766 +/- 0.055** |
+| Greedy capture | 0 W, 1 L: 0.495 | **70 W, 0 L: 0.850 +/- 0.045** |
+
+How the games end, 30 games each:
+
+| Ending | 560 vs random | 1220 vs random | 560 vs greedy | 1220 vs greedy |
+|---|---|---|---|---|
+| Checkmate | 3 | 16 | 1 | 22 |
+| Stalemate | 0 | 0 | 2 | 1 |
+| No-progress rule | 12 | 10 | 27 | 5 |
+| Threefold repetition | 14 | 4 | 0 | 2 |
+| 800-ply cap | 1 | 0 | 0 | 0 |
+
+Greedy capture, which iteration 560 could only draw against, now loses 70
+games and wins none, and most games against both programs end in checkmate.
+In self-play, 44% of iteration 1220's games were decisive, against about 15%
+in the long run. The human games were against iteration 560 and were not
+repeated with 1220.
 
 ## Limitations
 
-The stub-network results measure what search depth alone contributes, with no learned signal involved. The simulation-depth sweep's per-depth samples (1 to 4 decided games each) are too small to support a confident claim about how win rate scales with simulation count specifically; the pooled across-depth result is the more defensible number from that data. The benchmarks of the 400-game runs use 20 games per checkpoint, so their margins are about +/- 0.1; the long-run matches and benchmarks use 100 games (200 for the last comparison), with margins of about +/- 0.03 to 0.06. Differences smaller than that cannot be resolved, and with most games drawn a score says little about how often the model can actually win. The human games are sixteen games by two players: six by a beginner against final B and ten by an experienced player (FIDE blitz rating 1641) against the final model.
+The stub-network results measure what search depth alone contributes, with no learned signal involved. The simulation-depth sweep's per-depth samples (1 to 4 decided games each) are too small to support a confident claim about how win rate scales with simulation count specifically; the pooled across-depth result is the more defensible number from that data. The benchmarks of the 400-game runs use 20 games per checkpoint, so their margins are about +/- 0.1; the long-run matches and benchmarks use 100 games (200 for the last comparison), with margins of about +/- 0.03 to 0.06. Differences smaller than that cannot be resolved, and with most games drawn a score says little about how often the model can actually win. The human games are sixteen games by two players: six by a beginner against final B and ten by an experienced player (FIDE blitz rating 1641) against iteration 560. The final model, iteration 1220, was not tested against people.
 
 ## Files in this folder
 
@@ -653,4 +692,5 @@ The stub-network results measure what search depth alone contributes, with no le
 - `qmix/`: the continuation with search-value targets (training log and matches against the final model)
 - `shortcap/`: the continuation with self-play capped at 300 plies (training log and matches against the final model)
 - `last_ideas/`: the last round of ideas (one match file per idea against the final model, plus the training log of each training idea)
+- `final_model/`: the final model (iteration 1220) against 560 at 1600 simulations, its benchmarks against random, untrained and greedy capture, and how its games end
 - `soup_and_sims/`: the averaged-weights model against the final model, the script that made it, and the final model at 1600 against 800 and 3200 against 1600 simulations

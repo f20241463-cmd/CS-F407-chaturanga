@@ -18,7 +18,7 @@ mcts/         guided MCTS with PUCT, root Dirichlet noise, lazy child states
 training/     self-play games, replay buffer, training loop
 evaluation/   baseline players, per-iteration benchmark, game endings, human-game log
 results/      training logs, benchmark CSVs, plots, and the results write-up
-models/       the final trained network (chaturangzero_final.pt)
+models/       the final trained network (chaturangzero_final.pt, iteration 1220) and iteration 560
 web/          the board page for play_web.py (play the final model in the browser)
 tests/        164 automated tests
 ```
@@ -44,7 +44,7 @@ python -m evaluation.benchmark --checkpoint_dir checkpoints/demo --opponent rand
 
 The last two lines are a tiny training run (about 1 minute) and its benchmark
 (about 5 minutes). Training checkpoints are not stored in git (`checkpoints/` is
-ignored); only the final model is, in `models/`. The training commands and
+ignored); only the final model and iteration 560 are, in `models/`. The training commands and
 every evaluation command are in `training/README.md`.
 
 ## Results in brief
@@ -55,11 +55,11 @@ an untrained network, a random player or a greedy-capture player, and a human
 new to chess beat it. About 80% of games were drawn, and 400 games was far too
 little data.
 
-**Long run (final model).** After making self-play about 11 times faster, we
+**Long run (iteration 560).** After making self-play about 11 times faster, we
 continued training for 540 more iterations of 100 games (54,000 games, about
 144 hours on one laptop), lowering the learning rate for the last 140
 iterations. Under the same official settings (4 x 64 network, 50 simulations,
-no domain knowledge), the final model:
+no domain knowledge), iteration 560:
 
 - beats the model it started from: 27 wins, 0 losses, 59 draws in 100 games
   (score 0.657),
@@ -81,11 +81,29 @@ slightly bad made it weaker (0.454), and 140 more iterations at a smaller
 learning rate gave no measurable gain (0.515), and neither did 100 iterations
 that also trained on the search's own values (`--q_mix 0.5`, 0.518) or with
 self-play games capped at 300 plies (0.500), or averaging the weights of seven
-late checkpoints (0.515), so iteration 560 stays the final model. Self-play later moved to the GPU (about
-2.2 to 2.4 times faster); with it, the bigger network reached the final
-model's level by learning from its games but did not pass it, and a
+late checkpoints (0.515), so none of these replaced iteration 560. Self-play later moved to the GPU (about
+2.2 to 2.4 times faster); with it, the bigger network reached iteration
+560's level by learning from its games but did not pass it, and a
 measurement showed that resigning hopeless games cannot work yet, because the
 model does not see a loss coming.
+
+**Gumbel self-play (final model, iteration 1220).** One training change did
+help: Gumbel self-play (`--gumbel`), which keeps the search, network and loss
+but trains on an improved policy from a Gumbel root search instead of on
+visit counts. 660 more iterations from 560 with it (66,000 games, about 39
+hours; learning rate 1e-4, then 3e-5 for the last 120) gave the final model,
+iteration 1220, now in `models/chaturangzero_final.pt` and used by the
+browser game. It:
+
+- beats iteration 560 by 128 wins to 3 at 50 simulations (0.814) and by
+  83 wins to 1 at the browser's 1600 simulations (0.927),
+- beats random play (56 wins, 0 losses), the untrained network (52 wins,
+  2 losses) and greedy capture (70 wins, 0 losses),
+- ends most games against these programs in checkmate (16 of 30 against
+  random, 22 of 30 against greedy capture, against 3 and 1 for 560).
+
+The human games above were against iteration 560 and were not repeated with
+the final model.
 `results/README.md` has every number, the plots, the game endings, the human
 games and the diagnosis in full.
 
@@ -95,7 +113,7 @@ games and the diagnosis in full.
 |---|---|
 | 1. Rules engine verified by unit tests | Done: 36 rules tests |
 | 2. MCTS with an untrained network | Done: search tests plus a run on the real untrained network |
-| 3. Self-play pipeline, loss tracked over 50 to 100+ games | Done: 54,000 games in the long run, loss curves in `results/` |
+| 3. Self-play pipeline, loss tracked over 50 to 100+ games | Done: about 120,000 games (54,000 in the long run, 66,000 with Gumbel self-play), loss curves in `results/` |
 | 4. Benchmark against earlier iterations and baseline players, learning curves | Done: `results/README.md` |
 
 ## Team

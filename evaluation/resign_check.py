@@ -7,7 +7,7 @@ for each resign threshold, counts how many games a side would have resigned
 (evaluation below -threshold on N of its moves in a row) and in how many of
 those it would have been wrong (the side did not go on to lose).
 
-    python -m evaluation.resign_check --checkpoint models/chaturangzero_final.pt \
+    python -m evaluation.resign_check --checkpoint models/chaturangzero_560.pt \
         --games 160 --workers 4 --device mps
 """
 
@@ -72,7 +72,7 @@ def summarize(games, thresholds, after_values):
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    p.add_argument("--checkpoint", default="models/chaturangzero_final.pt")
+    p.add_argument("--checkpoint", default="models/chaturangzero_560.pt")
     p.add_argument("--games", type=int, default=160)
     p.add_argument("--workers", type=int, default=4)
     p.add_argument("--device", default="cpu")

@@ -15,30 +15,26 @@ search, a self-play training loop with a replay buffer, and an evaluation
 suite. Our first two runs of 400 self-play games each (50 simulations per move,
 a 4-block, 64-filter network) did not make the agent measurably stronger than
 an untrained network: about 80% of games were drawn and the data was far too
-small. We then made self-play about 11 times faster without changing the rules
-or the search, and trained for 540 more iterations (54,000 games, about 144
-hours on one laptop), lowering the learning rate at the end. Under the same
-course constraints, the final model beats the model it started from 27 wins to
-0 (score 0.657 over 100 games), beats a random player 16 to 0 and an untrained
-network 17 to 4, but still draws almost every game against a greedy-capture
-player. Its main weakness is converting an advantage: most of its games end by
-the 100-ply no-progress rule rather than checkmate. A larger 6-block,
-128-filter network did not catch up in the time we had. Two later tests, more
-search per move when playing and counting draws as slightly bad in training,
-gave a gain and a loss of strength respectively: with 800 simulations per
-move the final model beats itself at 50 by 23 wins to 0. 140 more iterations
-at an even smaller learning rate gave no measurable gain, and neither did 100
-iterations that mixed the search's own values into the value targets or 100
-iterations with self-play games capped at 300 plies, and neither did averaging
-the weights of seven late checkpoints into one model. Doubling the search again
-to 1600 simulations still helps a little (15 wins to 3 against 800), but
-3200 is no better than 1600 (0.505). After moving self-play
-to the laptop's GPU (about 2.2 to 2.4 times faster), a second attempt with the
-larger network, started from the final model's games, reached the final
-model's level but did not pass it. A measurement of the final model's own
-evaluations showed that resigning hopeless games cannot work yet: it does not
-see a loss coming. An experienced chess player (FIDE blitz rating 1641) beat
-the final model in five of ten games, but lost two and drew three.
+small. We then made self-play about 11 times faster and trained for 540 more
+iterations (54,000 games, about 144 hours on one laptop). That model,
+iteration 560, beat its starting point 27 wins to 0 and beat random and
+untrained play, but drew almost every game against a greedy-capture player and
+rarely checkmated. Smaller learning rates, counting draws as bad, search-value
+targets, shorter games, averaged weights and a larger network gave no
+measurable gain, and resigning hopeless games could not work because the model
+does not see a loss coming. More search at play time helped, so the browser
+game uses 1600 simulations per move. The one training change that helped was
+Gumbel self-play, which keeps the search, network and loss but trains on an
+improved policy from a Gumbel root search instead of on visit counts. 660 more
+iterations with it (66,000 games, about 39 hours) produced the final model,
+iteration 1220. At 50 simulations per move it beats iteration 560 by 128 wins
+to 3 (score 0.814), and at 1600 by 83 wins to 1 (0.927). It beats random play
+56 to 0, the untrained network 52 to 2 and greedy capture 70 to 0, and most of
+its games against these programs now end in checkmate. An experienced chess
+player (FIDE blitz rating 1641) beat iteration 560 in five of ten games,
+losing two; the human games were not repeated with the final model. Everything
+stays within the course constraints: no knowledge beyond the rules, 50
+simulations per move in training, and a 4-block, 64-filter network.
 
 # 1. Introduction
 
@@ -63,9 +59,11 @@ iterations and baseline players, with learning curves. All four are complete.
 
 The report follows the project in order: the first runs (Section 5.1 and
 6.1 to 6.5) gave a negative result, the diagnosis (Section 7) led to a faster
-pipeline and a much longer run, and that long run produced the final model
-(Sections 5.3 and 6.6 to 6.10). Sections 6.11 to 6.14 test what else could
-make it stronger.
+pipeline and a much longer run, and that long run produced the first final
+model, iteration 560 (Sections 5.3 and 6.6 to 6.10). Sections 6.11 to 6.19
+test what else could make it stronger. Gumbel self-play (Section 6.19) did,
+and Section 6.20 presents the result, iteration 1220, which is the final
+model.
 
 # 2. The game
 
@@ -404,7 +402,9 @@ three (41 wins, 9 losses in total). At learning rate 1e-3 the network kept
 moving around one level of play; the lower rate let it settle. Further
 stretches still helped, by smaller steps: iteration 500 scored 0.526 against
 460 (8 wins, 3 losses), and iteration 560 scored 0.524 against 500 over 300
-games (26 wins, 12 losses). Iteration 560 is the final model.
+games (26 wins, 12 losses). Iteration 560 was the final model of the long
+run, and Sections 6.9 to 6.18 call it "the final model". Gumbel self-play
+later replaced it with iteration 1220 (Section 6.20).
 
 ## 6.9 Long run: benchmarks of the final model
 
@@ -752,8 +752,8 @@ Head to head the newest models are the strongest. Iterations 1040 and 1100
 tied with each other (42 wins each) and both average 0.556, with 1100 ahead
 only in the fourth decimal, so iteration 1100 is taken as the best Gumbel
 model. Their lower scores against 560 suggest the later models specialise
-against Gumbel-style play; the final 1600-simulation check against 560
-tests the chosen model again.
+against Gumbel-style play; Section 6.20 tests the chosen model against 560
+again at 1600 simulations.
 
 We then tuned the Gumbel run. Each row continues iteration 1100 for 60
 iterations with one setting changed, and plays 200 games against 1100 and
@@ -828,6 +828,50 @@ signal about how close a game is to its end even in drawn games, did not
 help (0.482). Nor did MuZero's Reanalyse, which re-searches recent games with
 the current network to refresh their policy targets (0.479).
 
+## 6.20 The final model: iteration 1220
+
+Iteration 1220 of the Gumbel run replaces iteration 560 as the final model
+(`models/chaturangzero_final.pt`; iteration 560 is kept as
+`models/chaturangzero_560.pt`). It took 660 iterations from 560 (66,000
+games, about 39 hours of self-play and training on the laptop): Gumbel
+self-play at learning rate 1e-4 to iteration 1100, then 3e-5 to 1220.
+
+**At the browser's settings.** The scores in Section 6.19 use 50 simulations
+per move. At 1600 simulations, with both sides keeping their search trees
+between moves as the browser game does, iteration 1220 played iteration 560
+for 100 games: 83 wins, 1 loss, 12 draws and 4 unfinished, a score of
+0.927 +/- 0.038. The gain holds, and grows, with more search, so it is not
+specific to 50-simulation play.
+
+**Benchmarks.** The same protocol as Section 6.9 (100 games each,
+50 simulations, temperature 0.3):
+
+| Opponent | Iteration 560 | Iteration 1220 (final) |
+|---|---|---|
+| Random | 16 W, 0 L: 0.581 | **56 W, 0 L: 0.780 +/- 0.049** |
+| Untrained network | 17 W, 4 L: 0.572 | **52 W, 2 L: 0.766 +/- 0.055** |
+| Greedy capture | 0 W, 1 L: 0.495 | **70 W, 0 L: 0.850 +/- 0.045** |
+
+How the games end, 30 games each:
+
+| Ending | 560 vs random | 1220 vs random | 560 vs greedy | 1220 vs greedy |
+|---|---|---|---|---|
+| Checkmate | 3 | 16 | 1 | 22 |
+| Stalemate | 0 | 0 | 2 | 1 |
+| No-progress rule | 12 | 10 | 27 | 5 |
+| Threefold repetition | 14 | 4 | 0 | 2 |
+| 800-ply cap | 1 | 0 | 0 | 0 |
+
+This is the largest change in the whole project. Greedy capture, which the
+long-run models could only draw against, now loses 70 games and wins none,
+and most games against both programs end in checkmate instead of by the
+no-progress rule. The weakness Sections 6.9 and 7 describe, converting an
+advantage, is much smaller, though not gone: a third of the games against
+random still end by the no-progress rule. In self-play, 44% of iteration
+1220's games were decisive, against about 15% in the long run. The human
+games of Section 6.4 were played against iteration 560 and were not repeated
+with 1220. Result files are in `results/final_model/`.
+
 # 7. Discussion
 
 **The first runs.** We first checked for a bug. The tests confirm the value
@@ -852,7 +896,9 @@ The human games show the same weakness from the outside: the agent gives away
 material steadily and cannot defend, and a beginner beat final B. Against the
 final model, an experienced player (FIDE blitz rating 1641) still won five of
 ten games and lost two (Section 6.4),
-though the agent kept more of its pieces.
+though the agent kept more of its pieces. (Those games were against
+iteration 560; the final model, iteration 1220, was not tested against
+people.)
 
 The exploratory runs suggested that a better value signal alone is not enough
 at that scale: the value head learned material, but 30 to 100 simulations with
@@ -883,6 +929,20 @@ by 23 wins to 0 (Section 6.11), and 1600 beat 800 by 15 wins to 3, but
 3200 was no better than 1600 (Section 6.18). Averaging the weights of late checkpoints gave no measurable
 gain (Section 6.18).
 
+**Gumbel self-play moved that limit.** The conclusion above held for
+training on visit counts. With 50 simulations, visit counts are a coarse
+target: a move the search never visits gets no credit, however good it is.
+The Gumbel search trains on softmax(logits + sigma(completed Q)) instead, so
+every legal move gets a target from its prior and, where it was searched,
+from its value. With the same network, the same 50 simulations and the same
+loss, this kept improving for 660 iterations where every other continuation
+of iteration 560 stalled, and it raised the share of decisive self-play games
+from about 15% to about 44%. More decisive games give the value head more
+real results to learn from, which is the problem the earlier paragraphs
+describe. The final model, iteration 1220, beats greedy capture 70 to 0 and
+checkmates in most of its games against the baseline programs
+(Section 6.20).
+
 **Size and what the value head knows.** The larger network learned to play as
 well as the final model from its games, but its own games did not take it
 further, so network size is not what holds the agent back. The resignation
@@ -899,15 +959,15 @@ the same as AlphaZero's; the amount of training is not:
 
 | | AlphaZero (chess) | ChaturangZero |
 |---|---|---|
-| Self-play games | about 44 million | about 54,000 |
+| Self-play games | about 44 million | about 120,000 |
 | Simulations per move in training | 800 | 50 |
 | Network | about 20 blocks of 256 filters | 4 blocks of 64 filters |
 | Hardware | thousands of TPU chips | one laptop |
-| Training time | hours, on that hardware | about 144 hours |
+| Training time | hours, on that hardware | about 183 hours |
 
-That is roughly 800 times fewer games. At our speed (54,000 games in about
-144 hours), 44 million games would take about 800 x 144 hours, or roughly 13
-years of nonstop running on this laptop. Chaturanga's weaker pieces probably
+That is roughly 370 times fewer games. At our speed (about 120,000 games in
+about 183 hours), 44 million games would take about 370 x 183 hours, or
+roughly 8 years of nonstop running on this laptop. Chaturanga's weaker pieces probably
 make it simpler than chess, so it may need fewer games, but very likely still
 millions rather than thousands. The course constraints also cap strength
 regardless of time: 30 to 50 simulations per move in training and a small
@@ -919,7 +979,9 @@ Within these limits, three things can still raise strength, and we tried each:
    search's own value into the value targets gives the value head a signal
    even from drawn games (Section 6.16), and capping self-play at 300 plies
    gives about 2.4 times more decisive games per hour (Section 6.17). Neither
-   made the model measurably stronger in 100 iterations.
+   made the model measurably stronger in 100 iterations. Gumbel self-play,
+   which trains on an improved policy instead of visit counts, did
+   (Sections 6.19 and 6.20), and it produced the final model.
 2. **Search more at play time.** The constraint on simulations applies to
    training only. At 800 simulations the final model beats its own 50-simulation
    version 23 wins to 0 (Section 6.11), and 1600 beats 800 by 15 wins to 3,
@@ -927,7 +989,7 @@ Within these limits, three things can still raise strength, and we tried each:
    1600.
 3. **More hardware.** Running self-play on several machines at once would
    multiply the number of games, but four laptops or a rented GPU would give
-   a few times more games, not 800 times more.
+   a few times more games, not 370 times more.
 
 So the honest summary is: the full AlphaZero method works here and keeps
 improving with more games, and the gap to mastery is one of compute, which we
@@ -942,7 +1004,8 @@ measured rather than guessed.
   can actually win.
 - The human evaluation is sixteen games by two players: six by a beginner
   against final B and ten by an experienced player (FIDE blitz rating 1641)
-  against the final model. Neither set is large enough for a precise score.
+  against iteration 560. Neither set is large enough for a precise score, and
+  the final model, iteration 1220, was not tested against people.
 - Compute was the main limit: even with GPU self-play, one iteration of 100
   games takes about 4 minutes, and the larger network about 10.
 
@@ -970,21 +1033,23 @@ course constraints and verified it with 164 tests. With 400 self-play games per
 run the agent did not improve, and we measured why: draws starve the value
 head, and the data was far too small. After making self-play about 11 times
 faster, a run of 54,000 games with the same method produced a clearly stronger
-agent. The final model beats its starting point 27 wins to 0 and beats random
-and untrained play, losing almost no games. It still draws nearly every game
-against greedy capture, an experienced chess player (FIDE blitz rating 1641)
-beat it in five of ten games while losing two, and it
-rarely checkmates, so learning to convert an
-advantage remains the open problem. More search at play time makes it
-clearly stronger (23 wins to 0 at 800 simulations against 50, and 15 to 3 at
-1600 against 800, with no further gain at 3200), but neither
-that, longer training at smaller learning rates, counting draws as bad,
-learning from the search's own values, shorter self-play games, averaging
-checkpoints, nor a larger network solved it, and the
-model's own evaluations show why: it does not yet recognize won or lost
-positions until the end is near. The evaluation tools (a fixed benchmark
-protocol, head-to-head matches, game-ending counts and human-game logging) made
-both the negative and the positive result measurable.
+agent, iteration 560, which beat random and untrained play but drew nearly
+every game against greedy capture and rarely checkmated. Longer training at
+smaller learning rates, counting draws as bad, learning from the search's own
+values, shorter self-play games, averaging checkpoints and a larger network
+did not change that, and the model's own evaluations showed why: it did not
+recognize won or lost positions until the end was near. More search at play
+time helped (1600 simulations per move in the browser). Gumbel self-play
+changed it: 66,000 more games trained on improved-policy targets gave the
+final model, iteration 1220, which beats iteration 560 by 83 wins to 1 at
+1600 simulations, beats greedy capture 70 to 0, and ends most of its games
+against the baseline programs in checkmate. The agent is still far from
+mastering the game, which would need hundreds of times more games than one
+laptop can play (Section 7). An experienced chess player beat iteration 560
+in five of ten games; the final model has not been tested against people. The
+evaluation tools (a fixed benchmark protocol, head-to-head matches, round
+robins, game-ending counts and human-game logging) made both the negative
+and the positive results measurable.
 
 # References
 
@@ -1019,14 +1084,24 @@ OMP_NUM_THREADS=1 python -m training.train --resume checkpoints/final_B/latest.p
     --min_buffer 150000 --batch_size 256 --train_steps 500 --lr 1e-3 \
     --device mps --workers 6 --seed 1 \
     --checkpoint_dir checkpoints/long --log checkpoints/long/log.csv
+# Gumbel self-play from 560: 60 iterations at a time, --lr 1e-4 to 1100,
+# then --lr 3e-5 to 1220 (seeds are in each checkpoint's metadata)
+OMP_NUM_THREADS=1 python -m training.train --resume models/chaturangzero_560.pt \
+    --iterations 620 --games_per_iter 100 --simulations 50 --avoid_repetition \
+    --temperature_moves 1000 --max_plies 800 --buffer_capacity 250000 \
+    --min_buffer 150000 --batch_size 256 --train_steps 500 --lr 1e-4 \
+    --gumbel --gumbel_actions 16 --device mps --workers 6 --selfplay_device mps \
+    --checkpoint_dir checkpoints/gumbel --log checkpoints/gumbel/log.csv
 python -m evaluation.parallel_match --a models/chaturangzero_final.pt \
-    --b checkpoints/final_B/latest.pt --games 100 --workers 6
+    --b models/chaturangzero_560.pt --games 100 --workers 6 --device mps \
+    --simulations 1600 --reuse_a --reuse_b
 python play_vs_ai.py --checkpoint models/chaturangzero_final.pt --player NAME --simulations 1600
 python play_web.py --player NAME    # the same game in the browser
 ```
 
-Every log, benchmark CSV, match log and plot is in `results/`, and the final
-model is `models/chaturangzero_final.pt`.
+Every log, benchmark CSV, match log and plot is in `results/`. The final
+model (iteration 1220) is `models/chaturangzero_final.pt`, and iteration 560
+is `models/chaturangzero_560.pt`.
 
 # Appendix C: The project proposal, item by item
 
@@ -1048,11 +1123,11 @@ Every requirement of the course proposal, and where it is met.
 | Runs on consumer hardware in an academic timeframe | One laptop; self-play about 11 times faster, then 2.2 to 2.4 times faster on its GPU (Section 4) |
 | Milestone 1: rules engine verified by unit tests | Section 4 |
 | Milestone 2: MCTS with an untrained network | Search tests and untrained baselines (Sections 4 and 5.2) |
-| Milestone 3: self-play pipeline, loss tracked over 50 to 100+ games | 54,000 games with loss curves (Sections 6.1 and 6.6) |
-| Milestone 4: benchmarks against past iterations and baseline players, learning curves | Sections 6.2, 6.3 and 6.7 to 6.9 |
-| Agent vs. random and agent vs. human evaluation | Sections 6.2, 6.4 and 6.9 |
+| Milestone 3: self-play pipeline, loss tracked over 50 to 100+ games | About 120,000 games (54,000 in the long run, 66,000 with Gumbel self-play) with loss curves (Sections 6.1 and 6.6) |
+| Milestone 4: benchmarks against past iterations and baseline players, learning curves | Sections 6.2, 6.3, 6.7 to 6.9, 6.19 and 6.20 |
+| Agent vs. random and agent vs. human evaluation | Sections 6.2, 6.4, 6.9 and 6.20 |
 | Progress plots | `results/` and the figures in Section 6 |
 | Uncheckered 8x8 Ashtapada board; Mantri one diagonal step, Gaja two-square diagonal jump | Section 2; the browser game draws the uncheckered board |
-| An agent that masters the game from scratch | Not reached; Section 7 ("Why the agent does not master the game") explains the 800-fold gap in games and what we did within the limits |
+| An agent that masters the game from scratch | Not reached; Section 7 ("Why the agent does not master the game") explains the roughly 370-fold gap in games and what we did within the limits |
 | Three-student division of labor | Appendix A |
 
