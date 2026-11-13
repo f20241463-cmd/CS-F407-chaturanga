@@ -357,7 +357,7 @@ only just beat the one before, and did a little worse against round
 practises. The first one, making it learn in **smaller steps**, worked:
 the new version beat round 1100 by **63 wins to 28**, and 60 rounds later
 (round 1220) it beat round 560 **128 games to 3**, its best result ever. Making it consider
-fewer moves while thinking made it **worse** (30 wins to 86), and making it consider more moves (32 instead of 16) did **not help** either (38 wins to 53 against round 1220). Adding
+fewer moves while thinking made it **worse** (30 wins to 86), and making it consider more moves (32 instead of 16) did not help at first (38 wins to 53 against round 1220), but that test also used a bigger learning step. With the same small step as round 1220, 32 moves **did help: 60 wins to 28** against round 1220. We are checking that result again before trusting it. Adding
 the other ideas on top of Gumbel made **no difference**. Then: also teaching the agent to guess how many moves a game has
 left. **No improvement**. Last: going back over recent practice games with
 the newer network to give fresher lessons. **No improvement** either.
