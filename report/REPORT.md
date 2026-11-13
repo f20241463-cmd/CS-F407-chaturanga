@@ -860,9 +860,12 @@ within the margin but below even, and 0.711 against 560, below 1220's
 learning rate. Repeated at 3e-5, 32 root moves did help: 60 wins to 28
 against 1220 (0.580 +/- 0.045), where the same 60 iterations with 16 root
 moves gave 0.490 (the 1280 row), and 0.812 against 560. That is the first
-change from 1220 to beat it outside the margin. It is being re-checked
-against the plain 1280 model and against 1220 at 1600 simulations before
-any change of final model; the remaining tweaks from 1220 all use 3e-5.
+change from 1220 to beat it outside the margin. Two re-checks confirmed it.
+Against the plain 1280 model, where only the number of root moves differs,
+it won 55 games to 28 (0.568 +/- 0.044, 200 games, one unfinished), and
+against 1220 at the browser setting of 1600 simulations it won 30 to 13
+(0.589 +/- 0.065, 100 games, four unfinished). It is being benchmarked as
+the candidate final model; the remaining tweaks from 1220 all use 3e-5.
 Training twice as hard on each iteration's data (1000 steps instead of
 500) made it worse: 0.412 +/- 0.046 against 1220 and 0.747 against 560,
 most likely because the network fits each batch of self-play games too
