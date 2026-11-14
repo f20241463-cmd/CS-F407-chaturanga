@@ -2,7 +2,7 @@
   "use strict";
   const SIMS = 800;          // same search size as the earlier human games against round 560
   const CPUCT = 1.5;
-  const MODEL = "models/chaturangzero_final.pt (iteration 1220, web)";
+  const MODEL = "checkpoints/ideas/g_actions32b/iter_1280.pt (32 root moves, iteration 1280, web)";
   const GLYPH = ["♚", "♛", "♜", "♝", "♞", "♟"];
   const NAMES = ["raja", "mantri", "ratha", "gaja", "ashva", "padati"];
   const FILES = "abcdefgh";
@@ -243,7 +243,7 @@
   render();
   tally();
   initNet().then(() => {
-    $("about").textContent = `You are playing the final ChaturangZero model (round 1220), which searches ${SIMS} positions before each move. It learned only from games against itself.`;
+    $("about").textContent = `You are playing the newest ChaturangZero model (round 1280, trained with 32 root moves), which searches ${SIMS} positions before each move. It learned only from games against itself.`;
     $("status").textContent = "Ready: start a game";
     $("substatus").textContent = "Play 5 games as White and 5 as Black if you can.";
     $("newWhite").disabled = false; $("newBlack").disabled = false;

@@ -6,7 +6,8 @@ from network.agent import _fuse_conv_bn, make_network_fn
 from chaturanga.game import GameState
 from chaturanga import encoding
 OUT = sys.argv[1]
-r = load_checkpoint('models/chaturangzero_final.pt', device='cpu')
+CKPT = sys.argv[2] if len(sys.argv) > 2 else 'models/chaturangzero_final.pt'
+r = load_checkpoint(CKPT, device='cpu')
 model = r[0] if isinstance(r, tuple) else r
 model.eval()
 net = _fuse_conv_bn(copy.deepcopy(model).eval())
