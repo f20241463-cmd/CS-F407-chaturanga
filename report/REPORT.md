@@ -825,6 +825,7 @@ iterations with one setting changed, and plays 200 games against 1100 and
 | Learning rate 3e-4 instead of 3e-5 (60 iterations from 1220) | 20-93-87 (against 1220) | 0.318 +/- 0.046 | 0.680 +/- 0.045 |
 | Replay buffer of 100,000 positions instead of 250,000 (60 iterations from 1220) | 25-52-123 (against 1220) | 0.432 +/- 0.042 | 0.741 +/- 0.037 |
 | Weight decay 1e-3 instead of 1e-4 (60 iterations from 1220) | 39-54-105 (against 1220) | 0.462 +/- 0.047 | 0.741 +/- 0.040 |
+| Weight decay 1e-5 instead of 1e-4 (60 iterations from 1220) | 56-33-110 (against 1220) | 0.558 +/- 0.046 | 0.773 +/- 0.039 |
 
 A lower learning rate is the first change that clearly beats the plain
 continuation: 0.588 against 1100, well outside the margin, and 0.719
@@ -889,6 +890,10 @@ was also worse (0.432 +/- 0.042 against 1220, 0.741 against 560): training
 on only the newest games seems to make the network forget older lessons.
 Ten times stronger weight decay (1e-3 instead of 1e-4) gave no clear gain
 and leaned slightly worse (0.462 +/- 0.047 against 1220, 0.741 against 560).
+Ten times weaker weight decay (1e-5) did better: 56 wins to 33 against 1220
+(0.558 +/- 0.046, 0.773 against 560), close to the final model's 0.580. It
+has not yet been played against the final model, so the final model is
+unchanged for now.
 
 Gumbel self-play stays within the project specification: it is still an MCTS
 guided by the network's policy priors with leaves evaluated by the value head
