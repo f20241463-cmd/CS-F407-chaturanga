@@ -826,6 +826,7 @@ iterations with one setting changed, and plays 200 games against 1100 and
 | Replay buffer of 100,000 positions instead of 250,000 (60 iterations from 1220) | 25-52-123 (against 1220) | 0.432 +/- 0.042 | 0.741 +/- 0.037 |
 | Weight decay 1e-3 instead of 1e-4 (60 iterations from 1220) | 39-54-105 (against 1220) | 0.462 +/- 0.047 | 0.741 +/- 0.040 |
 | Weight decay 1e-5 instead of 1e-4 (60 iterations from 1220) | 56-33-110 (against 1220) | 0.558 +/- 0.046 | 0.773 +/- 0.039 |
+| No repetition avoidance in self-play (60 iterations from 1220) | 55-36-108 (against 1220) | 0.548 +/- 0.047 | 0.801 +/- 0.039 |
 
 A lower learning rate is the first change that clearly beats the plain
 continuation: 0.588 against 1100, well outside the margin, and 0.719
@@ -891,9 +892,14 @@ on only the newest games seems to make the network forget older lessons.
 Ten times stronger weight decay (1e-3 instead of 1e-4) gave no clear gain
 and leaned slightly worse (0.462 +/- 0.047 against 1220, 0.741 against 560).
 Ten times weaker weight decay (1e-5) did better: 56 wins to 33 against 1220
-(0.558 +/- 0.046, 0.773 against 560), close to the final model's 0.580. It
-has not yet been played against the final model, so the final model is
-unchanged for now.
+(0.558 +/- 0.046, 0.773 against 560), close to the final model's 0.580, but
+the re-check did not hold up: against the final model it scored 33-45-121
+(0.470 +/- 0.043), and against the plain 1280, where only the weight decay
+differs, 46-44-109 (0.505 +/- 0.047). Weight decay 1e-5 makes no clear
+difference, and the final model is unchanged. Turning off the repetition
+avoidance in self-play (Section 3.4) scored 55-36-108 against 1220 (0.548 +/-
+0.047, 0.801 against 560), so with Gumbel self-play the nudge is no longer
+needed; a re-check against the final model is queued.
 
 Gumbel self-play stays within the project specification: it is still an MCTS
 guided by the network's policy priors with leaves evaluated by the value head
