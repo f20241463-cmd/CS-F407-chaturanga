@@ -358,7 +358,7 @@ only just beat the one before, and did a little worse against round
 practises. The first one, making it learn in **smaller steps**, worked:
 the new version beat round 1100 by **63 wins to 28**, and 60 rounds later
 (round 1220) it beat round 560 **128 games to 3**, its best result ever. Making it consider
-fewer moves while thinking made it **worse** (30 wins to 86), and making it consider more moves (32 instead of 16) did not help at first (38 wins to 53 against round 1220), but that test also used a bigger learning step. With the same small step as round 1220, 32 moves **did help: 60 wins to 28** against round 1220. We checked it twice more and it held (55 wins to 28, and 30 to 13 when both think 1600 times per move), so it became the final version (round 1280, below). Studying each round's games twice as long made it **worse** (30 wins to 65), playing more games with less thinking made **no difference** (50 wins to 45), and learning in bigger steps made it much **worse** (20 wins to 93). Remembering fewer old practice games made it **worse** too (25 wins to 52), and keeping the network's numbers smaller made **no clear difference** (39 wins to 54). Letting them grow a bit more freely looked **better** at first (56 wins to 33), but it lost to the final version (33 wins to 45), so it made no real difference. Turning off the rule that stops practice games repeating themselves did fine too (55 wins to 36): with the newer practice method, that rule is no longer needed. Adding
+fewer moves while thinking made it **worse** (30 wins to 86), and making it consider more moves (32 instead of 16) did not help at first (38 wins to 53 against round 1220), but that test also used a bigger learning step. With the same small step as round 1220, 32 moves **did help: 60 wins to 28** against round 1220. We checked it twice more and it held (55 wins to 28, and 30 to 13 when both think 1600 times per move), so it became the final version (round 1280, below). Studying each round's games twice as long made it **worse** (30 wins to 65), playing more games with less thinking made **no difference** (50 wins to 45), and learning in bigger steps made it much **worse** (20 wins to 93). Remembering fewer old practice games made it **worse** too (25 wins to 52), and keeping the network's numbers smaller made **no clear difference** (39 wins to 54). Letting them grow a bit more freely looked **better** at first (56 wins to 33), but it lost to the final version (33 wins to 45), so it made no real difference. Turning off the rule that stops practice games repeating themselves made **no real difference** (exactly even against the same training with the rule on), and making the search trust its own guesses more made it **worse** (27 wins to 73). Adding
 the other ideas on top of Gumbel made **no difference**. Then: also teaching the agent to guess how many moves a game has
 left. **No improvement**. Last: going back over recent practice games with
 the newer network to give fresher lessons. **No improvement** either.
@@ -406,9 +406,9 @@ instead of 16** at the start of each search:
 Against greedy capture, 23 of 30 games ended in checkmate.
 
 **One score for every version.** We also gave every version a single
-rating, like a chess rating, from all 20,040 games our versions played
+rating, like a chess rating, from all 20,835 games our versions played
 against each other, with round 560 set to 0. The final version is about
-**275 points above round 560** and about 40 above round 1220. The first
+**285 points above round 560** and about 45 above round 1220. The first
 Gumbel version (round 620) is only 34 above 560, so most of the gain came
 from the long Gumbel practice that followed.
 

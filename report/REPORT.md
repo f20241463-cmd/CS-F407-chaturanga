@@ -827,6 +827,7 @@ iterations with one setting changed, and plays 200 games against 1100 and
 | Weight decay 1e-3 instead of 1e-4 (60 iterations from 1220) | 39-54-105 (against 1220) | 0.462 +/- 0.047 | 0.741 +/- 0.040 |
 | Weight decay 1e-5 instead of 1e-4 (60 iterations from 1220) | 56-33-110 (against 1220) | 0.558 +/- 0.046 | 0.773 +/- 0.039 |
 | No repetition avoidance in self-play (60 iterations from 1220) | 55-36-108 (against 1220) | 0.548 +/- 0.047 | 0.801 +/- 0.039 |
+| Gumbel value scale 0.3 instead of 0.1 (60 iterations from 1220) | 27-73-100 (against 1220) | 0.385 +/- 0.046 | 0.755 +/- 0.036 |
 
 A lower learning rate is the first change that clearly beats the plain
 continuation: 0.588 against 1100, well outside the margin, and 0.719
@@ -898,8 +899,13 @@ the re-check did not hold up: against the final model it scored 33-45-121
 differs, 46-44-109 (0.505 +/- 0.047). Weight decay 1e-5 makes no clear
 difference, and the final model is unchanged. Turning off the repetition
 avoidance in self-play (Section 3.4) scored 55-36-108 against 1220 (0.548 +/-
-0.047, 0.801 against 560), so with Gumbel self-play the nudge is no longer
-needed; a re-check against the final model is queued.
+0.047, 0.801 against 560). The re-check showed this was not a real gain:
+against the final model it scored 30-60-109 (0.425 +/- 0.046), and against
+the plain 1280, where only the repetition avoidance differs, exactly even
+(46-46-106, 0.500). So with Gumbel self-play the nudge neither helps nor
+hurts. Raising the Gumbel value scale from 0.1 to 0.3, which makes the
+search trust its own value estimates more against the network's prior, was
+clearly worse (27-73-100 against 1220, 0.385 +/- 0.046; 0.755 against 560).
 
 Gumbel self-play stays within the project specification: it is still an MCTS
 guided by the network's policy priors with leaves evaluated by the value head
@@ -1029,8 +1035,8 @@ report. Result files are in `results/final_model/` (the `final` files) and
 ## 6.22 One rating for every model
 
 The matches above each compare two models. To put them on one scale, we fit
-Elo-style ratings to every standard head-to-head match we played (120
-matches, 20,040 games at 50 simulations, temperature 0.3, repetition
+Elo-style ratings to every standard head-to-head match we played (124
+matches, 20,835 games at 50 simulations, temperature 0.3, repetition
 avoidance and the 800-ply cap): a draw counts as half a win, the expected
 score follows the usual logistic curve on a 400-point scale, and the ratings
 are the maximum-likelihood fit with iteration 560 fixed at 0. The 90% ranges
@@ -1041,30 +1047,31 @@ every rating towards the weak player.
 
 | Player | Rating | 90% range | Games |
 |---|---|---|---|
-| Iteration 1280, 32 root moves (final model) | 275 | 249 to 309 | 798 |
-| Tweak: no repetition avoidance (1280) | 259 | 229 to 301 | 397 |
-| Averaged weights of the 1220 chain (soup) | 256 | 209 to 290 | 200 |
-| Tweak: weight decay 1e-5 (1280) | 247 | 225 to 274 | 795 |
-| Iteration 1220 (second final model) | 237 | 221 to 254 | 2990 |
-| Tweak: 150 games x 32 simulations (1280) | 235 | 208 to 275 | 397 |
-| Iteration 1280, 16 root moves | 229 | 200 to 261 | 798 |
-| Gumbel, learning rate 3e-5, iteration 1160 | 204 | 184 to 228 | 996 |
-| Tweak: weight decay 1e-3 (1280) | 198 | 165 to 228 | 395 |
-| Tweak: replay buffer 100k (1280) | 187 | 157 to 218 | 399 |
-| Tweak: 1000 training steps (1280) | 181 | 153 to 218 | 397 |
-| Gumbel, iteration 1100 | 179 | 164 to 199 | 2191 |
-| Tweak: learning rate 3e-4 (1280) | 117 | 85 to 146 | 400 |
-| Gumbel, iteration 800 | 110 | 95 to 127 | 1596 |
-| Gumbel self-play, iteration 620 | 34 | 10 to 61 | 599 |
-| Iteration 560 (first final model) | 0 | 0 to 0 | 9203 |
-| First long run, iteration 420 | -25 | -133 to 55 | 365 |
+| Iteration 1280, 32 root moves (final model) | 283 | 263 to 310 | 997 |
+| Averaged weights of the 1220 chain (soup) | 258 | 221 to 313 | 200 |
+| Tweak: weight decay 1e-5 (1280) | 252 | 236 to 278 | 795 |
+| Tweak: no repetition avoidance (1280) | 246 | 224 to 273 | 794 |
+| Iteration 1220 (second final model) | 239 | 227 to 257 | 3190 |
+| Tweak: 150 games x 32 simulations (1280) | 237 | 203 to 272 | 397 |
+| Iteration 1280, 16 root moves | 236 | 214 to 260 | 996 |
+| Gumbel, learning rate 3e-5, iteration 1160 | 206 | 186 to 226 | 996 |
+| Tweak: weight decay 1e-3 (1280) | 200 | 165 to 230 | 395 |
+| Tweak: replay buffer 100k (1280) | 188 | 161 to 222 | 399 |
+| Tweak: 1000 training steps (1280) | 182 | 152 to 217 | 397 |
+| Gumbel, iteration 1100 | 180 | 163 to 195 | 2191 |
+| Tweak: Gumbel value scale 0.3 (1280) | 175 | 150 to 202 | 398 |
+| Tweak: learning rate 3e-4 (1280) | 119 | 92 to 148 | 400 |
+| Gumbel, iteration 800 | 110 | 90 to 129 | 1596 |
+| Gumbel self-play, iteration 620 | 34 | 11 to 56 | 599 |
+| Iteration 560 (first final model) | 0 | 0 to 0 | 9401 |
+| First long run, iteration 420 | -25 | -118 to 70 | 365 |
 
 The order matches the head-to-head results: the Gumbel chain (620, 800,
 1100, 1220, 1280)
-gained rating, the final model is about 40 points above 1220 and about 275
-above 560 (an expected score of about 0.83 against 560; it scored 0.81 at 50
+gained rating, the final model is about 45 points above 1220 and about 285
+above 560 (an expected score of about 0.84 against 560; it scored 0.81 at 50
 simulations), and the tweaks that "lost" to their starting point sit below
-1220. Models that played few games (the soup, the no-repetition tweak) have
+1220. Models that played few games (such as the soup) have
 wide ranges, and the ranges of the top five overlap, so only gaps larger than
 about 40 points are reliable. The script is `evaluation/elo_table.py`; the
 table is also in `results/ratings.md`.
