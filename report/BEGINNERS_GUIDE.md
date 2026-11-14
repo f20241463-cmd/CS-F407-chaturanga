@@ -434,7 +434,7 @@ games and drew 3 against a much stronger player, and kept more of its
 pieces. But the club player still won half the games, four of them quickly
 (in under 110 moves).
 
-**Against the final version (round 1220).** Later the same player played
+**Against round 1220.** Later the same player played
 **14 games** against round 1220, again thinking 800 times per move. He lives
 in another city and has no project files, so we rewrote the AI to run inside
 a web page (`web/standalone/`) and checked that it plays exactly the same
