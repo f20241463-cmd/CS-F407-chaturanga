@@ -1,0 +1,2 @@
+iteration,checkpoint,opponent,games,wins,losses,draws,unfinished,score,margin,avg_plies,seconds
+1280,checkpoints/ideas/g_actions32b/iter_1280.pt,greedy,100,76,0,24,0,0.88,0.0419,234.7,47.5
