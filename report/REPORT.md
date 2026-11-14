@@ -1026,6 +1026,49 @@ the final model's own games against the same player are not yet in this
 report. Result files are in `results/final_model/` (the `final` files) and
 `results/last_ideas/tuning/` (the `actions32b` files).
 
+## 6.22 One rating for every model
+
+The matches above each compare two models. To put them on one scale, we fit
+Elo-style ratings to every standard head-to-head match we played (120
+matches, 20,040 games at 50 simulations, temperature 0.3, repetition
+avoidance and the 800-ply cap): a draw counts as half a win, the expected
+score follows the usual logistic curve on a 400-point scale, and the ratings
+are the maximum-likelihood fit with iteration 560 fixed at 0. The 90% ranges
+come from refitting 100 resamples of the games. Matches against random,
+untrained and greedy capture are left out, because most of those games are
+draws in which the weak side simply cannot be mated in time, which pulls
+every rating towards the weak player.
+
+| Player | Rating | 90% range | Games |
+|---|---|---|---|
+| Iteration 1280, 32 root moves (final model) | 275 | 249 to 309 | 798 |
+| Tweak: no repetition avoidance (1280) | 259 | 229 to 301 | 397 |
+| Averaged weights of the 1220 chain (soup) | 256 | 209 to 290 | 200 |
+| Tweak: weight decay 1e-5 (1280) | 247 | 225 to 274 | 795 |
+| Iteration 1220 (second final model) | 237 | 221 to 254 | 2990 |
+| Tweak: 150 games x 32 simulations (1280) | 235 | 208 to 275 | 397 |
+| Iteration 1280, 16 root moves | 229 | 200 to 261 | 798 |
+| Gumbel, learning rate 3e-5, iteration 1160 | 204 | 184 to 228 | 996 |
+| Tweak: weight decay 1e-3 (1280) | 198 | 165 to 228 | 395 |
+| Tweak: replay buffer 100k (1280) | 187 | 157 to 218 | 399 |
+| Tweak: 1000 training steps (1280) | 181 | 153 to 218 | 397 |
+| Gumbel, iteration 1100 | 179 | 164 to 199 | 2191 |
+| Tweak: learning rate 3e-4 (1280) | 117 | 85 to 146 | 400 |
+| Gumbel, iteration 800 | 110 | 95 to 127 | 1596 |
+| Gumbel self-play, iteration 620 | 34 | 10 to 61 | 599 |
+| Iteration 560 (first final model) | 0 | 0 to 0 | 9203 |
+| First long run, iteration 420 | -25 | -133 to 55 | 365 |
+
+The order matches the head-to-head results: the Gumbel chain (620, 800,
+1100, 1220, 1280)
+gained rating, the final model is about 40 points above 1220 and about 275
+above 560 (an expected score of about 0.83 against 560; it scored 0.81 at 50
+simulations), and the tweaks that "lost" to their starting point sit below
+1220. Models that played few games (the soup, the no-repetition tweak) have
+wide ranges, and the ranges of the top five overlap, so only gaps larger than
+about 40 points are reliable. The script is `evaluation/elo_table.py`; the
+table is also in `results/ratings.md`.
+
 # 7. Discussion
 
 **The first runs.** We first checked for a bug. The tests confirm the value

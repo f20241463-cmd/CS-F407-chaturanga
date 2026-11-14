@@ -744,6 +744,26 @@ against random (within the margin). In the last ten training iterations, 51%
 of its self-play games were decisive (1220: 44%). Files: `final_model/`
 (the `final` files) and `last_ideas/tuning/` (the `actions32b` files).
 
+## Ratings of all models
+
+`ratings.md` puts every model on one Elo-style scale, fitted to all 120
+standard head-to-head matches (20,040 games), draws as half a win, iteration
+560 fixed at 0, 90% ranges from 100 resamples. Made with
+`python -m evaluation.elo_table` (`--all` lists every checkpoint).
+Benchmarks against random, untrained and greedy are left out (mostly draws,
+which squash the scale).
+
+| Player | Rating | 90% range | Games |
+|---|---|---|---|
+| Iteration 1280, 32 root moves (final model) | 275 | 249 to 309 | 798 |
+| Iteration 1220 (second final model) | 237 | 221 to 254 | 2990 |
+| Iteration 1280, 16 root moves | 229 | 200 to 261 | 798 |
+| Gumbel, learning rate 3e-5, iteration 1160 | 204 | 184 to 228 | 996 |
+| Gumbel, iteration 1100 | 179 | 164 to 199 | 2191 |
+| Gumbel, iteration 800 | 110 | 95 to 127 | 1596 |
+| Gumbel self-play, iteration 620 | 34 | 10 to 61 | 599 |
+| Iteration 560 (first final model) | 0 | 0 to 0 | 9203 |
+
 ## Limitations
 
 The stub-network results measure what search depth alone contributes, with no learned signal involved. The simulation-depth sweep's per-depth samples (1 to 4 decided games each) are too small to support a confident claim about how win rate scales with simulation count specifically; the pooled across-depth result is the more defensible number from that data. The benchmarks of the 400-game runs use 20 games per checkpoint, so their margins are about +/- 0.1; the long-run matches and benchmarks use 100 games (200 for the last comparison), with margins of about +/- 0.03 to 0.06. Differences smaller than that cannot be resolved, and with most games drawn a score says little about how often the model can actually win. The human games are thirty games by two players: six by a beginner against final B, and ten against iteration 560 and fourteen against iteration 1220 by an experienced player (FIDE blitz rating 1641), who had already learned the agent's style before the 1220 games.
