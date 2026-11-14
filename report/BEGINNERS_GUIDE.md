@@ -405,6 +405,13 @@ instead of 16** at the start of each search:
 
 Against greedy capture, 23 of 30 games ended in checkmate.
 
+**One score for every version.** We also gave every version a single
+rating, like a chess rating, from all 20,040 games our versions played
+against each other, with round 560 set to 0. The final version is about
+**275 points above round 560** and about 40 above round 1220. The first
+Gumbel version (round 620) is only 34 above 560, so most of the gain came
+from the long Gumbel practice that followed.
+
 # Playing against people
 
 For the presentation, we built a version you can play **in a web browser by

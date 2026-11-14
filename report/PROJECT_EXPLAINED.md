@@ -2437,6 +2437,35 @@ practice games had a winner (51% in its last ten rounds, against 44% for
 1220). It has not yet played the experienced human; the web version now
 plays it, so those games can be added.
 
+## One rating for every model
+
+Each match compares only two models. To see them all on one scale we gave
+every model a **rating**, like a chess rating, worked out from all 120
+matches between our models (20,040 games). A draw counts as half a win, and
+round 560 is fixed at 0, so a rating says how many points a model is above
+or below 560. A gap of 100 points means the stronger model is expected to
+score about 0.64; 200 points, about 0.76. The range is how sure we are (90%).
+Games against random, untrained and greedy are left out: most of them are
+draws because the weak side cannot be checkmated in time, which would squash
+all the ratings together.
+
+| Player | Rating | 90% range | Games |
+|---|---|---|---|
+| Iteration 1280, 32 root moves (final model) | 275 | 249 to 309 | 798 |
+| Iteration 1220 (second final model) | 237 | 221 to 254 | 2990 |
+| Iteration 1280, 16 root moves | 229 | 200 to 261 | 798 |
+| Gumbel, learning rate 3e-5, iteration 1160 | 204 | 184 to 228 | 996 |
+| Gumbel, iteration 1100 | 179 | 164 to 199 | 2191 |
+| Gumbel, iteration 800 | 110 | 95 to 127 | 1596 |
+| Gumbel self-play, iteration 620 | 34 | 10 to 61 | 599 |
+| Iteration 560 (first final model) | 0 | 0 to 0 | 9203 |
+
+The Gumbel versions gained rating round after round (620, 800, 1100, 1220,
+1280), and the final model is about
+40 points above 1220 and 275 above 560. The top models' ranges overlap, so
+only gaps bigger than about 40 points are certain. The full table, with
+every tweak, is in `results/ratings.md` (made by `evaluation/elo_table.py`).
+
 ## Why we stopped training
 
 - Every extra idea within the rules (more training, smaller steps, a bigger
