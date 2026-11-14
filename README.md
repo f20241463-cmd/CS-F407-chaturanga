@@ -18,7 +18,7 @@ mcts/         guided MCTS with PUCT, root Dirichlet noise, lazy child states
 training/     self-play games, replay buffer, training loop
 evaluation/   baseline players, per-iteration benchmark, game endings, human-game log
 results/      training logs, benchmark CSVs, plots, and the results write-up
-models/       the final trained network (chaturangzero_final.pt, iteration 1220) and iteration 560
+models/       the final trained network (chaturangzero_final.pt, iteration 1280), and iterations 1220 and 560
 web/          the board page for play_web.py (play the final model in the browser)
 tests/        164 automated tests
 ```
@@ -87,13 +87,12 @@ late checkpoints (0.515), so none of these replaced iteration 560. Self-play lat
 measurement showed that resigning hopeless games cannot work yet, because the
 model does not see a loss coming.
 
-**Gumbel self-play (final model, iteration 1220).** One training change did
+**Gumbel self-play (iteration 1220, then the final model).** One training change did
 help: Gumbel self-play (`--gumbel`), which keeps the search, network and loss
 but trains on an improved policy from a Gumbel root search instead of on
 visit counts. 660 more iterations from 560 with it (66,000 games, about 39
-hours; learning rate 1e-4, then 3e-5 for the last 120) gave the final model,
-iteration 1220, now in `models/chaturangzero_final.pt` and used by the
-browser game. It:
+hours; learning rate 1e-4, then 3e-5 for the last 120) gave iteration 1220
+(`models/chaturangzero_1220.pt`). It:
 
 - beats iteration 560 by 128 wins to 3 at 50 simulations (0.814) and by
   83 wins to 1 at the browser's 1600 simulations (0.927),
@@ -106,6 +105,20 @@ It did not get better against people. The same experienced player played 14
 games against it at 800 simulations per move, on a standalone browser version
 (`web/standalone/`), and won 13, with one draw. Being stronger against
 programs did not help against a person who attacks its king directly.
+
+**The final model: 32 root moves (iteration 1280).** Considering 32
+candidate moves at the root of the Gumbel search instead of 16, for 60 more
+iterations from 1220 (6,000 games, about 3.3 hours), gave the final model,
+now in `models/chaturangzero_final.pt` and used by the browser game and the
+web version. It:
+
+- beats iteration 1220 by 60 wins to 28 at 50 simulations (0.580) and by
+  30 to 13 at 1600 (0.589), and the same 60 iterations with 16 root moves by
+  55 to 28 (0.568),
+- beats iteration 560 by 87 wins to 3 at 1600 simulations (0.933),
+- beats random play (51 wins, 0 losses), the untrained network (69 wins,
+  2 losses) and greedy capture (76 wins, 0 losses), with 16 and 23 of 30
+  games against random and greedy capture ending in checkmate.
 `results/README.md` has every number, the plots, the game endings, the human
 games and the diagnosis in full.
 
@@ -115,7 +128,7 @@ games and the diagnosis in full.
 |---|---|
 | 1. Rules engine verified by unit tests | Done: 36 rules tests |
 | 2. MCTS with an untrained network | Done: search tests plus a run on the real untrained network |
-| 3. Self-play pipeline, loss tracked over 50 to 100+ games | Done: about 120,000 games (54,000 in the long run, 66,000 with Gumbel self-play), loss curves in `results/` |
+| 3. Self-play pipeline, loss tracked over 50 to 100+ games | Done: about 126,000 games (54,000 in the long run, 72,000 with Gumbel self-play), loss curves in `results/` |
 | 4. Benchmark against earlier iterations and baseline players, learning curves | Done: `results/README.md` |
 
 ## Team
