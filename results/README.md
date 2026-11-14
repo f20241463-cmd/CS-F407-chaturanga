@@ -645,6 +645,8 @@ Tuning the Gumbel run: each row continues 1100 for 60 iterations with one change
 | Re-check: the same 32-move model against the plain 1280 | 55-28-116, 1 unfinished | 0.568 +/- 0.044 | |
 | Re-check: the same 32-move model against 1220 at 1600 simulations (100 games) | 30-13-53, 4 unfinished | 0.589 +/- 0.065 | |
 | 1000 training steps per iteration instead of 500 (60 iterations from 1220, learning rate 3e-5) | 30-65-104, 1 unfinished (against 1220) | 0.412 +/- 0.046 | 0.747 +/- 0.038 |
+| 32 simulations and 150 games per iteration instead of 50 and 100 (60 iterations from 1220, learning rate 3e-5) | 50-45-104, 1 unfinished (against 1220) | 0.513 +/- 0.048 | 0.780 +/- 0.040 |
+| Learning rate 3e-4 instead of 3e-5 (60 iterations from 1220) | 20-93-87 (against 1220) | 0.318 +/- 0.046 | 0.680 +/- 0.045 |
 
 Final pick, round robin (row model's score against the column model; files in `last_ideas/pick_final/`). 3e-5 at 1220 is the best model:
 

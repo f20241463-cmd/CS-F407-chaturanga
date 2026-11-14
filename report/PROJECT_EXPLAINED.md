@@ -2235,6 +2235,8 @@ several times, each time with one setting changed, and each result plays
 | 32 root moves instead of 16 (60 iterations from 1220 at learning rate 1e-4) | 38-53-109 (against 1220) | 0.463 +/- 0.046 | 0.711 +/- 0.038 |
 | 32 root moves instead of 16 (60 iterations from 1220 at learning rate 3e-5) | 60-28-112 (against 1220) | 0.580 +/- 0.045 | 0.812 +/- 0.037 |
 | 1000 training steps per iteration instead of 500 (60 iterations from 1220, learning rate 3e-5) | 30-65-104, 1 unfinished (against 1220) | 0.412 +/- 0.046 | 0.747 +/- 0.038 |
+| 32 simulations and 150 games per iteration instead of 50 and 100 (60 iterations from 1220, learning rate 3e-5) | 50-45-104, 1 unfinished (against 1220) | 0.513 +/- 0.048 | 0.780 +/- 0.040 |
+| Learning rate 3e-4 instead of 3e-5 (60 iterations from 1220) | 20-93-87 (against 1220) | 0.318 +/- 0.046 | 0.680 +/- 0.045 |
 
 The first change, a smaller learning rate (the size of each correction),
 clearly helped: 63 wins to 28 against 1100, and 0.719 against the final
@@ -2263,6 +2265,12 @@ Training twice as much on each round's games (1000 steps instead of 500)
 made it **worse**: 30 wins to 65 against 1220 (0.412) and 0.747 against
 560. Learning harder from the same games makes the network copy them too
 closely.
+
+Playing more practice games with less thinking (150 games of 32 search steps
+per round instead of 100 of 50, about the same time) made **no clear
+difference**: 50 wins to 45 against 1220 (0.513). A **bigger** learning step
+(3e-4) was clearly **worse**: 20 wins to 93 (0.318). The small step is what
+kept Gumbel self-play improving.
 
 We also tried changes that only affect how 1220 plays, not how it was
 trained, each in 200 games against the plain 1220. None helped clearly;

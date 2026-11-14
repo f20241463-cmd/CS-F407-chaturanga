@@ -821,6 +821,8 @@ iterations with one setting changed, and plays 200 games against 1100 and
 | 32 root moves instead of 16 (60 iterations from 1220 at learning rate 1e-4) | 38-53-109 (against 1220) | 0.463 +/- 0.046 | 0.711 +/- 0.038 |
 | 32 root moves instead of 16 (60 iterations from 1220 at learning rate 3e-5) | 60-28-112 (against 1220) | 0.580 +/- 0.045 | 0.812 +/- 0.037 |
 | 1000 training steps per iteration instead of 500 (60 iterations from 1220, learning rate 3e-5) | 30-65-104, 1 unfinished (against 1220) | 0.412 +/- 0.046 | 0.747 +/- 0.038 |
+| 32 simulations and 150 games per iteration instead of 50 and 100 (60 iterations from 1220, learning rate 3e-5) | 50-45-104, 1 unfinished (against 1220) | 0.513 +/- 0.048 | 0.780 +/- 0.040 |
+| Learning rate 3e-4 instead of 3e-5 (60 iterations from 1220) | 20-93-87 (against 1220) | 0.318 +/- 0.046 | 0.680 +/- 0.045 |
 
 A lower learning rate is the first change that clearly beats the plain
 continuation: 0.588 against 1100, well outside the margin, and 0.719
@@ -874,7 +876,13 @@ with 1220.
 Training twice as hard on each iteration's data (1000 steps instead of
 500) made it worse: 0.412 +/- 0.046 against 1220 and 0.747 against 560,
 most likely because the network fits each batch of self-play games too
-closely.
+closely. Playing 150 games per iteration at 32 simulations instead of 100
+at 50 (about the same time, still inside the 30 to 50 limit) gave no clear
+change (0.513 +/- 0.048 against 1220, 0.780 against 560): more games with
+a weaker search balance out. A larger learning rate, 3e-4, was clearly
+worse (0.318 against 1220, 0.680 against 560), which agrees with Section
+6.19's finding that the small rate of 3e-5 is what kept the Gumbel run
+improving.
 
 Gumbel self-play stays within the project specification: it is still an MCTS
 guided by the network's policy priors with leaves evaluated by the value head
