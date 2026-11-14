@@ -1,10 +1,11 @@
 # Standalone web version
 
-A single HTML page that plays the final model (iteration 1220) entirely in the
-browser, with no Python and no server. It was built so that a player in another
-city could play against the agent from a Windows laptop with nothing installed.
-The 14 games against iteration 1220 in `results/human_games.csv` were played on
-it (Section 6.4 of the report).
+A single HTML page that plays the agent entirely in the browser, with no
+Python and no server. It was built so that a player in another city could play
+against the agent from a Windows laptop with nothing installed. The 14 games
+against iteration 1220 in `results/human_games.csv` were played on it (Section
+6.4 of the report). It now plays the final model, iteration 1280 with 32 root
+moves; games are saved with the model they were played against.
 
 It is a port, not a new agent:
 
@@ -15,8 +16,9 @@ It is a port, not a new agent:
 - `net.c` compiled to `net.wasm`: the 4x64 network with batch norm folded into
   the convolutions, in WebAssembly with SIMD (about 0.6 ms per position).
   `netjs.js` loads it, and also has a plain JavaScript version as a fallback.
-- `export.py`: writes the weights of `models/chaturangzero_final.pt` to
-  `weights.js`, with reference outputs the page checks itself against on load.
+- `export.py`: writes the weights of a checkpoint (default
+  `models/chaturangzero_final.pt`) to `weights.js`, with reference outputs the
+  page checks itself against on load.
 - `app.js`, `head.html`, `body.html`: the board, 800 simulations per move, and
   saving each finished game (date in UTC, colors, result, ending, moves).
 
@@ -34,7 +36,7 @@ It is a port, not a new agent:
 From the repository root:
 
 ```bash
-python web/standalone/export.py web/standalone/weights.js
+python web/standalone/export.py web/standalone/weights.js [checkpoint]
 # only if net.c changes (needs clang and lld, e.g. brew install llvm lld):
 clang --target=wasm32 -O3 -msimd128 -ffast-math -fno-math-errno -nostdlib \
   -Wl,--no-entry -Wl,--export=get_w -Wl,--export=get_in -Wl,--export=get_out \

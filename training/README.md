@@ -90,7 +90,7 @@ Time for one batch of self-play games with 50 simulations (A18 Pro laptop):
 
 | Network | Games | 6 CPU workers | GPU self-play |
 |---|---|---|---|
-| 4 x 64 (iterations 560 and 1220) | 120 | 544 s | 246 s (6 workers) |
+| 4 x 64 (iterations 560, 1220 and 1280) | 120 | 544 s | 246 s (6 workers) |
 | 6 x 128 | 60 | 830 s | 351 s (3 workers) |
 
 Both columns played the same games. `--batch_groups 2` splits each worker's
@@ -126,7 +126,7 @@ iteration 560 at `--lr 2e-5` (seed 12, `--selfplay_device mps`, iterations
 one with `--max_plies 300 --lr 1e-4` (seed 31, iterations 561 to 660,
 `results/shortcap/`).
 
-The final model, iteration 1220, continued iteration 560 with Gumbel
+Iteration 1220 continued iteration 560 with Gumbel
 self-play, in stretches of 60 iterations, each resuming from the last
 checkpoint of the one before, with the long-run options plus
 `--gumbel --gumbel_actions 16 --selfplay_device mps` (seeds are in each
@@ -136,9 +136,11 @@ checkpoint's metadata):
 |---|---|---|
 | 561 to 1100 | 1e-4 | `checkpoints/ideas/gumbel`, `gumbel_more`, `gumbel_more2`, `gumbel_more3`, `gumbel_chain_0860` to `gumbel_chain_1100` |
 | 1101 to 1220 | 3e-5 | `checkpoints/ideas/g_lowlr`, `checkpoints/ideas/lowlr_chain_1220` |
+| 1221 to 1280 (final model), with `--gumbel_actions 32` | 3e-5 | `checkpoints/ideas/g_actions32b` (seed 63) |
 
-Iteration 1220 is saved in the repo as `models/chaturangzero_final.pt`
-(without the optimizer state) and iteration 560 as
+The final model, iteration 1280 with 32 root moves, is saved in the repo as
+`models/chaturangzero_final.pt` (without the optimizer state), iteration
+1220 as `models/chaturangzero_1220.pt` and iteration 560 as
 `models/chaturangzero_560.pt`.
 
 ### A bigger network, started from an earlier agent's games

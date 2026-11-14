@@ -167,13 +167,14 @@ the games it lost) and did better when the human played Black (2 wins, 1 draw,
 and earlier agents, but an experienced player who attacks its king directly still
 usually wins, an attack it has rarely faced in self-play.
 
-**Against iteration 1220.** The same player played fourteen games against the
-final model, iteration 1220, at 800 simulations per move (eight as White, six
+**Against iteration 1220.** The same player played fourteen games against
+iteration 1220, then the final model, at 800 simulations per move (eight as White, six
 as Black). The player was in another city and used the standalone web version
 (`web/standalone/`), which runs the same rules, search and network in the
 browser and was checked against the Python code with no differences. These
 rows are logged with the player `guest` and the checkpoint
-`models/chaturangzero_final.pt (iteration 1220, web)`, with times in IST.
+`models/chaturangzero_final.pt (iteration 1220, web)`, with times in IST;
+that model is now `models/chaturangzero_1220.pt`.
 
 | Game | Human plays | Result | Ending | Plies | Pieces left (human / agent) |
 |---|---|---|---|---|---|
@@ -257,7 +258,8 @@ see `training/README.md`), and then trained much longer.
 ## The long run (final model)
 
 Iteration 560 of this run was the final model until Gumbel self-play replaced
-it with iteration 1220 (see "The final model: iteration 1220" below). Until
+it with iteration 1220 and then iteration 1280 with 32 root moves (see the
+two sections at the end). Until
 then, "the final model" in this file means iteration 560.
 
 ### Setup
@@ -663,11 +665,12 @@ Play-time changes on 1220, no training (files in `last_ideas/play_ideas/`):
 | Mirror-averaged network | 43 | 48 | 108 | 0.487 +/- 0.047 |
 | Weight average of iterations 1180 to 1220 | 60 | 49 | 91 | 0.527 +/- 0.051 |
 
-## The final model: iteration 1220
+## Iteration 1220
 
 Iteration 1220 of the Gumbel run (660 iterations from 560, 66,000 games,
-about 39 hours; learning rate 1e-4 to 1100, then 3e-5) is the final model,
-in `models/chaturangzero_final.pt`. Iteration 560 is kept as
+about 39 hours; learning rate 1e-4 to 1100, then 3e-5) was the final model
+until iteration 1280 with 32 root moves replaced it (next section). It is
+kept as `models/chaturangzero_1220.pt`, and iteration 560 as
 `models/chaturangzero_560.pt`.
 
 At the browser's settings (1600 simulations each, both keeping their search
@@ -676,7 +679,7 @@ trees), 100 games against iteration 560: 83 wins, 1 loss, 12 draws,
 
 Benchmarks (100 games each, 50 simulations, temperature 0.3):
 
-| Opponent | Iteration 560 | Iteration 1220 (final) |
+| Opponent | Iteration 560 | Iteration 1220 |
 |---|---|---|
 | Random | 16 W, 0 L: 0.581 | **56 W, 0 L: 0.780 +/- 0.049** |
 | Untrained network | 17 W, 4 L: 0.572 | **52 W, 2 L: 0.766 +/- 0.055** |
@@ -697,6 +700,43 @@ games and wins none, and most games against both programs end in checkmate.
 In self-play, 44% of iteration 1220's games were decisive, against about 15%
 in the long run. Against the experienced human it did not improve: 13 human
 wins and 1 draw in 14 games (see "Agent vs. Human" above).
+
+## The final model: iteration 1280 with 32 root moves
+
+Iteration 1220 continued for 60 iterations (6,000 games, about 3.3 hours) at
+learning rate 3e-5 with `--gumbel_actions 32`: the Gumbel root search
+considers 32 candidate moves instead of 16. This is the final model, in
+`models/chaturangzero_final.pt`.
+
+| Match | Result | Score |
+|---|---|---|
+| Against 1220, 50 simulations, 200 games | 60-28-112 | 0.580 +/- 0.045 |
+| Against the plain 1280 (same 60 iterations, 16 root moves), 200 games | 55-28-116, 1 unfinished | 0.568 +/- 0.044 |
+| Against 1220, 1600 simulations with tree reuse, 100 games | 30-13-53, 4 unfinished | 0.589 +/- 0.065 |
+| Against 560, 1600 simulations with tree reuse, 100 games | 87-3-7, 3 unfinished | 0.933 +/- 0.042 |
+| Against 560, 50 simulations, 200 games | 130-5-65 | 0.812 +/- 0.037 |
+
+Benchmarks (100 games each, 50 simulations, temperature 0.3):
+
+| Opponent | Iteration 560 | Iteration 1220 | Final (1280, 32 root moves) |
+|---|---|---|---|
+| Random | 16 W, 0 L: 0.581 | 56 W, 0 L: 0.780 +/- 0.049 | **51 W, 0 L: 0.755 +/- 0.049** |
+| Untrained network | 17 W, 4 L: 0.572 | 52 W, 2 L: 0.766 +/- 0.055 | **69 W, 2 L: 0.842 +/- 0.050** |
+| Greedy capture | 0 W, 1 L: 0.495 | 70 W, 0 L: 0.850 +/- 0.045 | **76 W, 0 L: 0.880 +/- 0.042** |
+
+How the games end, 30 games each:
+
+| Ending | 1220 vs random | Final vs random | 1220 vs greedy | Final vs greedy |
+|---|---|---|---|---|
+| Checkmate | 16 | 16 | 22 | 23 |
+| Stalemate | 0 | 0 | 1 | 0 |
+| No-progress rule | 10 | 6 | 5 | 6 |
+| Threefold repetition | 4 | 8 | 2 | 1 |
+
+Better than 1220 against the untrained network and greedy capture, level
+against random (within the margin). In the last ten training iterations, 51%
+of its self-play games were decisive (1220: 44%). Files: `final_model/`
+(the `final` files) and `last_ideas/tuning/` (the `actions32b` files).
 
 ## Limitations
 
@@ -732,5 +772,5 @@ The stub-network results measure what search depth alone contributes, with no le
 - `qmix/`: the continuation with search-value targets (training log and matches against the final model)
 - `shortcap/`: the continuation with self-play capped at 300 plies (training log and matches against the final model)
 - `last_ideas/`: the last round of ideas (one match file per idea against the final model, plus the training log of each training idea)
-- `final_model/`: the final model (iteration 1220) against 560 at 1600 simulations, its benchmarks against random, untrained and greedy capture, and how its games end
+- `final_model/`: the final model (iteration 1280, 32 root moves; `final` files) and iteration 1220 (`1220` files) against 560 at 1600 simulations, their benchmarks against random, untrained and greedy capture, and how their games end
 - `soup_and_sims/`: the averaged-weights model against the final model, the script that made it, and the final model at 1600 against 800 and 3200 against 1600 simulations

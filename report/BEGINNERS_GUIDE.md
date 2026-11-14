@@ -38,8 +38,8 @@ The short story of what happened:
 5. We tried several more ideas to make it even stronger. Most did not help,
    but letting it "think longer" before each move did.
 6. A rated club chess player (FIDE blitz rating 1641) played 10 games against
-   it and won 5, lost 2 and drew 3. Against the newest, strongest version he
-   won 13 of 14 games and drew 1.
+   it and won 5, lost 2 and drew 3. Against a much stronger later version
+   (round 1220) he won 13 of 14 games and drew 1.
 
 # The game: Chaturanga
 
@@ -358,12 +358,13 @@ only just beat the one before, and did a little worse against round
 practises. The first one, making it learn in **smaller steps**, worked:
 the new version beat round 1100 by **63 wins to 28**, and 60 rounds later
 (round 1220) it beat round 560 **128 games to 3**, its best result ever. Making it consider
-fewer moves while thinking made it **worse** (30 wins to 86), and making it consider more moves (32 instead of 16) did not help at first (38 wins to 53 against round 1220), but that test also used a bigger learning step. With the same small step as round 1220, 32 moves **did help: 60 wins to 28** against round 1220. We checked it twice more and it held (55 wins to 28, and 30 to 13 when both think 1600 times per move), so it may become the new final version. Studying each round's games twice as long made it **worse** (30 wins to 65). Adding
+fewer moves while thinking made it **worse** (30 wins to 86), and making it consider more moves (32 instead of 16) did not help at first (38 wins to 53 against round 1220), but that test also used a bigger learning step. With the same small step as round 1220, 32 moves **did help: 60 wins to 28** against round 1220. We checked it twice more and it held (55 wins to 28, and 30 to 13 when both think 1600 times per move), so it became the final version (round 1280, below). Studying each round's games twice as long made it **worse** (30 wins to 65). Adding
 the other ideas on top of Gumbel made **no difference**. Then: also teaching the agent to guess how many moves a game has
 left. **No improvement**. Last: going back over recent practice games with
 the newer network to give fresher lessons. **No improvement** either.
 Small changes to how round 1220 plays (no extra practice) made no
-difference either, so round 1220 became the **new final version**.
+difference either. So round 1220 became the final version, until the
+32-move version beat it.
 
 **6. Faster practice on the graphics chip.** We rebuilt the practice system
 so many games share the graphics chip at once. Practice got about 2.2 to 2.4
@@ -375,9 +376,8 @@ because almost all of its practice games were draws. Gumbel search was the
 one exception: with it, 44% of the practice games ended in a win or loss
 instead of about 15%, so the program got many more real results to learn from.
 
-**The new final version (round 1220),** saved as
-`models/chaturangzero_final.pt` and used by the browser game, took 660 more
-rounds of Gumbel practice after round 560 (66,000 games, about 39 hours):
+**Round 1220** took 660 more rounds of Gumbel practice after round 560
+(66,000 games, about 39 hours):
 
 | Against | Wins | Losses | Draws | What it means |
 |---|---|---|---|---|
@@ -388,6 +388,22 @@ rounds of Gumbel practice after round 560 (66,000 games, about 39 hours):
 
 It also finishes games much better: against greedy capture 22 of 30 games
 ended in checkmate, against just 1 for round 560.
+
+**The final version (round 1280),** saved as `models/chaturangzero_final.pt`
+and used by the browser game, is round 1220 with 60 more rounds of practice
+(6,000 games, about 3 hours) in which it considers **32 possible moves
+instead of 16** at the start of each search:
+
+| Against | Wins | Losses | Draws | What it means |
+|---|---|---|---|---|
+| Round 1220 | 60 | 28 | 112 | Stronger than the version before |
+| Round 1220 (both thinking 1600 times per move) | 30 | 13 | 53 | Still stronger with more thinking |
+| Round 560 (both thinking 1600 times per move) | 87 | **3** | 7 | Much stronger |
+| Random moves | 51 | **0** | 49 | About the same as round 1220 |
+| Untrained version | 69 | 2 | 27 | Better than round 1220 (52 wins) |
+| Greedy capture | 76 | **0** | 24 | Better than round 1220 (70 wins) |
+
+Against greedy capture, 23 of 30 games ended in checkmate.
 
 # Playing against people
 
@@ -418,7 +434,7 @@ games and drew 3 against a much stronger player, and kept more of its
 pieces. But the club player still won half the games, four of them quickly
 (in under 110 moves).
 
-**Against the final version (round 1220).** Later the same player played
+**Against round 1220.** Later the same player played
 **14 games** against round 1220, again thinking 800 times per move. He lives
 in another city and has no project files, so we rewrote the AI to run inside
 a web page (`web/standalone/`) and checked that it plays exactly the same
@@ -458,7 +474,7 @@ it does not recognize the danger in time.
 
 | | AlphaZero (chess) | ChaturangZero |
 |---|---|---|
-| Practice games | About 44 million | About 120,000 |
+| Practice games | About 44 million | About 126,000 |
 | Imaginings per move in practice | 800 | 50 |
 | Computer | Thousands of special chips in a data center | One laptop |
 | Knowledge given | Only the rules | Only the rules |
@@ -476,10 +492,10 @@ limits, is the main achievement.
 knows the rules and teaches itself by playing against itself. At first it did
 not improve, because almost every game was a draw and it had too little
 practice. We made it 11 times faster, trained it for 54,000 games, then
-switched to a better training method for 66,000 more. The final version
-beats the earlier one 83 to 1 and checkmates simple programs, but a rated
-club player still beat it in 13 of 14 games, because it never practiced
-against a real attack on its king."
+switched to a better training method for 72,000 more. The final version
+beats the earlier one 87 to 3 and checkmates simple programs, but a rated
+club player still beat the version before it in 13 of 14 games, because it
+never practiced against a real attack on its king."
 
 **Running the live demo:**
 
@@ -525,9 +541,9 @@ At 800 it beat its 50 self 23 to 0, and at 1600 it beat its 800 self 15 to 3.
 At 3200 it was no better than at 1600, so 1600 is where the gain stops.
 
 **Is the program you're showing the same one in the report?** Yes. The
-browser game uses the final version, round 1220, thinking 1600 times per
-move. The ten games against the chess player were played against round 560
-at 800, before both changes.
+browser game uses the final version, round 1280, thinking 1600 times per
+move. The games against the chess player were played against round 560 and
+round 1220, thinking 800 times per move.
 
 # Small word list
 
