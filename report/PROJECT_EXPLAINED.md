@@ -2240,6 +2240,7 @@ several times, each time with one setting changed, and each result plays
 | Replay buffer of 100,000 positions instead of 250,000 (60 iterations from 1220) | 25-52-123 (against 1220) | 0.432 +/- 0.042 | 0.741 +/- 0.037 |
 | Weight decay 1e-3 instead of 1e-4 (60 iterations from 1220) | 39-54-105 (against 1220) | 0.462 +/- 0.047 | 0.741 +/- 0.040 |
 | Weight decay 1e-5 instead of 1e-4 (60 iterations from 1220) | 56-33-110 (against 1220) | 0.558 +/- 0.046 | 0.773 +/- 0.039 |
+| No repetition avoidance in self-play (60 iterations from 1220) | 55-36-108 (against 1220) | 0.548 +/- 0.047 | 0.801 +/- 0.039 |
 
 The first change, a smaller learning rate (the size of each correction),
 clearly helped: 63 wins to 28 against 1100, and 0.719 against the final
@@ -2280,7 +2281,11 @@ lessons. Pulling the network's numbers ten times harder towards zero (weight
 decay 1e-3 instead of 1e-4) made **no clear difference**, if anything slightly
 worse: 39 wins to 54 (0.462). Pulling them ten times **less** (1e-5) did
 better: 56 wins to 33 against 1220 (0.558), close to the final model's 60 to
-28. It still has to be played against the final model.
+28. But it did not hold up: against the final model it lost 33 to 45 (0.470),
+and against the plain 1280 (same training, normal weight decay) it was even,
+46 to 44. So weight decay makes no clear difference. Turning **off** the rule
+that stops practice games from repeating positions also did fine: 55 wins to
+36 against 1220 (0.548). With Gumbel self-play that rule is no longer needed.
 
 We also tried changes that only affect how 1220 plays, not how it was
 trained, each in 200 games against the plain 1220. None helped clearly;
