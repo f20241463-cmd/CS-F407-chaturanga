@@ -652,6 +652,7 @@ Tuning the Gumbel run: each row continues 1100 for 60 iterations with one change
 | Weight decay 1e-5 instead of 1e-4 (60 iterations from 1220) | 56-33-110 (against 1220) | 0.558 +/- 0.046 | 0.773 +/- 0.039 |
 | No repetition avoidance in self-play (60 iterations from 1220) | 55-36-108 (against 1220) | 0.548 +/- 0.047 | 0.801 +/- 0.039 |
 | Gumbel value scale 0.3 instead of 0.1 (60 iterations from 1220) | 27-73-100 (against 1220) | 0.385 +/- 0.046 | 0.755 +/- 0.036 |
+| Gumbel value scale 0.03 instead of 0.1 (60 iterations from 1220) | 57-34-108 (against 1220) | 0.558 +/- 0.046 | 0.828 +/- 0.036 |
 
 Final pick, round robin (row model's score against the column model; files in `last_ideas/pick_final/`). 3e-5 at 1220 is the best model:
 
@@ -747,8 +748,8 @@ of its self-play games were decisive (1220: 44%). Files: `final_model/`
 
 ## Ratings of all models
 
-`ratings.md` puts every model on one Elo-style scale, fitted to all 126
-standard head-to-head matches (21,234 games), draws as half a win, iteration
+`ratings.md` puts every model on one Elo-style scale, fitted to all 130
+standard head-to-head matches (22,030 games), draws as half a win, iteration
 560 fixed at 0, 90% ranges from 100 resamples. Made with
 `python -m evaluation.elo_table` (`--all` lists every checkpoint).
 Benchmarks against random, untrained and greedy are left out (mostly draws,
@@ -756,15 +757,15 @@ which squash the scale).
 
 | Player | Rating | 90% range | Games |
 |---|---|---|---|
-| Iteration 1280, 32 root moves (final model) | 274 | 252 to 296 | 1197 |
-| Final model trained 60 more rounds (1340) | 259 | 227 to 295 | 399 |
-| Iteration 1220 (second final model) | 237 | 224 to 252 | 3190 |
-| Iteration 1280, 16 root moves | 231 | 216 to 259 | 996 |
-| Gumbel, learning rate 3e-5, iteration 1160 | 204 | 185 to 221 | 996 |
-| Gumbel, iteration 1100 | 179 | 164 to 198 | 2191 |
-| Gumbel, iteration 800 | 110 | 93 to 131 | 1596 |
-| Gumbel self-play, iteration 620 | 34 | 11 to 58 | 599 |
-| Iteration 560 (first final model) | 0 | 0 to 0 | 9600 |
+| Iteration 1280, 32 root moves (final model) | 276 | 254 to 294 | 1396 |
+| Final model trained 60 more rounds (1340) | 260 | 217 to 297 | 399 |
+| Iteration 1220 (second final model) | 236 | 223 to 255 | 3389 |
+| Iteration 1280, 16 root moves | 233 | 213 to 256 | 1194 |
+| Gumbel, learning rate 3e-5, iteration 1160 | 204 | 186 to 227 | 996 |
+| Gumbel, iteration 1100 | 179 | 166 to 196 | 2191 |
+| Gumbel, iteration 800 | 110 | 91 to 126 | 1596 |
+| Gumbel self-play, iteration 620 | 34 | 8 to 59 | 599 |
+| Iteration 560 (first final model) | 0 | 0 to 0 | 9800 |
 
 ## Limitations
 
