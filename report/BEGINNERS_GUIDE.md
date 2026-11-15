@@ -389,8 +389,7 @@ instead of about 15%, so the program got many more real results to learn from.
 It also finishes games much better: against greedy capture 22 of 30 games
 ended in checkmate, against just 1 for round 560.
 
-**The final version (round 1280),** saved as `models/chaturangzero_final.pt`
-and used by the browser game, is round 1220 with 60 more rounds of practice
+**Round 1280,** the final version until round 1340 (below), is round 1220 with 60 more rounds of practice
 (6,000 games, about 3 hours) in which it considers **32 possible moves
 instead of 16** at the start of each search:
 
@@ -405,16 +404,30 @@ instead of 16** at the start of each search:
 
 Against greedy capture, 23 of 30 games ended in checkmate.
 
-We also let the final version practise 60 more rounds (to round 1340). It
-won 45 games and lost 38 against round 1280, too close to call, so round
-1280 stayed the final version: more practice alone no longer helped.
+We also let round 1280 practise 60 more rounds with the same settings. It
+won 45 games and lost 38 against round 1280, too close to call: more
+practice alone no longer helped.
 
 Last, we combined two settings that had each helped a little: looking at 32
 moves at the top of the search, and trusting the network's first guess a bit
 more. Trained for 60 rounds from round 1280 (to a new round 1340), this
 version beat round 1280 in two matches of 200 games: 62 wins to 31, then 42
 to 31. It is only a little stronger, but it passed our rule for switching, so
-it becomes the final version. This is the last switch.
+it became the final version. This is the last switch.
+
+**The final version (round 1340),** saved as `models/chaturangzero_final.pt`
+and used by the browser game:
+
+| Against | Wins | Losses | Draws | What it means |
+|---|---|---|---|---|
+| Round 1280 (two matches) | 104 | 62 | 233 | A little stronger |
+| Round 1220 | 66 | 30 | 103 | Stronger |
+| Round 560 (both thinking 1600 times per move) | 91 | **4** | 4 | Much stronger |
+| Random moves | 59 | **0** | 41 | About the same as round 1280 |
+| Untrained version | 66 | **0** | 33 | About the same as round 1280 |
+| Greedy capture | 80 | 3 | 17 | About the same; its first losses to greedy capture |
+
+Against greedy capture, 21 of 30 games ended in checkmate.
 
 **One score for every version.** We also gave every version a single
 rating, like a chess rating, from all 23,028 games our versions played
@@ -493,7 +506,7 @@ it does not recognize the danger in time.
 
 | | AlphaZero (chess) | ChaturangZero |
 |---|---|---|
-| Practice games | About 44 million | About 126,000 |
+| Practice games | About 44 million | About 132,000 |
 | Imaginings per move in practice | 800 | 50 |
 | Computer | Thousands of special chips in a data center | One laptop |
 | Knowledge given | Only the rules | Only the rules |
@@ -511,8 +524,8 @@ limits, is the main achievement.
 knows the rules and teaches itself by playing against itself. At first it did
 not improve, because almost every game was a draw and it had too little
 practice. We made it 11 times faster, trained it for 54,000 games, then
-switched to a better training method for 72,000 more. The final version
-beats the earlier one 87 to 3 and checkmates simple programs, but a rated
+switched to a better training method for 78,000 more. The final version
+beats the earlier one 91 to 4 and checkmates simple programs, but a rated
 club player still beat the version before it in 13 of 14 games, because it
 never practiced against a real attack on its king."
 
@@ -560,7 +573,7 @@ At 800 it beat its 50 self 23 to 0, and at 1600 it beat its 800 self 15 to 3.
 At 3200 it was no better than at 1600, so 1600 is where the gain stops.
 
 **Is the program you're showing the same one in the report?** Yes. The
-browser game uses the final version, round 1280, thinking 1600 times per
+browser game uses the final version, round 1340, thinking 1600 times per
 move. The games against the chess player were played against round 560 and
 round 1220, thinking 800 times per move.
 

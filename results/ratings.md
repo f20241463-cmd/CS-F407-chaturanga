@@ -5,8 +5,8 @@ Made with `python -m evaluation.elo_table` (see the docstring there). Elo-style 
 135 matches, 23028 games
 | Player | Rating | 90% range | Games |
 |---|---|---|---|
-| 1340: 32 root moves + Gumbel scale 0.03 | 297 | 271 to 320 | 998 |
-| Iteration 1280, 32 root moves (final model) | 271 | 251 to 292 | 1795 |
+| Iteration 1340 (final model) | 297 | 271 to 320 | 998 |
+| Iteration 1280, 32 root moves (third final model) | 271 | 251 to 292 | 1795 |
 | Tweak: Gumbel value scale 0.03 (1280) | 265 | 239 to 290 | 796 |
 | Final model trained 60 more rounds (1340) | 257 | 225 to 289 | 399 |
 | Averaged weights of the 1220 chain (soup) | 254 | 215 to 298 | 200 |
