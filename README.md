@@ -18,7 +18,7 @@ mcts/         guided MCTS with PUCT, root Dirichlet noise, lazy child states
 training/     self-play games, replay buffer, training loop
 evaluation/   baseline players, per-iteration benchmark, game endings, human-game log
 results/      training logs, benchmark CSVs, plots, and the results write-up
-models/       the final trained network (chaturangzero_final.pt, iteration 1280), and iterations 1220 and 560
+models/       the final trained network (chaturangzero_final.pt, iteration 1340), and iterations 1280, 1220 and 560
 web/          the board page for play_web.py (play the final model in the browser)
 tests/        164 automated tests
 ```
