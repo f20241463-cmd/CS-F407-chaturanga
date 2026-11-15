@@ -409,10 +409,18 @@ We also let the final version practise 60 more rounds (to round 1340). It
 won 45 games and lost 38 against round 1280, too close to call, so round
 1280 stayed the final version: more practice alone no longer helped.
 
+Last, we combined two settings that had each helped a little: looking at 32
+moves at the top of the search, and trusting the network's first guess a bit
+more. Trained for 60 rounds from round 1280 (to a new round 1340), this
+version beat round 1280 in two matches of 200 games: 62 wins to 31, then 42
+to 31. It is only a little stronger, but it passed our rule for switching, so
+it becomes the final version. This is the last switch.
+
 **One score for every version.** We also gave every version a single
-rating, like a chess rating, from all 22,030 games our versions played
-against each other, with round 560 set to 0. The final version is about
-**275 points above round 560** and about 40 above round 1220. The first
+rating, like a chess rating, from all 23,028 games our versions played
+against each other, with round 560 set to 0. The final version (round 1340)
+is about **300 points above round 560**, about 25 above round 1280 and about
+60 above round 1220. The first
 Gumbel version (round 620) is only 34 above 560, so most of the gain came
 from the long Gumbel practice that followed.
 
