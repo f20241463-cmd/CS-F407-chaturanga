@@ -2445,8 +2445,8 @@ plays it, so those games can be added.
 ## One rating for every model
 
 Each match compares only two models. To see them all on one scale we gave
-every model a **rating**, like a chess rating, worked out from all 124
-matches between our models (20,835 games). A draw counts as half a win, and
+every model a **rating**, like a chess rating, worked out from all 126
+matches between our models (21,234 games). A draw counts as half a win, and
 round 560 is fixed at 0, so a rating says how many points a model is above
 or below 560. A gap of 100 points means the stronger model is expected to
 score about 0.64; 200 points, about 0.76. The range is how sure we are (90%).
@@ -2456,18 +2456,19 @@ all the ratings together.
 
 | Player | Rating | 90% range | Games |
 |---|---|---|---|
-| Iteration 1280, 32 root moves (final model) | 283 | 263 to 310 | 997 |
-| Iteration 1220 (second final model) | 239 | 227 to 257 | 3190 |
-| Iteration 1280, 16 root moves | 236 | 214 to 260 | 996 |
-| Gumbel, learning rate 3e-5, iteration 1160 | 206 | 186 to 226 | 996 |
-| Gumbel, iteration 1100 | 180 | 163 to 195 | 2191 |
-| Gumbel, iteration 800 | 110 | 90 to 129 | 1596 |
-| Gumbel self-play, iteration 620 | 34 | 11 to 56 | 599 |
-| Iteration 560 (first final model) | 0 | 0 to 0 | 9401 |
+| Iteration 1280, 32 root moves (final model) | 274 | 252 to 296 | 1197 |
+| Final model trained 60 more rounds (1340) | 259 | 227 to 295 | 399 |
+| Iteration 1220 (second final model) | 237 | 224 to 252 | 3190 |
+| Iteration 1280, 16 root moves | 231 | 216 to 259 | 996 |
+| Gumbel, learning rate 3e-5, iteration 1160 | 204 | 185 to 221 | 996 |
+| Gumbel, iteration 1100 | 179 | 164 to 198 | 2191 |
+| Gumbel, iteration 800 | 110 | 93 to 131 | 1596 |
+| Gumbel self-play, iteration 620 | 34 | 11 to 58 | 599 |
+| Iteration 560 (first final model) | 0 | 0 to 0 | 9600 |
 
 The Gumbel versions gained rating round after round (620, 800, 1100, 1220,
 1280), and the final model is about
-45 points above 1220 and 285 above 560. The top models' ranges overlap, so
+40 points above 1220 and 275 above 560. The top models' ranges overlap, so
 only gaps bigger than about 40 points are certain. The full table, with
 every tweak, is in `results/ratings.md` (made by `evaluation/elo_table.py`).
 
@@ -2478,7 +2479,9 @@ every tweak, is in `results/ratings.md` (made by `evaluation/elo_table.py`).
   averaging checkpoints) either did not help or made things
   worse, except Gumbel self-play, which we trained until it stopped
   improving (the plain iteration 1280 was no better than 1220), and 32 root
-  moves, which gave one more step.
+  moves, which gave one more step. Training the final model 60 rounds
+  further (to 1340) gave no clear gain either: 45 wins to 38 against it
+  (0.517), so we stopped there.
 - No university machine was available, and paying for cloud computing was
   not worth it for the small expected gain.
 - The underlying problem (draws starving the value head) is not something

@@ -1000,6 +1000,15 @@ The second match matters most: the same 60 iterations with 16 root moves
 did not improve on 1220 (0.490), so the gain comes from the 32 root moves,
 not from the extra training.
 
+**Training it further.** We continued the final model for another 60
+iterations with the same settings (to 1340), set to keep going while each
+step scored at least 0.53 against the one before. Iteration 1340 scored
+45-38-117 against the final model (0.517 +/- 0.045; 0.776 against 560),
+inside the margin, so the chain stopped after one step and the final model
+stayed at 1280. Like the plain 1220 to 1280 step, extra iterations alone no
+longer add measurable strength at this network size and simulation budget.
+Files: `results/last_ideas/tuning/cont1340_*`.
+
 **Against 560 at the browser's settings.** At 1600 simulations with tree
 reuse, 100 games: 87 wins, 3 losses, 7 draws and 3 unfinished, a score of
 0.933 +/- 0.042 (1220: 0.927 +/- 0.038). At 50 simulations it scores
@@ -1035,8 +1044,8 @@ report. Result files are in `results/final_model/` (the `final` files) and
 ## 6.22 One rating for every model
 
 The matches above each compare two models. To put them on one scale, we fit
-Elo-style ratings to every standard head-to-head match we played (124
-matches, 20,835 games at 50 simulations, temperature 0.3, repetition
+Elo-style ratings to every standard head-to-head match we played (126
+matches, 21,234 games at 50 simulations, temperature 0.3, repetition
 avoidance and the 800-ply cap): a draw counts as half a win, the expected
 score follows the usual logistic curve on a 400-point scale, and the ratings
 are the maximum-likelihood fit with iteration 560 fixed at 0. The 90% ranges
@@ -1047,29 +1056,30 @@ every rating towards the weak player.
 
 | Player | Rating | 90% range | Games |
 |---|---|---|---|
-| Iteration 1280, 32 root moves (final model) | 283 | 263 to 310 | 997 |
-| Averaged weights of the 1220 chain (soup) | 258 | 221 to 313 | 200 |
-| Tweak: weight decay 1e-5 (1280) | 252 | 236 to 278 | 795 |
-| Tweak: no repetition avoidance (1280) | 246 | 224 to 273 | 794 |
-| Iteration 1220 (second final model) | 239 | 227 to 257 | 3190 |
-| Tweak: 150 games x 32 simulations (1280) | 237 | 203 to 272 | 397 |
-| Iteration 1280, 16 root moves | 236 | 214 to 260 | 996 |
-| Gumbel, learning rate 3e-5, iteration 1160 | 206 | 186 to 226 | 996 |
-| Tweak: weight decay 1e-3 (1280) | 200 | 165 to 230 | 395 |
-| Tweak: replay buffer 100k (1280) | 188 | 161 to 222 | 399 |
-| Tweak: 1000 training steps (1280) | 182 | 152 to 217 | 397 |
-| Gumbel, iteration 1100 | 180 | 163 to 195 | 2191 |
-| Tweak: Gumbel value scale 0.3 (1280) | 175 | 150 to 202 | 398 |
-| Tweak: learning rate 3e-4 (1280) | 119 | 92 to 148 | 400 |
-| Gumbel, iteration 800 | 110 | 90 to 129 | 1596 |
-| Gumbel self-play, iteration 620 | 34 | 11 to 56 | 599 |
-| Iteration 560 (first final model) | 0 | 0 to 0 | 9401 |
-| First long run, iteration 420 | -25 | -118 to 70 | 365 |
+| Iteration 1280, 32 root moves (final model) | 274 | 252 to 296 | 1197 |
+| Final model trained 60 more rounds (1340) | 259 | 227 to 295 | 399 |
+| Averaged weights of the 1220 chain (soup) | 256 | 210 to 302 | 200 |
+| Tweak: weight decay 1e-5 (1280) | 247 | 227 to 278 | 795 |
+| Tweak: no repetition avoidance (1280) | 241 | 221 to 268 | 794 |
+| Iteration 1220 (second final model) | 237 | 224 to 252 | 3190 |
+| Tweak: 150 games x 32 simulations (1280) | 235 | 204 to 272 | 397 |
+| Iteration 1280, 16 root moves | 231 | 216 to 259 | 996 |
+| Gumbel, learning rate 3e-5, iteration 1160 | 204 | 185 to 221 | 996 |
+| Tweak: weight decay 1e-3 (1280) | 198 | 167 to 226 | 395 |
+| Tweak: replay buffer 100k (1280) | 187 | 155 to 222 | 399 |
+| Tweak: 1000 training steps (1280) | 181 | 150 to 215 | 397 |
+| Gumbel, iteration 1100 | 179 | 164 to 198 | 2191 |
+| Tweak: Gumbel value scale 0.3 (1280) | 173 | 151 to 206 | 398 |
+| Tweak: learning rate 3e-4 (1280) | 117 | 83 to 148 | 400 |
+| Gumbel, iteration 800 | 110 | 93 to 131 | 1596 |
+| Gumbel self-play, iteration 620 | 34 | 11 to 58 | 599 |
+| Iteration 560 (first final model) | 0 | 0 to 0 | 9600 |
+| First long run, iteration 420 | -25 | -109 to 57 | 365 |
 
 The order matches the head-to-head results: the Gumbel chain (620, 800,
 1100, 1220, 1280)
-gained rating, the final model is about 45 points above 1220 and about 285
-above 560 (an expected score of about 0.84 against 560; it scored 0.81 at 50
+gained rating, the final model is about 40 points above 1220 and about 275
+above 560 (an expected score of about 0.83 against 560; it scored 0.81 at 50
 simulations), and the tweaks that "lost" to their starting point sit below
 1220. Models that played few games (such as the soup) have
 wide ranges, and the ranges of the top five overlap, so only gaps larger than

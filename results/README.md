@@ -747,8 +747,8 @@ of its self-play games were decisive (1220: 44%). Files: `final_model/`
 
 ## Ratings of all models
 
-`ratings.md` puts every model on one Elo-style scale, fitted to all 124
-standard head-to-head matches (20,835 games), draws as half a win, iteration
+`ratings.md` puts every model on one Elo-style scale, fitted to all 126
+standard head-to-head matches (21,234 games), draws as half a win, iteration
 560 fixed at 0, 90% ranges from 100 resamples. Made with
 `python -m evaluation.elo_table` (`--all` lists every checkpoint).
 Benchmarks against random, untrained and greedy are left out (mostly draws,
@@ -756,14 +756,15 @@ which squash the scale).
 
 | Player | Rating | 90% range | Games |
 |---|---|---|---|
-| Iteration 1280, 32 root moves (final model) | 283 | 263 to 310 | 997 |
-| Iteration 1220 (second final model) | 239 | 227 to 257 | 3190 |
-| Iteration 1280, 16 root moves | 236 | 214 to 260 | 996 |
-| Gumbel, learning rate 3e-5, iteration 1160 | 206 | 186 to 226 | 996 |
-| Gumbel, iteration 1100 | 180 | 163 to 195 | 2191 |
-| Gumbel, iteration 800 | 110 | 90 to 129 | 1596 |
-| Gumbel self-play, iteration 620 | 34 | 11 to 56 | 599 |
-| Iteration 560 (first final model) | 0 | 0 to 0 | 9401 |
+| Iteration 1280, 32 root moves (final model) | 274 | 252 to 296 | 1197 |
+| Final model trained 60 more rounds (1340) | 259 | 227 to 295 | 399 |
+| Iteration 1220 (second final model) | 237 | 224 to 252 | 3190 |
+| Iteration 1280, 16 root moves | 231 | 216 to 259 | 996 |
+| Gumbel, learning rate 3e-5, iteration 1160 | 204 | 185 to 221 | 996 |
+| Gumbel, iteration 1100 | 179 | 164 to 198 | 2191 |
+| Gumbel, iteration 800 | 110 | 93 to 131 | 1596 |
+| Gumbel self-play, iteration 620 | 34 | 11 to 58 | 599 |
+| Iteration 560 (first final model) | 0 | 0 to 0 | 9600 |
 
 ## Limitations
 
