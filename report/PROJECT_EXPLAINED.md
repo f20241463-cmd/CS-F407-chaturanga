@@ -2243,6 +2243,7 @@ several times, each time with one setting changed, and each result plays
 | No repetition avoidance in self-play (60 iterations from 1220) | 55-36-108 (against 1220) | 0.548 +/- 0.047 | 0.801 +/- 0.039 |
 | Gumbel value scale 0.3 instead of 0.1 (60 iterations from 1220) | 27-73-100 (against 1220) | 0.385 +/- 0.046 | 0.755 +/- 0.036 |
 | Gumbel value scale 0.03 instead of 0.1 (60 iterations from 1220) | 57-34-108 (against 1220) | 0.558 +/- 0.046 | 0.828 +/- 0.036 |
+| 32 root moves and Gumbel value scale 0.03 together (60 iterations from the final model 1280, to 1340) | 62-31-107, then 42-31-126 with 1 unfinished in a second 200-game match (against the final model 1280) | 0.578 +/- 0.046, then 0.528 +/- 0.042 (0.553 over both) | 0.823 +/- 0.042 |
 
 The first change, a smaller learning rate (the size of each correction),
 clearly helped: 63 wins to 28 against 1100, and 0.719 against the final
@@ -2296,6 +2297,12 @@ network's first guess more (0.03) looked better: 57 wins to 34 against 1220
 (0.558), and the best score against 560 of any model at 50 search steps (0.828). But against
 the final model it lost 44 to 54 (0.475), and against the plain 1280 the
 gain was small (53 to 37, inside the margin), so the final model stayed.
+Then we combined the two: 32 root moves **and** scale 0.03, trained 60
+rounds from the final model (to 1340). This one beat the final model, 62
+wins to 31, and again 42 to 31 in a second match of 200 games (0.553 over
+both). It also beat 1220 (0.590) and the plain 1280 (0.585) by a little more
+than the final model did. That passes our switch rule, so it becomes the new
+final model. The gain is small, about 15 to 20 rating points.
 
 We also tried changes that only affect how 1220 plays, not how it was
 trained, each in 200 games against the plain 1220. None helped clearly;
@@ -2450,8 +2457,8 @@ plays it, so those games can be added.
 ## One rating for every model
 
 Each match compares only two models. To see them all on one scale we gave
-every model a **rating**, like a chess rating, worked out from all 130
-matches between our models (22,030 games). A draw counts as half a win, and
+every model a **rating**, like a chess rating, worked out from all 135
+matches between our models (23,028 games). A draw counts as half a win, and
 round 560 is fixed at 0, so a rating says how many points a model is above
 or below 560. A gap of 100 points means the stronger model is expected to
 score about 0.64; 200 points, about 0.76. The range is how sure we are (90%).
@@ -2461,19 +2468,20 @@ all the ratings together.
 
 | Player | Rating | 90% range | Games |
 |---|---|---|---|
-| Iteration 1280, 32 root moves (final model) | 276 | 254 to 294 | 1396 |
-| Final model trained 60 more rounds (1340) | 260 | 217 to 297 | 399 |
-| Iteration 1220 (second final model) | 236 | 223 to 255 | 3389 |
-| Iteration 1280, 16 root moves | 233 | 213 to 256 | 1194 |
-| Gumbel, learning rate 3e-5, iteration 1160 | 204 | 186 to 227 | 996 |
-| Gumbel, iteration 1100 | 179 | 166 to 196 | 2191 |
-| Gumbel, iteration 800 | 110 | 91 to 126 | 1596 |
-| Gumbel self-play, iteration 620 | 34 | 8 to 59 | 599 |
-| Iteration 560 (first final model) | 0 | 0 to 0 | 9800 |
+| 1340: 32 root moves + Gumbel scale 0.03 | 297 | 271 to 320 | 998 |
+| Iteration 1280, 32 root moves (final model) | 271 | 251 to 292 | 1795 |
+| Final model trained 60 more rounds (1340) | 257 | 225 to 289 | 399 |
+| Iteration 1220 (second final model) | 235 | 225 to 249 | 3588 |
+| Iteration 1280, 16 root moves | 232 | 211 to 254 | 1394 |
+| Gumbel, learning rate 3e-5, iteration 1160 | 203 | 184 to 225 | 996 |
+| Gumbel, iteration 1100 | 179 | 167 to 194 | 2191 |
+| Gumbel, iteration 800 | 110 | 90 to 128 | 1596 |
+| Gumbel self-play, iteration 620 | 34 | 15 to 62 | 599 |
+| Iteration 560 (first final model) | 0 | 0 to 0 | 10000 |
 
 The Gumbel versions gained rating round after round (620, 800, 1100, 1220,
-1280), and the final model is about
-40 points above 1220 and 275 above 560. The top models' ranges overlap, so
+1280), the 1280 model with 32 root moves is about 35 points above 1220, and
+the combination (1340) about 25 above that, about 300 above 560. The top models' ranges overlap, so
 only gaps bigger than about 40 points are certain. The full table, with
 every tweak, is in `results/ratings.md` (made by `evaluation/elo_table.py`).
 
