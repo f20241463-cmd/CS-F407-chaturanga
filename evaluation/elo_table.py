@@ -45,6 +45,7 @@ NAMES = {
     "checkpoints/ideas/g_steps1000/iter_1280.pt": "Tweak: 1000 training steps (1280)",
     "checkpoints/ideas/g_lr3e4/iter_1280.pt": "Tweak: learning rate 3e-4 (1280)",
     "checkpoints/ideas/g_scale03/iter_1280.pt": "Tweak: Gumbel value scale 0.3 (1280)",
+    "checkpoints/ideas/g_scale003/iter_1280.pt": "Tweak: Gumbel value scale 0.03 (1280)",
     "checkpoints/ideas/g_cont1340/iter_1340.pt": "Final model trained 60 more rounds (1340)",
     "checkpoints/ideas/play_ideas/soup.pt": "Averaged weights of the 1220 chain (soup)",
     "checkpoints/ideas/g_actions32b/iter_1280.pt": "Iteration 1280, 32 root moves (final model)",
