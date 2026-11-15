@@ -2241,6 +2241,7 @@ several times, each time with one setting changed, and each result plays
 | Weight decay 1e-3 instead of 1e-4 (60 iterations from 1220) | 39-54-105 (against 1220) | 0.462 +/- 0.047 | 0.741 +/- 0.040 |
 | Weight decay 1e-5 instead of 1e-4 (60 iterations from 1220) | 56-33-110 (against 1220) | 0.558 +/- 0.046 | 0.773 +/- 0.039 |
 | No repetition avoidance in self-play (60 iterations from 1220) | 55-36-108 (against 1220) | 0.548 +/- 0.047 | 0.801 +/- 0.039 |
+| Gumbel value scale 0.3 instead of 0.1 (60 iterations from 1220) | 27-73-100 (against 1220) | 0.385 +/- 0.046 | 0.755 +/- 0.036 |
 
 The first change, a smaller learning rate (the size of each correction),
 clearly helped: 63 wins to 28 against 1100, and 0.719 against the final
@@ -2285,7 +2286,11 @@ better: 56 wins to 33 against 1220 (0.558), close to the final model's 60 to
 and against the plain 1280 (same training, normal weight decay) it was even,
 46 to 44. So weight decay makes no clear difference. Turning **off** the rule
 that stops practice games from repeating positions also did fine: 55 wins to
-36 against 1220 (0.548). With Gumbel self-play that rule is no longer needed.
+36 against 1220 (0.548). But against the final model it lost 30 to 60, and
+against the plain 1280 (same training, rule on) it was exactly even, 46 to
+46. So the rule neither helps nor hurts any more. Making the search trust
+its own value estimates more (Gumbel value scale 0.3 instead of 0.1) was
+clearly **worse**: 27 wins to 73 against 1220 (0.385).
 
 We also tried changes that only affect how 1220 plays, not how it was
 trained, each in 200 games against the plain 1220. None helped clearly;
@@ -2440,8 +2445,8 @@ plays it, so those games can be added.
 ## One rating for every model
 
 Each match compares only two models. To see them all on one scale we gave
-every model a **rating**, like a chess rating, worked out from all 120
-matches between our models (20,040 games). A draw counts as half a win, and
+every model a **rating**, like a chess rating, worked out from all 124
+matches between our models (20,835 games). A draw counts as half a win, and
 round 560 is fixed at 0, so a rating says how many points a model is above
 or below 560. A gap of 100 points means the stronger model is expected to
 score about 0.64; 200 points, about 0.76. The range is how sure we are (90%).
@@ -2451,18 +2456,18 @@ all the ratings together.
 
 | Player | Rating | 90% range | Games |
 |---|---|---|---|
-| Iteration 1280, 32 root moves (final model) | 275 | 249 to 309 | 798 |
-| Iteration 1220 (second final model) | 237 | 221 to 254 | 2990 |
-| Iteration 1280, 16 root moves | 229 | 200 to 261 | 798 |
-| Gumbel, learning rate 3e-5, iteration 1160 | 204 | 184 to 228 | 996 |
-| Gumbel, iteration 1100 | 179 | 164 to 199 | 2191 |
-| Gumbel, iteration 800 | 110 | 95 to 127 | 1596 |
-| Gumbel self-play, iteration 620 | 34 | 10 to 61 | 599 |
-| Iteration 560 (first final model) | 0 | 0 to 0 | 9203 |
+| Iteration 1280, 32 root moves (final model) | 283 | 263 to 310 | 997 |
+| Iteration 1220 (second final model) | 239 | 227 to 257 | 3190 |
+| Iteration 1280, 16 root moves | 236 | 214 to 260 | 996 |
+| Gumbel, learning rate 3e-5, iteration 1160 | 206 | 186 to 226 | 996 |
+| Gumbel, iteration 1100 | 180 | 163 to 195 | 2191 |
+| Gumbel, iteration 800 | 110 | 90 to 129 | 1596 |
+| Gumbel self-play, iteration 620 | 34 | 11 to 56 | 599 |
+| Iteration 560 (first final model) | 0 | 0 to 0 | 9401 |
 
 The Gumbel versions gained rating round after round (620, 800, 1100, 1220,
 1280), and the final model is about
-40 points above 1220 and 275 above 560. The top models' ranges overlap, so
+45 points above 1220 and 285 above 560. The top models' ranges overlap, so
 only gaps bigger than about 40 points are certain. The full table, with
 every tweak, is in `results/ratings.md` (made by `evaluation/elo_table.py`).
 
