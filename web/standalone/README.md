@@ -3,8 +3,8 @@
 A single HTML page that plays the agent entirely in the browser, with no
 Python and no server. It was built so that a player in another city could play
 against the agent from a Windows laptop with nothing installed. The 15 games
-against iteration 1220 and the 13 against iteration 1280 in
-`results/human_games.csv` were played on it (Section 6.4 of the report). It now plays
+against iteration 1220, the 13 against iteration 1280 and the 10 against the
+final model in `results/human_games.csv` were played on it (Section 6.4 of the report). It now plays
 the final model, iteration 1340 (32 root moves and Gumbel value scale 0.03);
 games are saved with the model they were played against.
 
