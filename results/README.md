@@ -167,8 +167,8 @@ the games it lost) and did better when the human played Black (2 wins, 1 draw,
 and earlier agents, but an experienced player who attacks its king directly still
 usually wins, an attack it has rarely faced in self-play.
 
-**Against iteration 1220.** The same player played fourteen games against
-iteration 1220, then the final model, at 800 simulations per move (eight as White, six
+**Against iteration 1220.** The same player played fifteen games against
+iteration 1220, then the final model, at 800 simulations per move (eight as White, seven
 as Black). The player was in another city and used the standalone web version
 (`web/standalone/`), which runs the same rules, search and network in the
 browser and was checked against the Python code with no differences. These
@@ -192,14 +192,44 @@ that model is now `models/chaturangzero_1220.pt`.
 | 12 | Black | Human win | Checkmate | 74 | 12 / 4 |
 | 13 | White | Human win | Checkmate | 67 | 13 / 7 |
 | 14 | White | Draw | Stalemate | 71 | 13 / 1 |
+| 15 | Black | Draw | No-progress rule | 391 | 3 / 2 |
 
-Thirteen human wins, all by checkmate, and one stalemate: an agent score of
-0.036 (95% Wilson range 0.004 to 0.268), against 0.350 for iteration 560. The
-games were shorter (median 79 plies, against 135), and ten of the thirteen
+Thirteen human wins, all by checkmate, a stalemate and a long draw by the
+no-progress rule: an agent score of 0.067 (95% Wilson range 0.012 to 0.298),
+against 0.350 for iteration 560. The
+games were shorter (median 80 plies, against 135), and ten of the thirteen
 losses took under 110 plies. The player had already learned the agent's style
 from the ten 560 games, so this is not a controlled comparison, but 1220 is
 clearly no harder for a strong human to beat, although it beats 560 by 83 wins
 to 1 at 1600 simulations.
+
+**Against iteration 1280.** The same player then played thirteen games
+against iteration 1280 with 32 root moves, then the final model, on the same
+web version at 800 simulations per move (nine as White, four as Black),
+logged with the checkpoint
+`checkpoints/ideas/g_actions32b/iter_1280.pt (32 root moves, iteration 1280, web)`.
+All replay legally in the Python engine.
+
+| Game | Human plays | Result | Ending | Plies | Pieces left (human / agent) |
+|---|---|---|---|---|---|
+| 1 | White | Human win | Checkmate | 37 | 14 / 12 |
+| 2 | Black | Human win | Checkmate | 54 | 14 / 9 |
+| 3 | White | Human win | Checkmate | 69 | 12 / 9 |
+| 4 | Black | Human win | Checkmate | 74 | 12 / 5 |
+| 5 | White | Human win | Checkmate | 101 | 10 / 1 |
+| 6 | White | Human win | Checkmate | 79 | 11 / 3 |
+| 7 | Black | Human win | Checkmate | 72 | 12 / 3 |
+| 8 | White | Human win | Checkmate | 109 | 11 / 2 |
+| 9 | White | Human win | Checkmate | 107 | 10 / 1 |
+| 10 | White | Human win | Checkmate | 57 | 14 / 8 |
+| 11 | Black | Human win | Checkmate | 96 | 10 / 3 |
+| 12 | White | Draw | Stalemate | 89 | 12 / 2 |
+| 13 | White | Human win | Checkmate | 95 | 9 / 2 |
+
+Twelve human wins, all by checkmate, and one stalemate: an agent score of
+0.038 (95% Wilson range 0.004 to 0.283), the same as 1220. Every game ended
+within 110 plies (median 79). The final model, iteration 1340, has not played
+this player yet.
 
 ### Why most games are draws (measured)
 
@@ -708,7 +738,7 @@ Greedy capture, which iteration 560 could only draw against, now loses 70
 games and wins none, and most games against both programs end in checkmate.
 In self-play, 44% of iteration 1220's games were decisive, against about 15%
 in the long run. Against the experienced human it did not improve: 13 human
-wins and 1 draw in 14 games (see "Agent vs. Human" above).
+wins and 2 draws in 15 games (see "Agent vs. Human" above).
 
 ## Iteration 1280 with 32 root moves
 
@@ -847,7 +877,7 @@ The stub-network results measure what search depth alone contributes, with no le
 - `benchmark_curve_finalB.png`, `benchmark_curve_final_vs_untrained.png`: benchmark score per iteration
 - `finalB_vs_finalA_iter20.log`: head-to-head match of the two final runs
 - `finalB_iter20_vs_iter10.log`: final B iteration 20 against its own iteration 10
-- `human_games.csv`: Agent vs. Human games against final B, iteration 560 and iteration 1220, with full move lists
+- `human_games.csv`: Agent vs. Human games against final B, iteration 560, iteration 1220 and iteration 1280, with full move lists
 - `training_log_long.csv`: every iteration of the long run (1 to 20 are final B); `training_curves_long.png` plots it
 - `training_log_big_exploratory.csv`: the stopped 6 x 128 network
 - `benchmark_long_{random,greedy,untrained}.csv`, `benchmark_curve_long.png`: long-run benchmarks, 100 games per checkpoint

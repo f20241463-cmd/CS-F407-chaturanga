@@ -39,7 +39,8 @@ The short story of what happened:
    but letting it "think longer" before each move did.
 6. A rated club chess player (FIDE blitz rating 1641) played 10 games against
    it and won 5, lost 2 and drew 3. Against a much stronger later version
-   (round 1220) he won 13 of 14 games and drew 1.
+   (round 1220) he won 13 of 15 games and drew 2, and against round 1280 he
+   won 12 of 13 and drew 1.
 
 # The game: Chaturanga
 
@@ -475,11 +476,16 @@ pieces. But the club player still won half the games, four of them quickly
 (in under 110 moves).
 
 **Against round 1220.** Later the same player played
-**14 games** against round 1220, again thinking 800 times per move. He lives
+**15 games** against round 1220, again thinking 800 times per move. He lives
 in another city and has no project files, so we rewrote the AI to run inside
 a web page (`web/standalone/`) and checked that it plays exactly the same
-moves as the original. He won **13 games and drew 1**. The AI did not win a
+moves as the original. He won **13 games and drew 2**. The AI did not win a
 single game, and most of its losses were quick checkmates.
+
+**Against round 1280.** He then played **13 games** against round 1280 on
+the same web page. He won **12 and drew 1**, again all quick checkmates,
+the fastest in just 37 moves. The final version (round 1340) has not played
+him yet.
 
 That sounds strange, because round 1220 beats round 560 by 83 wins to 1. Two
 things explain it. First, by then he knew the AI's habits from the first ten
@@ -534,7 +540,7 @@ not improve, because almost every game was a draw and it had too little
 practice. We made it 11 times faster, trained it for 54,000 games, then
 switched to a better training method for 78,000 more. The final version
 beats the earlier one 91 to 4 and checkmates simple programs, but a rated
-club player still beat the version before it in 13 of 14 games, because it
+club player still beat the version before it in 12 of 13 games, because it
 never practiced against a real attack on its king."
 
 **Running the live demo:**
