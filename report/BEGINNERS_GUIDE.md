@@ -41,7 +41,7 @@ The short story of what happened:
    it and won 5, lost 2 and drew 3. Against a much stronger later version
    (round 1220) he won 13 of 15 games and drew 2, against round 1280 he
    won 12 of 13 and drew 1, and against the final version (round 1340) he
-   won 9 of 10 and drew 1.
+   won 11 of 12 and drew 1.
 
 # The game: Chaturanga
 
@@ -487,8 +487,8 @@ single game, and most of its losses were quick checkmates.
 the same web page. He won **12 and drew 1**, again all quick checkmates,
 the fastest in just 37 moves.
 
-**Against the final version (round 1340).** Last, he played **10 games**
-against the final version. He won **9 and drew 1**. The AI lasted a bit
+**Against the final version (round 1340).** Last, he played **12 games**
+against the final version. He won **11 and drew 1**. The AI lasted a bit
 longer this time (about 105 moves per game instead of 80), but it still
 did not win a single game, and the draw was a stalemate where it had only
 its king left.
@@ -546,7 +546,7 @@ not improve, because almost every game was a draw and it had too little
 practice. We made it 11 times faster, trained it for 54,000 games, then
 switched to a better training method for 78,000 more. The final version
 beats the earlier one 91 to 4 and checkmates simple programs, but a rated
-club player still beat it in 9 of 10 games, because it
+club player still beat it in 11 of 12 games, because it
 never practiced against a real attack on its king."
 
 **Running the live demo:**

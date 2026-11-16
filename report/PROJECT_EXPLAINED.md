@@ -116,7 +116,7 @@ learns entirely by playing against itself.
   game: **5 human wins, 2 AI wins, 3 draws**. Later the same player played
   **15 games** against iteration 1220 (**13 human wins and 2 draws**) and
   **13 games** against iteration 1280 (**12 human wins and 1 draw**), and
-  **10 games** against the final model, iteration 1340 (**9 human wins and 1
+  **12 games** against the final model, iteration 1340 (**11 human wins and 1
   draw**). The later models are much stronger against programs, but not against a strong
   human.
 - In a last round of ideas, one training change worked: **Gumbel self-play**,
@@ -847,7 +847,7 @@ asks for, whether we did it, and where in this document it is explained.
 | Milestone 2: MCTS with an untrained network | Yes | "Building the system" |
 | Milestone 3: self-play pipeline, loss tracked over 50 to 100 games | Yes, and far beyond: 54,000 games | "The long run and the final model" |
 | Milestone 4: benchmarks against past versions and baseline players, learning curves | Yes. Against random, greedy-capture, untrained and earlier versions, with plots | "The long run and the final model", "How to read every graph and data file" |
-| Agent vs. random and agent vs. human | Yes. 54 human games: 6 by a beginner, and 10 against iteration 560, 15 against iteration 1220, 13 against iteration 1280 and 10 against the final model (1340) by a FIDE-rated club player | "Playing against the AI, and the human games" |
+| Agent vs. random and agent vs. human | Yes. 56 human games: 6 by a beginner, and 10 against iteration 560, 15 against iteration 1220, 13 against iteration 1280 and 12 against the final model (1340) by a FIDE-rated club player | "Playing against the AI, and the human games" |
 | Progress plots | Yes | "How to read every graph and data file" |
 | Three students, split by part | Yes | "The team roles" above |
 | An agent that **masters** the game | **No.** It would need about 800 times more games (roughly 13 years on our laptop). We measured and explained this gap instead | "Our project compared with the original AlphaZero" |
@@ -2583,7 +2583,7 @@ every tweak, is in `results/ratings.md` (made by `evaluation/elo_table.py`).
 
 # Playing against the AI, and the human games
 
-*In short: The terminal and browser games, the ten human games against iteration 560, the fifteen against iteration 1220, the thirteen against iteration 1280 and the ten against the final model.*
+*In short: The terminal and browser games, the ten human games against iteration 560, the fifteen against iteration 1220, the thirteen against iteration 1280 and the twelve against the final model.*
 
 ## The terminal game
 
@@ -2758,9 +2758,9 @@ a strong human, because self-play never shows them a direct king attack.
 
 ## Human games against the final model (iteration 1340)
 
-Last, the same player played **ten games** against the final model on 16
-November, on the same web version at 800 simulations per move (six as White,
-four as Black). All ten replay legally in the Python engine.
+Last, the same player played **twelve games** against the final model on 16
+November, on the same web version at 800 simulations per move (six with
+each color). All twelve replay legally in the Python engine.
 
 | Game | Human plays | Result | Ending | Plies | Pieces left (human / AI) |
 |---|---|---|---|---|---|
@@ -2774,17 +2774,19 @@ four as Black). All ten replay legally in the Python engine.
 | 8 | Black | Human win | Checkmate | 56 | 13 / 8 |
 | 9 | White | Draw | Stalemate | 195 | 3 / 1 |
 | 10 | White | Human win | Checkmate | 113 | 10 / 4 |
+| 11 | Black | Human win | Checkmate | 88 | 11 / 1 |
+| 12 | Black | Human win | Checkmate | 118 | 11 / 4 |
 
-**Totals: 9 human wins, 0 AI wins, 1 draw.** The AI's score is 0.050
-(Wilson range 0.005 to 0.345). The draw was a stalemate: the player had three
+**Totals: 11 human wins, 0 AI wins, 1 draw.** The AI's score is 0.042
+(Wilson range 0.004 to 0.301). The draw was a stalemate: the player had three
 pieces against the AI's lone king and gave it no legal move.
 
 **What these games show.** The final model held out a little longer (median
 105 plies against 79 for 1280, half the games past 110), but it lost every
 game it did not stalemate. Over the three later models together the player
-won 34 of 38 games and drew 4 (AI score 0.053, Wilson range 0.015 to 0.173),
+won 36 of 40 games and drew 4 (AI score 0.050, Wilson range 0.014 to 0.165),
 against 0.350 for 560. **If asked "is the final model better against
-people?":** no measurable difference; ten games cannot show a small change,
+people?":** no measurable difference; twelve games cannot show a small change,
 and the big picture (it never learned to defend a direct king attack) is the
 same.
 
@@ -3704,7 +3706,7 @@ helped up to 1600 search steps per move. Then Gumbel self-play, a better way
 to use the 50 search steps in training, did help: after 78,000 more games the
 final model beats the old one 91 wins to 4 at 1600 steps, beats greedy
 capture 80 to 3, and checkmates in most games against simple programs. But
-the same experienced player still beat it in 9 of 10
+the same experienced player still beat it in 11 of 12
 games, so being stronger against programs did not make it stronger against
 people. Mastering the game would still need about 330 times more games,
 roughly 7 years on our laptop."
@@ -3732,7 +3734,7 @@ roughly 7 years on our laptop."
     more search at play time (gain up to 1600, none at 3200).
 12. **Human games**: 560 against the 1641 player (5 human wins, 2 AI wins,
     3 draws) next to 1220 (13 human wins, 2 draws), 1280 (12 human wins,
-    1 draw) and the final model 1340 (9 human wins, 1 draw) against the same
+    1 draw) and the final model 1340 (11 human wins, 1 draw) against the same
     player.
 13. **Live demo**: the browser game.
 14. **Why it does not master the game**: AlphaZero against our project
@@ -3854,9 +3856,9 @@ checkmates in most games against simple programs.
   differences smaller than about 0.03 to 0.06 still cannot be detected.
 - With most games drawn, a match score says little about how often the AI can
   actually win.
-- The human evaluation is 54 games by two players: 6 by a beginner against
+- The human evaluation is 56 games by two players: 6 by a beginner against
   final B, and 10 against iteration 560, 15 against iteration 1220, 13
-  against iteration 1280 and 10 against the final model (1340) by an
+  against iteration 1280 and 12 against the final model (1340) by an
   experienced player (FIDE blitz 1641), who already knew the AI's habits by
   the time of the later games.
 - Compute was the main limit: even with GPU self-play, one iteration of 100
@@ -3917,7 +3919,7 @@ checkmates in most games against simple programs.
 | Human (FIDE blitz 1641) vs iteration 560 | 5 human wins, 2 AI wins, 3 draws (AI score 0.350) |
 | Same human vs iteration 1220 | 13 human wins, 0 AI wins, 2 draws (AI score 0.067) |
 | Same human vs iteration 1280 | 12 human wins, 0 AI wins, 1 draw (AI score 0.038) |
-| Same human vs the final model (1340) | 9 human wins, 0 AI wins, 1 draw (AI score 0.050) |
+| Same human vs the final model (1340) | 11 human wins, 0 AI wins, 1 draw (AI score 0.042) |
 | Human (beginner) vs final B | 3 human wins, 0 AI wins, 3 draws (AI score 0.250) |
 
 # How to read every graph and data file
