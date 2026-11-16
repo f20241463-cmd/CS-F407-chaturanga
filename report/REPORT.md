@@ -1082,7 +1082,7 @@ model only if it scores at least 0.55 over 200 games against it.
 
 It passed the rule in the first match and stayed above 0.5 in the second, and
 it does a little better than 1280 against every common opponent. The gain is
-small, about 25 rating points (Section 6.23), and this is the last change:
+small, about 25 rating points (Section 6.24), and this is the last change:
 the final model is not replaced again.
 
 **Against 560 at the browser's settings.** At 1600 simulations with tree
@@ -1115,11 +1115,39 @@ of its training, 45% of its self-play games were decisive (1280: 51%).
 Result files are in `results/final_model/` (the `final` files) and
 `results/last_ideas/tuning/` (the `combo` files).
 
-## 6.23 One rating for every model
+## 6.23 Training from scratch with every idea
+
+Every model since 560 was trained further from 560. To see how much the
+later ideas are worth on their own, we also trained a new 4 x 64 network from
+random weights with them switched on from the first iteration: Gumbel
+self-play with 16 root moves, mirror augmentation, decisive games weighted 3
+times and late starts (Section 6.19). Everything else is as in the long run:
+100 games and 500 training steps per iteration, 50 simulations, repetition
+avoidance and the 800-ply cap. It ran 160 iterations at learning rate 1e-3
+and 40 at 1e-4: 200 iterations, 20,000 games, about 16 hours. This run is an
+experiment only; the final model stays iteration 1340.
+
+| Match (200 games, 50 simulations) | Result | Score |
+|---|---|---|
+| Against the first long run at the same iteration (200) | 59-7-132, 2 unfinished | 0.631 +/- 0.036 |
+| Against 560 | 37-10-150, 3 unfinished | 0.569 +/- 0.033 |
+| Against Gumbel 620 | 35-20-145 | 0.537 +/- 0.036 |
+
+With the ideas on, 200 iterations were enough to pass iteration 560, which
+took 560 iterations (54,000 games, about 144 hours) with the plain recipe, and
+to edge past Gumbel 620. Part of the gap to the long run's iteration 200 comes
+from the learning rate: that checkpoint was still at 1e-3, while this run had
+40 iterations at 1e-4. Its rating is about 53 (Section 6.24), so it sits
+between Gumbel 620 and Gumbel 800, far below the final model (297), which has
+had seven times as many games. Self-play stayed mostly drawn: 17% of games
+were decisive in its last ten iterations (the long run at iteration 200:
+22%). Files: `results/last_ideas/` (the `scratch` files).
+
+## 6.24 One rating for every model
 
 The matches above each compare two models. To put them on one scale, we fit
-Elo-style ratings to every standard head-to-head match we played (135
-matches, 23,028 games at 50 simulations, temperature 0.3, repetition
+Elo-style ratings to every standard head-to-head match we played (138
+matches, 23,623 games at 50 simulations, temperature 0.3, repetition
 avoidance and the 800-ply cap): a draw counts as half a win, the expected
 score follows the usual logistic curve on a 400-point scale, and the ratings
 are the maximum-likelihood fit with iteration 560 fixed at 0. The 90% ranges
@@ -1130,31 +1158,34 @@ every rating towards the weak player.
 
 | Player | Rating | 90% range | Games |
 |---|---|---|---|
-| Iteration 1340 (final model) | 297 | 271 to 320 | 998 |
-| Iteration 1280, 32 root moves (third final model) | 271 | 251 to 292 | 1795 |
-| Tweak: Gumbel value scale 0.03 (1280) | 265 | 239 to 290 | 796 |
-| Final model trained 60 more rounds (1340) | 257 | 225 to 289 | 399 |
-| Averaged weights of the 1220 chain (soup) | 254 | 215 to 298 | 200 |
-| Tweak: weight decay 1e-5 (1280) | 246 | 219 to 272 | 795 |
-| Tweak: no repetition avoidance (1280) | 240 | 216 to 267 | 794 |
-| Iteration 1220 (second final model) | 235 | 225 to 249 | 3588 |
-| Tweak: 150 games x 32 simulations (1280) | 234 | 199 to 270 | 397 |
-| Iteration 1280, 16 root moves | 232 | 211 to 254 | 1394 |
+| Iteration 1340 (final model) | 297 | 278 to 317 | 998 |
+| Iteration 1280, 32 root moves (third final model) | 271 | 255 to 292 | 1795 |
+| Tweak: Gumbel value scale 0.03 (1280) | 265 | 243 to 286 | 796 |
+| Final model trained 60 more rounds (1340) | 257 | 224 to 297 | 399 |
+| Averaged weights of the 1220 chain (soup) | 254 | 207 to 290 | 200 |
+| Tweak: weight decay 1e-5 (1280) | 246 | 227 to 270 | 795 |
+| Tweak: no repetition avoidance (1280) | 240 | 218 to 270 | 794 |
+| Iteration 1220 (second final model) | 235 | 223 to 249 | 3588 |
+| Tweak: 150 games x 32 simulations (1280) | 234 | 198 to 277 | 397 |
+| Iteration 1280, 16 root moves | 232 | 218 to 252 | 1394 |
 | Gumbel, learning rate 3e-5, iteration 1160 | 203 | 184 to 225 | 996 |
-| Tweak: weight decay 1e-3 (1280) | 197 | 168 to 225 | 395 |
-| Tweak: replay buffer 100k (1280) | 186 | 153 to 213 | 399 |
-| Tweak: 1000 training steps (1280) | 180 | 155 to 223 | 397 |
-| Gumbel, iteration 1100 | 179 | 167 to 194 | 2191 |
-| Tweak: Gumbel value scale 0.3 (1280) | 172 | 146 to 207 | 398 |
-| Tweak: learning rate 3e-4 (1280) | 117 | 92 to 143 | 400 |
-| Gumbel, iteration 800 | 110 | 90 to 128 | 1596 |
-| Gumbel self-play, iteration 620 | 34 | 15 to 62 | 599 |
-| Iteration 560 (first final model) | 0 | 0 to 0 | 10000 |
-| First long run, iteration 420 | -25 | -129 to 47 | 365 |
+| Tweak: weight decay 1e-3 (1280) | 197 | 170 to 232 | 395 |
+| Tweak: replay buffer 100k (1280) | 186 | 154 to 216 | 399 |
+| Tweak: 1000 training steps (1280) | 180 | 154 to 213 | 397 |
+| Gumbel, iteration 1100 | 179 | 164 to 199 | 2191 |
+| Tweak: Gumbel value scale 0.3 (1280) | 172 | 150 to 201 | 398 |
+| Tweak: learning rate 3e-4 (1280) | 117 | 86 to 148 | 400 |
+| Gumbel, iteration 800 | 109 | 96 to 131 | 1596 |
+| From scratch with every idea, iteration 200 (experiment) | 53 | 28 to 85 | 595 |
+| Gumbel self-play, iteration 620 | 32 | 10 to 57 | 799 |
+| Iteration 560 (first final model) | 0 | 0 to 0 | 10197 |
+| First long run, iteration 420 | -25 | -100 to 66 | 365 |
+| First long run, iteration 200 | -40 | -80 to 32 | 198 |
 
 The order matches the head-to-head results: the Gumbel chain (620, 800,
 1100, 1220, 1280)
-gained rating, the 1280 model with 32 root moves is about 35 points above
+gained rating, the from-scratch run with every idea (Section 6.23) reached
+about 50 in 200 iterations, the 1280 model with 32 root moves is about 35 points above
 1220, the combination of 32 root moves and value scale 0.03 (1340) about 25
 above that and about 300 above 560 (an expected score of about 0.85 against
 560; it scored 0.82 at 50 simulations), and the tweaks that "lost" to their starting point sit below
@@ -1431,6 +1462,6 @@ Every requirement of the course proposal, and where it is met.
 | Agent vs. random and agent vs. human evaluation | Sections 6.2, 6.4, 6.9, 6.20, 6.21 and 6.22 |
 | Progress plots | `results/` and the figures in Section 6 |
 | Uncheckered 8x8 Ashtapada board; Mantri one diagonal step, Gaja two-square diagonal jump | Section 2; the browser game draws the uncheckered board |
-| An agent that masters the game from scratch | Not reached; Section 7 ("Why the agent does not master the game") explains the roughly 350-fold gap in games and what we did within the limits |
+| An agent that masters the game from scratch | Not reached; Section 7 ("Why the agent does not master the game") explains the roughly 330-fold gap in games and what we did within the limits |
 | Three-student division of labor | Appendix A |
 
