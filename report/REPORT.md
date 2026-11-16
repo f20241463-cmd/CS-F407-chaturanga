@@ -36,8 +36,8 @@ games (0.553) and 560 by 91 wins to 4 at 1600 simulations (0.939). It beats
 random play 59 to 0, the untrained network 66 to 0 and greedy capture 80 to
 3, and most of its games against these programs end in checkmate. An
 experienced chess player (FIDE blitz rating 1641) beat iteration 560 in five
-of ten games, losing two, and then beat iteration 1220 in thirteen of
-fourteen, with one draw: strength against programs did not carry over to a
+of ten games, losing two, then beat iteration 1220 in thirteen of fifteen
+(two draws) and iteration 1280 in twelve of thirteen (one draw): strength against programs did not carry over to a
 strong human who attacks the king. Everything
 stays within the course constraints: no knowledge beyond the rules, 50
 simulations per move in training, and a 4-block, 64-filter network.
@@ -77,8 +77,10 @@ presents that model, iteration 1340, which is the final model.
 
 Chaturanga is played on the Ashtapada, an 8x8 board whose squares are all the
 same color (it is not checkered like a chess board; our browser game draws it
-this way). The starting layout is the same as in chess, but most pieces are
-weaker:
+this way). The starting layout mirrors the chess one: the pieces stand on the
+same ranks, but the Raja (king) starts on the d-file and the Mantri (advisor)
+on the e-file for both sides, which is a left-right mirror of chess and the
+same game. Most pieces are weaker:
 
 | Piece | Letter | Move |
 |---|---|---|
@@ -351,13 +353,13 @@ it has rarely seen that kind of attack in self-play, where about 85% of games
 are drawn.
 
 **Against iteration 1220.** The same player then played
-fourteen games against iteration 1220 (Section 6.20), the final model at the time, again at 800 simulations
-per move, eight as White and six as Black. The player was in another city, so
+fifteen games against iteration 1220 (Section 6.20), the final model at the time, again at 800 simulations
+per move, eight as White and seven as Black. The player was in another city, so
 these games were played on a standalone web version of the agent
 (`web/standalone/`): the rules, search and network ported to JavaScript and
 WebAssembly, checked against the Python code on 114,767 positions and 8 full
 searches with no differences, and with network outputs within 6e-6 of
-PyTorch's. All fourteen games replay legally in the Python engine and end as
+PyTorch's. All fifteen games replay legally in the Python engine and end as
 recorded.
 
 | Game | Human plays | Result | Ending | Plies | Pieces left (human / agent) |
@@ -376,11 +378,13 @@ recorded.
 | 12 | Black | Human win | Checkmate | 74 | 12 / 4 |
 | 13 | White | Human win | Checkmate | 67 | 13 / 7 |
 | 14 | White | Draw | Stalemate | 71 | 13 / 1 |
+| 15 | Black | Draw | No-progress rule | 391 | 3 / 2 |
 
-The human won thirteen games, all by checkmate, and the fourteenth was a
-stalemate with the agent down to its king. The agent's score is 0.036 (95%
-Wilson range 0.004 to 0.268), against 0.350 for iteration 560; the two
-ranges barely overlap. The games were also much shorter: a median of 79
+The human won thirteen games, all by checkmate. Game 14 was a stalemate with
+the agent down to its king, and game 15 a long endgame that ended by the
+no-progress rule with three pieces against two. The agent's score is 0.067
+(95% Wilson range 0.012 to 0.298), against 0.350 for iteration 560. The
+games were also much shorter: a median of 80
 plies, against 135 against 560, and ten of the thirteen losses took under
 110 plies. Four were lost with seven to ten pieces still on the board,
 which means the agent walked into a mating attack rather than being ground
@@ -394,6 +398,35 @@ we tested, yet it did no better against a strong human. Gumbel self-play made
 its own games more decisive (44% against about 15%), but those are games
 between two copies of an agent that does not attack like a person, and they
 did not teach it to defend against a direct attack on its king.
+
+**Against iteration 1280.** The same player then played thirteen games
+against iteration 1280 with 32 root moves (Section 6.21), the final model at
+the time, on the same web version and again at 800 simulations per move,
+nine as White and four as Black. All thirteen replay legally in the Python
+engine and end as recorded.
+
+| Game | Human plays | Result | Ending | Plies | Pieces left (human / agent) |
+|---|---|---|---|---|---|
+| 1 | White | Human win | Checkmate | 37 | 14 / 12 |
+| 2 | Black | Human win | Checkmate | 54 | 14 / 9 |
+| 3 | White | Human win | Checkmate | 69 | 12 / 9 |
+| 4 | Black | Human win | Checkmate | 74 | 12 / 5 |
+| 5 | White | Human win | Checkmate | 101 | 10 / 1 |
+| 6 | White | Human win | Checkmate | 79 | 11 / 3 |
+| 7 | Black | Human win | Checkmate | 72 | 12 / 3 |
+| 8 | White | Human win | Checkmate | 109 | 11 / 2 |
+| 9 | White | Human win | Checkmate | 107 | 10 / 1 |
+| 10 | White | Human win | Checkmate | 57 | 14 / 8 |
+| 11 | Black | Human win | Checkmate | 96 | 10 / 3 |
+| 12 | White | Draw | Stalemate | 89 | 12 / 2 |
+| 13 | White | Human win | Checkmate | 95 | 9 / 2 |
+
+Twelve human wins, all by checkmate, and one stalemate: an agent score of
+0.038 (95% Wilson range 0.004 to 0.283), the same as 1220. Every game
+ended within 110 plies (median 79), and in four of them the agent was mated
+with eight or more pieces still on the board, the fastest in 37 plies. The
+stronger model against programs again did no better against this player.
+The final model, iteration 1340, has not played this player yet.
 
 ## 6.5 How games end
 
@@ -993,7 +1026,7 @@ advantage, is much smaller, though not gone: a third of the games against
 random still end by the no-progress rule. In self-play, 44% of iteration
 1220's games were decisive, against about 15% in the long run. Against a
 person it did not improve: the experienced player who beat iteration 560 in
-five of ten games beat 1220 in thirteen of fourteen, with one draw (Section
+five of ten games beat 1220 in thirteen of fifteen, with two draws (Section
 6.4). Result files are in `results/final_model/`.
 
 ## 6.21 Iteration 1280 with 32 root moves
@@ -1219,8 +1252,8 @@ material steadily and cannot defend, and a beginner beat final B. Against the
 stronger iteration 560, an experienced player (FIDE blitz rating 1641) still won five of
 ten games and lost two (Section 6.4),
 though the agent kept more of its pieces. Against iteration 1220 the same
-player won thirteen of fourteen and drew one, most of them in under 110
-plies.
+player won thirteen of fifteen and drew two, and against 1280 twelve of
+thirteen with one draw, most of them in under 110 plies.
 
 The exploratory runs suggested that a better value signal alone is not enough
 at that scale: the value head learned material, but 30 to 100 simulations with
@@ -1325,12 +1358,13 @@ measured rather than guessed.
   per benchmark, and differences smaller than about 0.03 to 0.06 still cannot.
 - With most games drawn, a match score says little about how often the agent
   can actually win.
-- The human evaluation is thirty games by two players: six by a beginner
-  against final B, and ten against iteration 560 and then fourteen against
-  iteration 1220 by an experienced player (FIDE blitz rating 1641). None of
-  the sets is large enough for a precise score, the 1220 games came after
-  the player had already learned the agent's style from the 560 games, and
-  the final model, iteration 1340, has not yet played this player.
+- The human evaluation is forty-four games by two players: six by a
+  beginner against final B, and ten against iteration 560, fifteen against
+  iteration 1220 and thirteen against iteration 1280 by an experienced
+  player (FIDE blitz rating 1641). None of the sets is large enough for a
+  precise score, the later games came after the player had already learned
+  the agent's style, and the final model, iteration 1340, has not yet played
+  this player.
 - Compute was the main limit: even with GPU self-play, one iteration of 100
   games takes about 4 minutes, and the larger network about 10.
 
@@ -1374,8 +1408,8 @@ by 91 to 4 at 1600 simulations, beats greedy capture 80 to 3, and ends most
 of its games against the baseline programs in checkmate. The agent is still far from
 mastering the game, which would need hundreds of times more games than one
 laptop can play (Section 7). An experienced chess player beat iteration 560
-in five of ten games and iteration 1220 in thirteen of fourteen, with one
-draw: being better against programs did not make it harder for a strong
+in five of ten games, iteration 1220 in thirteen of fifteen (two draws) and
+iteration 1280 in twelve of thirteen (one draw): being better against programs did not make it harder for a strong
 human to beat. The
 evaluation tools (a fixed benchmark protocol, head-to-head matches, round
 robins, game-ending counts and human-game logging) made both the negative
