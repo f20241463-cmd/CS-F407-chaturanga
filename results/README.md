@@ -228,8 +228,31 @@ All replay legally in the Python engine.
 
 Twelve human wins, all by checkmate, and one stalemate: an agent score of
 0.038 (95% Wilson range 0.004 to 0.283), the same as 1220. Every game ended
-within 110 plies (median 79). The final model, iteration 1340, has not played
-this player yet.
+within 110 plies (median 79).
+
+**Against the final model, iteration 1340.** Ten games on the same web
+version at 800 simulations per move (six as White, four as Black), logged
+with the checkpoint `models/chaturangzero_final.pt (iteration 1340, web)`.
+All replay legally in the Python engine.
+
+| Game | Human plays | Result | Ending | Plies | Pieces left (human / agent) |
+|---|---|---|---|---|---|
+| 1 | White | Human win | Checkmate | 99 | 12 / 3 |
+| 2 | Black | Human win | Checkmate | 74 | 13 / 2 |
+| 3 | White | Human win | Checkmate | 111 | 11 / 3 |
+| 4 | Black | Human win | Checkmate | 136 | 10 / 2 |
+| 5 | White | Human win | Checkmate | 51 | 12 / 4 |
+| 6 | Black | Human win | Checkmate | 76 | 14 / 5 |
+| 7 | White | Human win | Checkmate | 119 | 10 / 1 |
+| 8 | Black | Human win | Checkmate | 56 | 13 / 8 |
+| 9 | White | Draw | Stalemate | 195 | 3 / 1 |
+| 10 | White | Human win | Checkmate | 113 | 10 / 4 |
+
+Nine human wins, all by checkmate, and one stalemate (the agent left with its
+king against three pieces): an agent score of 0.050 (95% Wilson range 0.005
+to 0.345). The games were a little longer (median 105 plies). Over 1220, 1280
+and 1340 together: 34 human wins and 4 draws in 38 games, an agent score of
+0.053 (0.015 to 0.173), against 0.350 for 560.
 
 ### Why most games are draws (measured)
 
@@ -877,7 +900,7 @@ The stub-network results measure what search depth alone contributes, with no le
 - `benchmark_curve_finalB.png`, `benchmark_curve_final_vs_untrained.png`: benchmark score per iteration
 - `finalB_vs_finalA_iter20.log`: head-to-head match of the two final runs
 - `finalB_iter20_vs_iter10.log`: final B iteration 20 against its own iteration 10
-- `human_games.csv`: Agent vs. Human games against final B, iteration 560, iteration 1220 and iteration 1280, with full move lists
+- `human_games.csv`: Agent vs. Human games against final B, iteration 560, iteration 1220, iteration 1280 and the final model (1340), with full move lists
 - `training_log_long.csv`: every iteration of the long run (1 to 20 are final B); `training_curves_long.png` plots it
 - `training_log_big_exploratory.csv`: the stopped 6 x 128 network
 - `benchmark_long_{random,greedy,untrained}.csv`, `benchmark_curve_long.png`: long-run benchmarks, 100 games per checkpoint
