@@ -38,7 +38,7 @@ random play 59 to 0, the untrained network 66 to 0 and greedy capture 80 to
 experienced chess player (FIDE blitz rating 1641) beat iteration 560 in five
 of ten games, losing two, then beat iteration 1220 in thirteen of fifteen
 (two draws), iteration 1280 in twelve of thirteen (one draw) and the final
-model in nine of ten (one draw): strength against programs did not carry over to a
+model in eleven of twelve (one draw): strength against programs did not carry over to a
 strong human who attacks the king. Everything
 stays within the course constraints: no knowledge beyond the rules, 50
 simulations per move in training, and a 4-block, 64-filter network.
@@ -429,8 +429,8 @@ with eight or more pieces still on the board, the fastest in 37 plies. The
 stronger model against programs again did no better against this player.
 
 **Against the final model, iteration 1340.** Last, the same player played
-ten games against the final model on the same web version at 800
-simulations per move, six as White and four as Black. All ten replay
+twelve games against the final model on the same web version at 800
+simulations per move, six with each color. All twelve replay
 legally in the Python engine and end as recorded.
 
 | Game | Human plays | Result | Ending | Plies | Pieces left (human / agent) |
@@ -445,15 +445,17 @@ legally in the Python engine and end as recorded.
 | 8 | Black | Human win | Checkmate | 56 | 13 / 8 |
 | 9 | White | Draw | Stalemate | 195 | 3 / 1 |
 | 10 | White | Human win | Checkmate | 113 | 10 / 4 |
+| 11 | Black | Human win | Checkmate | 88 | 11 / 1 |
+| 12 | Black | Human win | Checkmate | 118 | 11 / 4 |
 
-Nine human wins, all by checkmate, and one stalemate in which the human was
-left with three pieces against the agent's king: an agent score of 0.050
-(95% Wilson range 0.005 to 0.345). The games lasted a little longer (median
+Eleven human wins, all by checkmate, and one stalemate in which the human was
+left with three pieces against the agent's king: an agent score of 0.042
+(95% Wilson range 0.004 to 0.301). The games lasted a little longer (median
 105 plies, half of them past 110) and the agent was usually down to two to
 five pieces when mated, so it held out longer than 1280, but it did not win
 or reach a real draw. Over the three later models together, the player won
-34 of 38 games and drew 4 (agent score 0.053, 95% Wilson range 0.015 to
-0.173), against 0.350 for 560.
+36 of 40 games and drew 4 (agent score 0.050, 95% Wilson range 0.014 to
+0.165), against 0.350 for 560.
 
 ## 6.5 How games end
 
@@ -1173,7 +1175,7 @@ capture (3 of 100), which a capture-everything opponent can do when the
 agent leaves a piece hanging in a sharp position. In the last ten iterations
 of its training, 45% of its self-play games were decisive (1280: 51%).
 Against the experienced human player it did no better than the models before
-it: 9 human wins and 1 draw in 10 games (Section 6.4). Result files are in
+it: 11 human wins and 1 draw in 12 games (Section 6.4). Result files are in
 `results/final_model/` (the `final` files) and
 `results/last_ideas/tuning/` (the `combo` files).
 
@@ -1282,7 +1284,7 @@ stronger iteration 560, an experienced player (FIDE blitz rating 1641) still won
 ten games and lost two (Section 6.4),
 though the agent kept more of its pieces. Against iteration 1220 the same
 player won thirteen of fifteen and drew two, against 1280 twelve of
-thirteen with one draw, and against the final model nine of ten with one
+thirteen with one draw, and against the final model eleven of twelve with one
 draw, most of them in under 120 plies.
 
 The exploratory runs suggested that a better value signal alone is not enough
@@ -1388,9 +1390,9 @@ measured rather than guessed.
   per benchmark, and differences smaller than about 0.03 to 0.06 still cannot.
 - With most games drawn, a match score says little about how often the agent
   can actually win.
-- The human evaluation is fifty-four games by two players: six by a
+- The human evaluation is fifty-six games by two players: six by a
   beginner against final B, and ten against iteration 560, fifteen against
-  iteration 1220, thirteen against iteration 1280 and ten against the final
+  iteration 1220, thirteen against iteration 1280 and twelve against the final
   model, iteration 1340, by an experienced player (FIDE blitz rating 1641).
   None of the sets is large enough for a precise score, and the later games
   came after the player had already learned the agent's style.
@@ -1438,8 +1440,8 @@ of its games against the baseline programs in checkmate. The agent is still far 
 mastering the game, which would need hundreds of times more games than one
 laptop can play (Section 7). An experienced chess player beat iteration 560
 in five of ten games, iteration 1220 in thirteen of fifteen (two draws) and
-iteration 1280 in twelve of thirteen (one draw) and the final model in nine
-of ten (one draw): being better against programs did not make it harder for a strong
+iteration 1280 in twelve of thirteen (one draw) and the final model in eleven
+of twelve (one draw): being better against programs did not make it harder for a strong
 human to beat. The
 evaluation tools (a fixed benchmark protocol, head-to-head matches, round
 robins, game-ending counts and human-game logging) made both the negative

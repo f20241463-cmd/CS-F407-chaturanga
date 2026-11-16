@@ -230,8 +230,8 @@ Twelve human wins, all by checkmate, and one stalemate: an agent score of
 0.038 (95% Wilson range 0.004 to 0.283), the same as 1220. Every game ended
 within 110 plies (median 79).
 
-**Against the final model, iteration 1340.** Ten games on the same web
-version at 800 simulations per move (six as White, four as Black), logged
+**Against the final model, iteration 1340.** Twelve games on the same web
+version at 800 simulations per move (six with each color), logged
 with the checkpoint `models/chaturangzero_final.pt (iteration 1340, web)`.
 All replay legally in the Python engine.
 
@@ -247,12 +247,14 @@ All replay legally in the Python engine.
 | 8 | Black | Human win | Checkmate | 56 | 13 / 8 |
 | 9 | White | Draw | Stalemate | 195 | 3 / 1 |
 | 10 | White | Human win | Checkmate | 113 | 10 / 4 |
+| 11 | Black | Human win | Checkmate | 88 | 11 / 1 |
+| 12 | Black | Human win | Checkmate | 118 | 11 / 4 |
 
-Nine human wins, all by checkmate, and one stalemate (the agent left with its
-king against three pieces): an agent score of 0.050 (95% Wilson range 0.005
-to 0.345). The games were a little longer (median 105 plies). Over 1220, 1280
-and 1340 together: 34 human wins and 4 draws in 38 games, an agent score of
-0.053 (0.015 to 0.173), against 0.350 for 560.
+Eleven human wins, all by checkmate, and one stalemate (the agent left with its
+king against three pieces): an agent score of 0.042 (95% Wilson range 0.004
+to 0.301). The games were a little longer (median 105 plies). Over 1220, 1280
+and 1340 together: 36 human wins and 4 draws in 40 games, an agent score of
+0.050 (0.014 to 0.165), against 0.350 for 560.
 
 ### Why most games are draws (measured)
 

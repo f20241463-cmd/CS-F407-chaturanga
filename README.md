@@ -70,7 +70,7 @@ no domain knowledge), iteration 560:
   blitz rating 1641), who won 5 of 10 games against it at 800 simulations per
   move (3 draws, 2 wins for the agent). Later versions did no better against
   him: 13 wins and 2 draws in 15 games against iteration 1220, 12 wins and
-  1 draw in 13 against iteration 1280, and 9 wins and 1 draw in 10 against
+  1 draw in 13 against iteration 1280, and 11 wins and 1 draw in 12 against
   the final model, iteration 1340.
 
 Its main weakness is finishing games: it gets ahead but rarely checkmates, so
