@@ -1144,7 +1144,7 @@ model only if it scores at least 0.55 over 200 games against it.
 
 It passed the rule in the first match and stayed above 0.5 in the second, and
 it does a little better than 1280 against every common opponent. The gain is
-small, about 25 rating points (Section 6.24), and this is the last change:
+small, about 25 rating points (Section 6.25), and this is the last change:
 the final model is not replaced again.
 
 **Against 560 at the browser's settings.** At 1600 simulations with tree
@@ -1201,17 +1201,44 @@ With the ideas on, 200 iterations were enough to pass iteration 560, which
 took 560 iterations (54,000 games, about 144 hours) with the plain recipe, and
 to edge past Gumbel 620. Part of the gap to the long run's iteration 200 comes
 from the learning rate: that checkpoint was still at 1e-3, while this run had
-40 iterations at 1e-4. Its rating is about 53 (Section 6.24), so it sits
-between Gumbel 620 and Gumbel 800, far below the final model (297), which has
+40 iterations at 1e-4. Its rating is about 57 (Section 6.25), so it sits
+between Gumbel 620 and Gumbel 800, far below the final model (298), which has
 had seven times as many games. Self-play stayed mostly drawn: 17% of games
 were decisive in its last ten iterations (the long run at iteration 200:
 22%). Files: `results/last_ideas/` (the `scratch` files).
 
-## 6.24 One rating for every model
+## 6.24 A bigger network from scratch
+
+The network in every run so far is 4 x 64 (four residual blocks of 64
+filters). To see whether size was holding the agent back, we repeated the run
+of Section 6.23 with the largest network the proposal allows, 6 x 128, and
+changed nothing else: the same ideas, seeds of the same kind, 160 iterations
+at 1e-3 and 40 at 1e-4, 20,000 games. It took about 28.5 hours instead of
+16, because every network call is slower. This run is an experiment only;
+the final model stays iteration 1340.
+
+| Match (200 games, 50 simulations) | Result | Score |
+|---|---|---|
+| Against 560 | 33-6-159, 2 unfinished | 0.568 +/- 0.029 |
+| Against the 4 x 64 run of Section 6.23 (iteration 200) | 13-29-154, 4 unfinished | 0.459 +/- 0.032 |
+| Against iteration 1220 | 4-113-83 | 0.228 +/- 0.037 |
+
+The bigger network passes 560 by the same margin as the small one, but it
+loses slightly to the small one head to head, and it is far below 1220. Its
+rating is about 34 against 57 for the small run (Section 6.25). Its training
+loss was a little lower in every stage (2.171 against 2.195 over the last 40
+iterations), so it fits its data better, but its self-play was more drawn:
+10% of games were decisive in its last ten iterations (small run: 17%). With
+the same 20,000 games, a bigger network does not help: the limit is the
+number of games, not the size of the network, and a bigger network makes
+each game slower. This supports keeping the 4 x 64 network. Files:
+`results/last_ideas/` (the `big` files).
+
+## 6.25 One rating for every model
 
 The matches above each compare two models. To put them on one scale, we fit
-Elo-style ratings to every standard head-to-head match we played (138
-matches, 23,623 games at 50 simulations, temperature 0.3, repetition
+Elo-style ratings to every standard head-to-head match we played (141
+matches, 24,217 games at 50 simulations, temperature 0.3, repetition
 avoidance and the 800-ply cap): a draw counts as half a win, the expected
 score follows the usual logistic curve on a 400-point scale, and the ratings
 are the maximum-likelihood fit with iteration 560 fixed at 0. The 90% ranges
@@ -1222,34 +1249,35 @@ every rating towards the weak player.
 
 | Player | Rating | 90% range | Games |
 |---|---|---|---|
-| Iteration 1340 (final model) | 297 | 278 to 317 | 998 |
-| Iteration 1280, 32 root moves (third final model) | 271 | 255 to 292 | 1795 |
-| Tweak: Gumbel value scale 0.03 (1280) | 265 | 243 to 286 | 796 |
-| Final model trained 60 more rounds (1340) | 257 | 224 to 297 | 399 |
-| Averaged weights of the 1220 chain (soup) | 254 | 207 to 290 | 200 |
-| Tweak: weight decay 1e-5 (1280) | 246 | 227 to 270 | 795 |
-| Tweak: no repetition avoidance (1280) | 240 | 218 to 270 | 794 |
-| Iteration 1220 (second final model) | 235 | 223 to 249 | 3588 |
-| Tweak: 150 games x 32 simulations (1280) | 234 | 198 to 277 | 397 |
-| Iteration 1280, 16 root moves | 232 | 218 to 252 | 1394 |
-| Gumbel, learning rate 3e-5, iteration 1160 | 203 | 184 to 225 | 996 |
-| Tweak: weight decay 1e-3 (1280) | 197 | 170 to 232 | 395 |
-| Tweak: replay buffer 100k (1280) | 186 | 154 to 216 | 399 |
-| Tweak: 1000 training steps (1280) | 180 | 154 to 213 | 397 |
-| Gumbel, iteration 1100 | 179 | 164 to 199 | 2191 |
-| Tweak: Gumbel value scale 0.3 (1280) | 172 | 150 to 201 | 398 |
-| Tweak: learning rate 3e-4 (1280) | 117 | 86 to 148 | 400 |
-| Gumbel, iteration 800 | 109 | 96 to 131 | 1596 |
-| From scratch with every idea, iteration 200 (experiment) | 53 | 28 to 85 | 595 |
-| Gumbel self-play, iteration 620 | 32 | 10 to 57 | 799 |
-| Iteration 560 (first final model) | 0 | 0 to 0 | 10197 |
-| First long run, iteration 420 | -25 | -100 to 66 | 365 |
-| First long run, iteration 200 | -40 | -80 to 32 | 198 |
+| Iteration 1340 (final model) | 298 | 277 to 324 | 998 |
+| Iteration 1280, 32 root moves (third final model) | 272 | 252 to 287 | 1795 |
+| Tweak: Gumbel value scale 0.03 (1280) | 265 | 244 to 291 | 796 |
+| Final model trained 60 more rounds (1340) | 257 | 232 to 291 | 399 |
+| Averaged weights of the 1220 chain (soup) | 255 | 220 to 300 | 200 |
+| Tweak: weight decay 1e-5 (1280) | 247 | 223 to 272 | 795 |
+| Tweak: no repetition avoidance (1280) | 241 | 219 to 261 | 794 |
+| Iteration 1220 (second final model) | 236 | 227 to 249 | 3788 |
+| Tweak: 150 games x 32 simulations (1280) | 235 | 205 to 273 | 397 |
+| Iteration 1280, 16 root moves | 233 | 218 to 255 | 1394 |
+| Gumbel, learning rate 3e-5, iteration 1160 | 204 | 186 to 225 | 996 |
+| Tweak: weight decay 1e-3 (1280) | 198 | 169 to 227 | 395 |
+| Tweak: replay buffer 100k (1280) | 186 | 163 to 215 | 399 |
+| Tweak: 1000 training steps (1280) | 181 | 150 to 211 | 397 |
+| Gumbel, iteration 1100 | 179 | 164 to 196 | 2191 |
+| Tweak: Gumbel value scale 0.3 (1280) | 173 | 149 to 198 | 398 |
+| Tweak: learning rate 3e-4 (1280) | 117 | 85 to 141 | 400 |
+| Gumbel, iteration 800 | 110 | 92 to 132 | 1596 |
+| From scratch with every idea, iteration 200 (experiment) | 57 | 35 to 87 | 791 |
+| Bigger network (6 x 128) from scratch, iteration 200 (experiment) | 34 | 12 to 56 | 594 |
+| Gumbel self-play, iteration 620 | 33 | 13 to 56 | 799 |
+| Iteration 560 (first final model) | 0 | 0 to 0 | 10395 |
+| First long run, iteration 420 | -25 | -112 to 66 | 365 |
+| First long run, iteration 200 | -37 | -73 to 10 | 198 |
 
 The order matches the head-to-head results: the Gumbel chain (620, 800,
 1100, 1220, 1280)
 gained rating, the from-scratch run with every idea (Section 6.23) reached
-about 50 in 200 iterations, the 1280 model with 32 root moves is about 35 points above
+about 55 in 200 iterations (the bigger network of Section 6.24 about 35), the 1280 model with 32 root moves is about 35 points above
 1220, the combination of 32 root moves and value scale 0.03 (1340) about 25
 above that and about 300 above 560 (an expected score of about 0.85 against
 560; it scored 0.82 at 50 simulations), and the tweaks that "lost" to their starting point sit below
