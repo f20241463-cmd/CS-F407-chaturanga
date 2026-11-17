@@ -859,6 +859,26 @@ about 16 hours). Not a candidate for the final model.
 It passes 560 after 200 iterations (560 needed 560) and rates about 53.
 Files: `last_ideas/scratch_log.csv` and `last_ideas/scratch_r200_vs_*.txt`.
 
+## Bigger network from scratch (experiment, training done)
+
+The same recipe as the run above, but with a 6 x 128 network (the largest the
+proposal allows) instead of 4 x 64, so the two differ only in network size.
+200 iterations, 20,000 games, about 28.5 hours (the small one took 16).
+Not a candidate for the final model.
+
+| Iterations | Draws (small) | Draws (big) | Loss (small) | Loss (big) |
+|---|---|---|---|---|
+| 1 to 40 | 82% | 83% | 2.534 | 2.474 |
+| 41 to 80 | 88% | 89% | 2.272 | 2.243 |
+| 81 to 120 | 88% | 90% | 2.275 | 2.212 |
+| 121 to 160 | 88% | 90% | 2.241 | 2.201 |
+| 161 to 200 | 86% | 89% | 2.195 | 2.171 |
+
+The big network fits its training data a little better (lower loss) but its
+self-play games are no more decisive. Matches against 560, the small scratch
+run and the best Gumbel model are running and will follow in a separate
+update. File: `last_ideas/big_log.csv`.
+
 ## Ratings of all models
 
 `ratings.md` puts every model on one Elo-style scale, fitted to all 138
