@@ -856,10 +856,10 @@ about 16 hours). Not a candidate for the final model.
 | Against 560 | 37-10-150, 3 unfinished | 0.569 +/- 0.033 |
 | Against Gumbel 620 | 35-20-145 | 0.537 +/- 0.036 |
 
-It passes 560 after 200 iterations (560 needed 560) and rates about 53.
+It passes 560 after 200 iterations (560 needed 560) and rates about 57.
 Files: `last_ideas/scratch_log.csv` and `last_ideas/scratch_r200_vs_*.txt`.
 
-## Bigger network from scratch (experiment, training done)
+## Bigger network from scratch (experiment)
 
 The same recipe as the run above, but with a 6 x 128 network (the largest the
 proposal allows) instead of 4 x 64, so the two differ only in network size.
@@ -875,14 +875,22 @@ Not a candidate for the final model.
 | 161 to 200 | 86% | 89% | 2.195 | 2.171 |
 
 The big network fits its training data a little better (lower loss) but its
-self-play games are no more decisive. Matches against 560, the small scratch
-run and the best Gumbel model are running and will follow in a separate
-update. File: `last_ideas/big_log.csv`.
+self-play games are no more decisive.
+
+| Match (200 games) | Result | Score |
+|---|---|---|
+| Against 560 | 33-6-159, 2 unfinished | 0.568 +/- 0.029 |
+| Against the small scratch run (iteration 200) | 13-29-154, 4 unfinished | 0.459 +/- 0.032 |
+| Against iteration 1220 | 4-113-83 | 0.228 +/- 0.037 |
+
+It passes 560 like the small one but loses slightly to it and rates about 34
+(small: 57). With the same number of games, a bigger network does not help.
+Files: `last_ideas/big_log.csv` and `last_ideas/big_r200_vs_*.txt`.
 
 ## Ratings of all models
 
-`ratings.md` puts every model on one Elo-style scale, fitted to all 138
-standard head-to-head matches (23,623 games), draws as half a win, iteration
+`ratings.md` puts every model on one Elo-style scale, fitted to all 141
+standard head-to-head matches (24,217 games), draws as half a win, iteration
 560 fixed at 0, 90% ranges from 100 resamples. Made with
 `python -m evaluation.elo_table` (`--all` lists every checkpoint).
 Benchmarks against random, untrained and greedy are left out (mostly draws,
@@ -890,17 +898,18 @@ which squash the scale).
 
 | Player | Rating | 90% range | Games |
 |---|---|---|---|
-| Iteration 1340 (final model) | 297 | 278 to 317 | 998 |
-| Iteration 1280, 32 root moves (third final model) | 271 | 255 to 292 | 1795 |
-| Final model trained 60 more rounds (1340) | 257 | 224 to 297 | 399 |
-| Iteration 1220 (second final model) | 235 | 223 to 249 | 3588 |
-| Iteration 1280, 16 root moves | 232 | 218 to 252 | 1394 |
-| Gumbel, learning rate 3e-5, iteration 1160 | 203 | 184 to 225 | 996 |
-| Gumbel, iteration 1100 | 179 | 164 to 199 | 2191 |
-| Gumbel, iteration 800 | 109 | 96 to 131 | 1596 |
-| From scratch with every idea, iteration 200 (experiment) | 53 | 28 to 85 | 595 |
-| Gumbel self-play, iteration 620 | 32 | 10 to 57 | 799 |
-| Iteration 560 (first final model) | 0 | 0 to 0 | 10197 |
+| Iteration 1340 (final model) | 298 | 277 to 324 | 998 |
+| Iteration 1280, 32 root moves (third final model) | 272 | 252 to 287 | 1795 |
+| Final model trained 60 more rounds (1340) | 257 | 232 to 291 | 399 |
+| Iteration 1220 (second final model) | 236 | 227 to 249 | 3788 |
+| Iteration 1280, 16 root moves | 233 | 218 to 255 | 1394 |
+| Gumbel, learning rate 3e-5, iteration 1160 | 204 | 186 to 225 | 996 |
+| Gumbel, iteration 1100 | 179 | 164 to 196 | 2191 |
+| Gumbel, iteration 800 | 110 | 92 to 132 | 1596 |
+| From scratch with every idea, iteration 200 (experiment) | 57 | 35 to 87 | 791 |
+| Bigger network (6 x 128) from scratch, iteration 200 (experiment) | 34 | 12 to 56 | 594 |
+| Gumbel self-play, iteration 620 | 33 | 13 to 56 | 799 |
+| Iteration 560 (first final model) | 0 | 0 to 0 | 10395 |
 
 ## Limitations
 

@@ -432,20 +432,26 @@ and used by the browser game:
 Against greedy capture, 21 of 30 games ended in checkmate.
 
 **One score for every version.** We also gave every version a single
-rating, like a chess rating, from all 23,623 games our versions played
+rating, like a chess rating, from all 24,217 games our versions played
 against each other, with round 560 set to 0. The final version (round 1340)
 is about **300 points above round 560**, about 25 above round 1280 and about
 60 above round 1220. The first
-Gumbel version (round 620) is only 34 above 560, so most of the gain came
+Gumbel version (round 620) is only 33 above 560, so most of the gain came
 from the long Gumbel practice that followed.
 
 **Starting again from zero.** As an experiment we trained a brand new
 version from scratch with all our later tricks switched on from the first
 round. After only 200 rounds (about 16 hours) it beat round 560, which had
 needed 560 rounds the old way: 37 wins to 10 in 200 games. It is still far
-weaker than the final version (rating about 53 against 297), so the tricks
+weaker than the final version (rating about 57 against 298), so the tricks
 speed learning up but do not replace long practice. The final version does
 not change.
+
+**A bigger brain.** We then tried the same thing with a bigger network (the
+largest our project plan allows). It took almost twice as long to train and
+was no better: it lost slightly to the small one (13 wins to 29 in 200
+games). With the same amount of practice, a bigger brain does not help, so
+we kept the small one.
 
 # Playing against people
 

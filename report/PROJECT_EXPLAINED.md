@@ -2528,16 +2528,37 @@ experiment only: the final model stays 1340.
 So with the ideas on, 200 rounds were enough to pass 560, which needed 560
 rounds (about 144 hours) with the plain recipe. Part of the win over the long
 run's round 200 is the learning rate: that checkpoint was still at 1e-3. Its
-rating is about 53, between Gumbel 620 and Gumbel 800 and far below the final
-model (297), which had seven times as many games. **What to say if asked:**
+rating is about 57, between Gumbel 620 and Gumbel 800 and far below the final
+model (298), which had seven times as many games. **What to say if asked:**
 the ideas got past 560 with about a third of the games, but they do not
 replace the long training. Files: `results/last_ideas/scratch_*`.
+
+## A bigger network from scratch (experiment)
+
+All our runs use a 4 x 64 network. To check whether size was the limit, we
+repeated the run above with the largest network the proposal allows,
+6 x 128, and changed nothing else (200 rounds, 20,000 games). It took about
+28.5 hours instead of 16, because the bigger network is slower to run.
+
+| Match (200 games) | Result | Score |
+|---|---|---|
+| Against 560 | 33-6-159, 2 unfinished | 0.568 |
+| Against the 4 x 64 run above (round 200) | 13-29-154, 4 unfinished | 0.459 |
+| Against 1220 | 4-113-83 | 0.228 |
+
+It beats 560 by the same margin as the small one, but loses slightly to the
+small one and rates about 34 (small: 57). Its training loss was a little
+lower, but its practice games had fewer winners (10% against 17% in the last
+ten rounds). **What to say if asked:** with the same number of games, a
+bigger network did not help, because the limit is the number of games, not
+the network size, and the bigger network makes every game slower. That is
+why we kept 4 x 64. Files: `results/last_ideas/big_*`.
 
 ## One rating for every model
 
 Each match compares only two models. To see them all on one scale we gave
-every model a **rating**, like a chess rating, worked out from all 138
-matches between our models (23,623 games). A draw counts as half a win, and
+every model a **rating**, like a chess rating, worked out from all 141
+matches between our models (24,217 games). A draw counts as half a win, and
 round 560 is fixed at 0, so a rating says how many points a model is above
 or below 560. A gap of 100 points means the stronger model is expected to
 score about 0.64; 200 points, about 0.76. The range is how sure we are (90%).
@@ -2547,17 +2568,18 @@ all the ratings together.
 
 | Player | Rating | 90% range | Games |
 |---|---|---|---|
-| Iteration 1340 (final model) | 297 | 278 to 317 | 998 |
-| Iteration 1280, 32 root moves (third final model) | 271 | 255 to 292 | 1795 |
-| Final model trained 60 more rounds (1340) | 257 | 224 to 297 | 399 |
-| Iteration 1220 (second final model) | 235 | 223 to 249 | 3588 |
-| Iteration 1280, 16 root moves | 232 | 218 to 252 | 1394 |
-| Gumbel, learning rate 3e-5, iteration 1160 | 203 | 184 to 225 | 996 |
-| Gumbel, iteration 1100 | 179 | 164 to 199 | 2191 |
-| Gumbel, iteration 800 | 109 | 96 to 131 | 1596 |
-| From scratch with every idea, iteration 200 (experiment) | 53 | 28 to 85 | 595 |
-| Gumbel self-play, iteration 620 | 32 | 10 to 57 | 799 |
-| Iteration 560 (first final model) | 0 | 0 to 0 | 10197 |
+| Iteration 1340 (final model) | 298 | 277 to 324 | 998 |
+| Iteration 1280, 32 root moves (third final model) | 272 | 252 to 287 | 1795 |
+| Final model trained 60 more rounds (1340) | 257 | 232 to 291 | 399 |
+| Iteration 1220 (second final model) | 236 | 227 to 249 | 3788 |
+| Iteration 1280, 16 root moves | 233 | 218 to 255 | 1394 |
+| Gumbel, learning rate 3e-5, iteration 1160 | 204 | 186 to 225 | 996 |
+| Gumbel, iteration 1100 | 179 | 164 to 196 | 2191 |
+| Gumbel, iteration 800 | 110 | 92 to 132 | 1596 |
+| From scratch with every idea, iteration 200 (experiment) | 57 | 35 to 87 | 791 |
+| Bigger network (6 x 128) from scratch, iteration 200 (experiment) | 34 | 12 to 56 | 594 |
+| Gumbel self-play, iteration 620 | 33 | 13 to 56 | 799 |
+| Iteration 560 (first final model) | 0 | 0 to 0 | 10395 |
 
 The Gumbel versions gained rating round after round (620, 800, 1100, 1220,
 1280), the 1280 model with 32 root moves is about 35 points above 1220, and
