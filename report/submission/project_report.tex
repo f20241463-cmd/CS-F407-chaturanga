@@ -109,33 +109,24 @@ self-play ran to 1220 ($10^{-4}$, then $3\times10^{-5}$), then 60 iterations eac
 95\% margin. Baselines: random moves, a greedy player that captures the most valuable piece
 (its piece values are never seen by our agent), and MCTS with an untrained network. An
 Elo fit over all 141 matches (24,217 games) puts every model on one scale, with iteration
-560 at 0. People played the model in a browser at 800 simulations per move.
+560 at 0.
 
 \section{Results}
-Plain training reached iteration 560 (Table~\ref{tab:results}), which beat random and
-untrained play but drew almost every game against greedy capture. Gumbel self-play was the largest step: 1220 beats 560 by 83 wins to 1 at
-1600 simulations, and the share of decisive self-play games rose from about 15\% to 44\%.
-The two later settings each added a smaller, measured step. Against the baselines
-(Table~\ref{tab:bench}) it mostly wins by checkmate.
-
-\begin{table}[t]
+Figure~\ref{fig:curve} shows the learning curve. Plain training (54,000 games, 151\,h) beat
+its random start 27--0 and reached iteration 560, which beat random and untrained play but
+drew almost every game against greedy capture.
+\begin{figure}[t]
 \centering
-\small
-\begin{tabular}{@{}lrrcr@{}}
-\toprule
-Model & Games & Hours & vs.\ prev. & Elo \\
-\midrule
-Iteration 560 & 54k & 151 & 27--0 & 0 \\
-1220 (Gumbel) & 66k & 39 & 0.814 & 236 \\
-1280 ($k=32$) & 6k & 3.3 & 0.580 & 272 \\
-1340 (final) & 6k & 3.8 & 0.553 & 298 \\
-\bottomrule
-\end{tabular}
-\caption{Training path: games and hours per stage, result against the previous model at
-50 simulations (560: wins--losses against the random start; others: score, 0.5 is even),
-and Elo with 560 at 0.}
-\label{tab:results}
-\end{table}
+\includegraphics[width=\linewidth]{learning_curve.pdf}
+\caption{Learning curve: Elo of saved models against training iteration (560 at 0).}
+\label{fig:curve}
+\end{figure}
+Gumbel self-play was the largest step: 66,000 more games (39\,h) gave 1220, which
+beats 560 by 83 wins to 1 at 1600 simulations (Elo 236), and decisive self-play games rose
+from about 15\% to 44\%. Then $k=32$ (1280, 0.580 against 1220, Elo 272) and
+$c_{\text{scale}}=0.03$ (1340, 0.553 against 1280, Elo 298) each added a smaller step with
+6,000 games. Against the baselines
+(Table~\ref{tab:bench}) it mostly wins by checkmate.
 
 \begin{table}[t]
 \centering
@@ -165,7 +156,7 @@ was no better), so the browser game uses 1600.
 
 The main limitation is scale. AlphaZero used about 44 million games, 800 simulations and a
 far larger network; we used about 132,000 games, 50 simulations and one laptop, about 330
-times fewer games. Human play shows the gap: a FIDE 1641 player beat iteration 560 in 5 of
+times fewer games. Human play shows the gap: at 800 simulations, a FIDE 1641 player beat iteration 560 in 5 of
 10 games and the final model in 11 of 12 (one draw), mostly by winning material the agent
 gave away. Next we would run
 the larger network for millions of games on more hardware.
@@ -181,9 +172,9 @@ model about 300 Elo above our first strong one; mastering the game would need fa
 \toprule
 Name & Contribution \\
 \midrule
-Nandika Tamse & Rules engine, its tests, \texttt{play.py}. \\
-Srinivasa Harshith Pataneni & Network, training loop, replay buffer. \\
-Avisha Srivastava & MCTS and Gumbel search, evaluation, experiments, human games, report. \\
+Nandika Tamse & Rules engine, tensor encoding, move generation, unit tests. \\
+Srinivasa Harshith Pataneni & ResNet model and loss, training loop, replay buffer. \\
+Avisha Srivastava & MCTS (PUCT, Gumbel), evaluation suite, plots, experiments, report. \\
 \bottomrule
 \end{tabularx}}
 
@@ -197,8 +188,7 @@ and all sections. We checked all such output, ran every experiment ourselves,
 and take responsibility for it. No LLM is part of the method.
 
 \section*{Code availability}
-\noindent Code and data: \url{\githuburl}. The public repository's README explains how to
-reproduce the results.
+\noindent \url{\githuburl} (public; the README explains how to reproduce the results).
 
 \begin{thebibliography}{9}
 \small
