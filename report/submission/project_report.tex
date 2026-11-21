@@ -1,0 +1,236 @@
+% CS F407 Artificial Intelligence: final project report template.
+% Limit: 2 pages, including everything except references.
+% Do not change the font size, margins or spacing.
+\documentclass[11pt,a4paper,twocolumn]{article}
+
+\usepackage[margin=2cm,columnsep=0.8cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage[hidelinks]{hyperref}
+
+\titleformat{\section}{\normalsize\bfseries}{\thesection}{0.6em}{}
+\titlespacing*{\section}{0pt}{1.2ex plus 0.3ex}{0.6ex}
+\setlist{nosep,leftmargin=*}
+\setlength{\parskip}{0.3ex}
+
+\newcommand{\coursename}{CS F407 Artificial Intelligence, AY 2026--27 Semester I}
+\newcommand{\teamno}{Team LogicForge}
+\newcommand{\githuburl}{https://github.com/f20241463-cmd/CS-F407-chaturanga}
+
+\begin{document}
+
+\twocolumn[{%
+\begin{center}
+  {\large\bfseries ChaturangZero: Learning Chaturanga from Self-Play Alone}\\[1ex]
+  \teamno\\
+  Nandika Tamse (2024A1PS1463G), Avisha Srivastava (2024A1PS0273G), Srinivasa Harshith Pataneni (2024A7PS0597G)\\[0.5ex]
+  {\small \coursename, BITS Pilani, K.K. Birla Goa Campus}\\[1.5ex]
+  \begin{minipage}{0.85\textwidth}
+    \small
+    \centerline{\bfseries Abstract}\vspace{0.5ex}
+    We built ChaturangZero, an AlphaZero-style agent for Chaturanga, the ancient Indian
+    ancestor of chess, that is given only the rules. A small residual network guides Monte
+    Carlo Tree Search, and the network learns from games the agent plays against itself.
+    Under the course limits (50 simulations per move, at most 6 blocks of 128 filters) and on
+    one laptop, plain AlphaZero training stalled after 54,000 games: about 85\% of self-play
+    games were drawn, so the value head had little to learn from. Switching to Gumbel
+    self-play, which trains on an improved policy instead of visit counts, kept improving for
+    another 78,000 games. The final model beats our first strong model 91 wins to 4 at 1600
+    simulations, beats a greedy-capture player 80 to 3, and is about 300 rating points
+    stronger. An experienced human (FIDE blitz 1641) still beats it, which matches our
+    estimate that mastery needs hundreds of times more games.
+  \end{minipage}
+\end{center}
+\vspace{1.5ex}
+}]
+
+\section{Introduction}
+Chaturanga is played on an $8\times8$ board like chess, but its counselor and elephant move
+only one or two squares diagonally, so material is much harder to convert into checkmate,
+and most games between equal players end in draws. Our goal was an agent that learns the
+game with no human knowledge beyond the rules. The input is a position and the output is a move. We contribute a tested rules engine and a
+full AlphaZero pipeline, a measured account of why plain AlphaZero stalls on this game at our
+scale, and the change that fixed it: Gumbel self-play.
+
+\section{Background and related work}
+Monte Carlo Tree Search~\cite{russell2021aima} balances promising and untried moves with
+bandit rules~\cite{kocsis2006bandit}; PUCT adds a learned prior to that rule~\cite{rosin2011puct}.
+AlphaGo Zero and AlphaZero~\cite{silver2017go,silver2018alphazero} combine PUCT search with
+a residual network~\cite{he2016resnet} that predicts a move distribution and a game result,
+and train it only from self-play, using hundreds of simulations per move and millions of
+games. Gumbel AlphaZero~\cite{danihelka2022gumbel} replaces root noise and visit-count
+targets with sampling without replacement and an improved policy, and works with very few
+simulations, as the course limits require.
+
+\section{Method}
+\textbf{Encoding.} A position is 13 planes of $8\times8$ (one per piece type and color, plus
+side to move). A move is $\text{from}\cdot64+\text{to}$, giving 4096 actions, with illegal
+ones masked. Checkmate wins; stalemate, threefold repetition and 100 plies without a capture
+or pawn move are draws.
+
+\textbf{Network.} 4 residual blocks of 64 filters (836k parameters), a policy head (4096
+logits) and a value head ($\tanh$, result for the side to move). The loss for a position
+with target policy $\pi$ and final result $z$ is
+$\ell = (z - v)^2 - \pi^\top \log p + c\,\lVert\theta\rVert^2$, with $c=10^{-4}$.
+
+\textbf{Search.} Each simulation picks the child maximizing
+$-Q(s') + c_{\text{puct}} P(s,a)\sqrt{N(s)}/(1+N(s'))$ with $c_{\text{puct}}=1.5$, expands
+the leaf with the network, and backs up its value with the sign flipped each ply. There are
+no random rollouts.
+
+\textbf{Self-play.} Each iteration plays 100 games at 50 simulations per move, adds every
+position to a 250,000-position replay buffer, and takes 500 Adam steps of batch 256. Games
+stop at 800 plies. One rules-only addition: the agent avoids a move that causes threefold
+repetition unless every searched move does.
+
+\textbf{Gumbel self-play.} At the root we sample $k$ candidate moves with Gumbel noise
+$g$, split the 50 simulations among them by sequential halving, and train the policy on the
+improved policy $\text{softmax}(\text{logits} + \sigma(\hat q))$, where $\hat q$ is the
+searched value of each move (the network's value for unsearched ones) and
+$\sigma(\hat q) = (50 + \max N)\, c_{\text{scale}}\, \hat q$. We used $k=16$ and $c_{\text{scale}}=0.1$, then
+$k=32$, then $k=32$ with $c_{\text{scale}}=0.03$.
+
+\section{Experimental setup}
+\textbf{Training.} From random weights, 560 iterations of plain AlphaZero (learning rate
+$10^{-3}$, lowered to $3\times10^{-5}$) gave \emph{iteration 560}. From there, Gumbel
+self-play ran to 1220 ($10^{-4}$, then $3\times10^{-5}$), then 60 iterations each to 1280
+($k=32$) and to the final \emph{1340} ($k=32$, $c_{\text{scale}}=0.03$). In total about
+132,000 games and 190 hours on one laptop (6 CPU cores plus Apple GPU, PyTorch).
+
+\textbf{Evaluation.} Head-to-head matches of 100 to 400 games at 50 simulations, temperature
+0.3, alternating colors; score $=(\text{wins}+\tfrac12\text{draws})/\text{games}$ with a
+95\% margin. Baselines: random moves, a greedy player that captures the most valuable piece
+(its piece values are never seen by our agent), and MCTS with an untrained network. An
+Elo fit over all 141 matches (24,217 games) puts every model on one scale, with iteration
+560 at 0. People played the model in a browser at 800 simulations per move.
+
+\section{Results}
+Plain training reached iteration 560 (Table~\ref{tab:results}), which beat random and
+untrained play but drew almost every game against greedy capture. Gumbel self-play was the largest step: 1220 beats 560 by 83 wins to 1 at
+1600 simulations, and the share of decisive self-play games rose from about 15\% to 44\%.
+The two later settings each added a smaller, measured step. Against the baselines
+(Table~\ref{tab:bench}) it mostly wins by checkmate.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{@{}lrrcr@{}}
+\toprule
+Model & Games & Hours & vs.\ prev. & Elo \\
+\midrule
+Iteration 560 & 54k & 151 & 27--0 & 0 \\
+1220 (Gumbel) & 66k & 39 & 0.814 & 236 \\
+1280 ($k=32$) & 6k & 3.3 & 0.580 & 272 \\
+1340 (final) & 6k & 3.8 & 0.553 & 298 \\
+\bottomrule
+\end{tabular}
+\caption{Training path: games and hours per stage, result against the previous model at
+50 simulations (560: wins--losses against the random start; others: score, 0.5 is even),
+and Elo with 560 at 0.}
+\label{tab:results}
+\end{table}
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{@{}lcc@{}}
+\toprule
+Opponent (100 games) & Iter.\ 560 & Final (1340) \\
+\midrule
+Random moves & 16--0, 0.58 & 59--0, 0.80 \\
+Untrained + MCTS & 17--4, 0.57 & 66--0, 0.83 \\
+Greedy capture & 0--1, 0.50 & 80--3, 0.89 \\
+560, both at 1600 sims & -- & 91--4, 0.94 \\
+\bottomrule
+\end{tabular}
+\caption{Wins--losses (draws make up the rest) and score. Higher is better.}
+\label{tab:bench}
+\end{table}
+
+\section{Discussion and limitations}
+Smaller learning rates, penalizing draws,
+search-value targets, shorter game caps, averaged weights and a $6\times128$ network
+(the largest allowed) gave no measurable gain over the same number of games; the larger
+network trained from scratch even lost slightly to the small one (0.459). Resigning
+hopeless games failed because the value head does not see a loss coming. The common cause: with most games drawn, the value head gets few real results. Gumbel
+targets give every legal move a learning signal, not only the few that 50 visits reach. More search at play time also helped (1600 beats 800 simulations 15--3, while 3200
+was no better), so the browser game uses 1600.
+
+The main limitation is scale. AlphaZero used about 44 million games, 800 simulations and a
+far larger network; we used about 132,000 games, 50 simulations and one laptop, about 330
+times fewer games. Human play shows the gap: a FIDE 1641 player beat iteration 560 in 5 of
+10 games and the final model in 11 of 12 (one draw), mostly by winning material the agent
+gave away. Next we would run
+the larger network for millions of games on more hardware.
+
+\section{Conclusion}
+A full AlphaZero pipeline learns Chaturanga from the rules alone, but at course-sized
+compute plain training stalls on drawn games. Gumbel self-play broke that stall and gave a
+model about 300 Elo above our first strong one; mastering the game would need far more games.
+
+\section*{Individual member contributions}
+{\small
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{3.1cm} >{\raggedright\arraybackslash}X@{}}
+\toprule
+Name & Contribution \\
+\midrule
+Nandika Tamse & Rules engine, its tests, \texttt{play.py}. \\
+Srinivasa Harshith Pataneni & Network, training loop, replay buffer. \\
+Avisha Srivastava & MCTS and Gumbel search, evaluation, experiments, human games, report. \\
+\bottomrule
+\end{tabularx}}
+
+\smallskip
+\noindent All members have read this report and agree with the statement above.
+
+\section*{Generative AI disclosure}
+We used Claude Code with Claude Opus 5.5 (Anthropic) to write and debug code and experiment
+scripts, analyze results, and draft and edit the report and documentation, affecting all code
+and all sections. We checked all such output, ran every experiment ourselves,
+and take responsibility for it. No LLM is part of the method.
+
+\section*{Code availability}
+\noindent Code and data: \url{\githuburl}. The public repository's README explains how to
+reproduce the results.
+
+\begin{thebibliography}{9}
+\small
+\bibitem{russell2021aima}
+S.~Russell and P.~Norvig.
+\newblock \emph{Artificial Intelligence: A Modern Approach}, 4th edition.
+\newblock Pearson, 2021.
+\bibitem{kocsis2006bandit}
+L.~Kocsis and C.~Szepesv\'ari.
+\newblock Bandit based Monte-Carlo planning.
+\newblock In \emph{ECML}, 2006.
+\bibitem{rosin2011puct}
+C.~D.~Rosin.
+\newblock Multi-armed bandits with episode context.
+\newblock \emph{Annals of Mathematics and Artificial Intelligence}, 61(3), 2011.
+\bibitem{silver2017go}
+D.~Silver et al.
+\newblock Mastering the game of Go without human knowledge.
+\newblock \emph{Nature}, 550:354--359, 2017.
+\bibitem{silver2018alphazero}
+D.~Silver et al.
+\newblock A general reinforcement learning algorithm that masters chess, shogi, and Go
+  through self-play.
+\newblock \emph{Science}, 362(6419):1140--1144, 2018.
+\bibitem{he2016resnet}
+K.~He, X.~Zhang, S.~Ren and J.~Sun.
+\newblock Deep residual learning for image recognition.
+\newblock In \emph{CVPR}, 2016.
+\bibitem{danihelka2022gumbel}
+I.~Danihelka, A.~Guez, J.~Schrittwieser and D.~Silver.
+\newblock Policy improvement by planning with Gumbel.
+\newblock In \emph{ICLR}, 2022.
+\end{thebibliography}
+
+\end{document}
